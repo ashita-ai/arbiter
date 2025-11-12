@@ -1,10 +1,14 @@
-# Arbiter
+<div align="center">
+  <img src="arbiter/arbiter.png" alt="Arbiter Logo" width="200"/>
 
-**Streaming LLM evaluation framework with semantic comparison and composable metrics**
+  # Arbiter
 
-[![Python](https://img.shields.io/badge/python-3.10+-blue)](https://python.org)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/yourusername/arbiter)
+  **Streaming LLM evaluation framework with semantic comparison and composable metrics**
+
+  [![Python](https://img.shields.io/badge/python-3.10+-blue)](https://python.org)
+  [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+  [![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/yourusername/arbiter)
+</div>
 
 ## What is Arbiter?
 
@@ -112,16 +116,33 @@ pytest
 
 ## Roadmap
 
+**Phase 1 - Foundation** ✅
 - [x] Project setup and structure
-- [ ] Core evaluation engine
-- [ ] PydanticAI evaluator implementation
-- [ ] Milvus integration for semantic comparison
-- [ ] Middleware system (from Sifaka)
-- [ ] Storage backends
-- [ ] Batch operations
+- [x] Core infrastructure (LLM client, middleware, monitoring)
+- [x] Exception handling and retry logic
+
+**Phase 2 - Core Evaluation** ✅
+- [x] Core evaluation engine with PydanticAI
+- [x] BasePydanticEvaluator with automatic LLM tracking
+- [x] SemanticEvaluator implementation
+- [x] Main evaluate() API
+- [x] Complete observability (interaction tracking)
+
+**Phase 3 - Semantic Comparison** 🚧
+- [ ] Milvus integration for vector storage
+- [ ] Embedding generation pipeline
+- [ ] Vector similarity scoring
+
+**Phase 4 - Storage & Scale** 📋
+- [ ] Storage backends (Memory, File, Redis)
+- [ ] Batch operations with parallel processing
 - [ ] ByteWax streaming adapter
-- [ ] Example evaluators (factuality, consistency)
-- [ ] Documentation and examples
+
+**Phase 5 - Additional Evaluators** 📋
+- [ ] Factuality evaluator
+- [ ] Consistency evaluator
+- [ ] Relevance evaluator
+- [ ] Custom criteria support
 
 ## License
 
