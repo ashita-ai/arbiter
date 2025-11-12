@@ -4,6 +4,7 @@ This module defines the primary data structures used throughout Arbiter:
 - EvaluationResult: Complete result of an evaluation
 - Score: Individual metric score
 - Metric: Metadata about a computed metric
+- LLMInteraction: Track individual LLM API calls for transparency
 """
 
 from datetime import datetime
@@ -11,7 +12,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-__all__ = ["Score", "Metric", "EvaluationResult"]
+__all__ = ["Score", "Metric", "LLMInteraction", "EvaluationResult"]
 
 
 class Score(BaseModel):
@@ -39,6 +40,46 @@ class Score(BaseModel):
     )
     metadata: Dict[str, Any] = Field(
         default_factory=dict, description="Additional metadata about the score"
+    )
+
+
+class LLMInteraction(BaseModel):
+    """Record of a single LLM API call during evaluation.
+
+    Tracks all LLM interactions for complete observability and debugging.
+    Similar to Sifaka's Generation tracking but focused on evaluation context.
+
+    This provides:
+    - Complete audit trail of LLM usage
+    - Token and cost tracking
+    - Debugging capabilities
+    - Transparency in how evaluations were computed
+
+    Example:
+        >>> interaction = LLMInteraction(
+        ...     prompt="Evaluate the factuality of this statement...",
+        ...     response="Score: 0.85. The statement is mostly accurate...",
+        ...     model="gpt-4o",
+        ...     tokens_used=150,
+        ...     latency=1.2,
+        ...     purpose="factuality_scoring"
+        ... )
+    """
+
+    prompt: str = Field(..., description="The prompt sent to the LLM")
+    response: str = Field(..., description="The LLM's response")
+    model: str = Field(..., description="Model used for this call")
+    tokens_used: int = Field(default=0, description="Tokens consumed in this call")
+    latency: float = Field(..., description="Time taken for this call (seconds)")
+    timestamp: datetime = Field(
+        default_factory=datetime.utcnow, description="When this call was made"
+    )
+    purpose: str = Field(
+        ...,
+        description="Purpose of this call (e.g., 'scoring', 'semantic_comparison', 'factuality_check')",
+    )
+    metadata: Dict[str, Any] = Field(
+        default_factory=dict, description="Additional context about this call"
     )
 
 
@@ -116,6 +157,12 @@ class EvaluationResult(BaseModel):
         default_factory=datetime.utcnow, description="When evaluation completed"
     )
 
+    # LLM interaction tracking (like Sifaka's generations)
+    interactions: List[LLMInteraction] = Field(
+        default_factory=list,
+        description="All LLM API calls made during evaluation for full transparency",
+    )
+
     # Audit trail
     metadata: Dict[str, Any] = Field(
         default_factory=dict, description="Additional metadata and context"
@@ -148,3 +195,35 @@ class EvaluationResult(BaseModel):
             if metric.name == name:
                 return metric
         return None
+
+    def get_interactions_by_purpose(self, purpose: str) -> List[LLMInteraction]:
+        """Get all LLM interactions for a specific purpose.
+
+        Args:
+            purpose: Purpose to filter by (e.g., 'scoring', 'semantic_comparison')
+
+        Returns:
+            List of interactions matching the purpose
+
+        Example:
+            >>> # Get all scoring-related LLM calls
+            >>> scoring_calls = result.get_interactions_by_purpose("scoring")
+            >>> total_tokens = sum(i.tokens_used for i in scoring_calls)
+        """
+        return [i for i in self.interactions if i.purpose == purpose]
+
+    def total_llm_cost(self, cost_per_1k_tokens: float = 0.01) -> float:
+        """Estimate total LLM cost based on token usage.
+
+        Args:
+            cost_per_1k_tokens: Cost per 1000 tokens (default: $0.01)
+
+        Returns:
+            Estimated cost in dollars
+
+        Example:
+            >>> cost = result.total_llm_cost(cost_per_1k_tokens=0.03)
+            >>> print(f"Evaluation cost: ${cost:.4f}")
+        """
+        total_tokens = sum(i.tokens_used for i in self.interactions)
+        return (total_tokens / 1000) * cost_per_1k_tokens

@@ -32,7 +32,7 @@ from .middleware import (
     RateLimitingMiddleware,
     monitor as monitor_context,
 )
-from .models import EvaluationResult, Metric, Score
+from .models import EvaluationResult, LLMInteraction, Metric, Score
 from .monitoring import PerformanceMetrics, PerformanceMonitor, get_global_monitor, monitor
 from .retry import RETRY_PERSISTENT, RETRY_QUICK, RETRY_STANDARD, RetryConfig, with_retry
 from .type_defs import MiddlewareContext
@@ -52,6 +52,7 @@ __all__ = [
     "EvaluationResult",
     "Score",
     "Metric",
+    "LLMInteraction",
     # Interfaces
     "BaseEvaluator",
     "StorageBackend",

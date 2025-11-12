@@ -46,6 +46,7 @@ from .core import (
     EvaluationResult,
     EvaluatorError,
     LLMClient,
+    LLMInteraction,
     LLMManager,
     LoggingMiddleware,
     Metric,
@@ -82,6 +83,7 @@ __all__ = [
     "EvaluationResult",
     "Score",
     "Metric",
+    "LLMInteraction",
     # Interfaces
     "BaseEvaluator",
     "StorageBackend",
