@@ -379,11 +379,11 @@ result = await evaluate(evaluators=["my_evaluator"])  # Now works!
   - [x] examples/middleware_usage.py - Logging, metrics, caching ✅
   - [ ] examples/6_cost_tracking.py - Token usage and cost analysis (partially in basic_evaluation.py)
   - [x] examples/error_handling_example.py - Handling failures gracefully ✅
-  - [ ] examples/8_batch_manual.py - Manual batching with asyncio.gather
+  - [x] examples/batch_manual.py - Manual batching with asyncio.gather ✅
   - [x] examples/provider_switching.py - Using different providers ✅
-  - [ ] examples/10_advanced_config.py - Temperature, retries, etc.
+  - [x] examples/advanced_config.py - Temperature, retries, etc. ✅
   - [x] examples/11_direct_evaluator.py - Using evaluators directly (covered in basic_evaluation.py) ✅
-  - [x] examples/12_interaction_tracking.py - Accessing LLM interactions (covered in basic_evaluation.py) ✅
+  - [x] examples/interaction_tracking_example.py - Comprehensive interaction tracking ✅
   - [ ] examples/13_confidence_filtering.py - Filter by confidence
   - [ ] examples/14_rag_evaluation.py - RAG system evaluation pattern
   - [ ] examples/15_production_setup.py - Production best practices

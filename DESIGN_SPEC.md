@@ -443,27 +443,32 @@ class MyEvaluator(BasePydanticEvaluator):
 **Duration:** 2 weeks
 **Status:** Planned
 
-### Phase 4: Storage & Batch ⏳ PLANNED
-**Goal:** Storage backends and batch operations
-**Duration:** 2 weeks
+### Phase 4: Batch Evaluation ⏳ PLANNED
+**Goal:** Batch evaluation API for production scale
+**Duration:** 1 week (reduced from 2 weeks)
 **Status:** Planned
+**Note:** Storage backends deferred to Phase 2.0 or community
 
 ### Phase 5: Core Evaluators ⏳ PLANNED
-**Goal:** 6-8 production evaluators
-**Duration:** 6 weeks
-**Evaluators:** Factuality, Relevance, Toxicity, Groundedness, Consistency, ContextRelevance
+**Goal:** 5-7 production evaluators (focused on high-value)
+**Duration:** 4-5 weeks (reduced from 6 weeks)
+**Status:** Planned
+**Evaluators:** Factuality, Relevance, Groundedness, Consistency, Toxicity (if time permits)
+**Note:** Focus on quality over quantity. Registry enables community contributions.
 
-### Phase 6: Quality Assurance ⏳ PLANNED
-**Goal:** Evaluator validation and calibration tools
-**Duration:** 2-3 weeks
-**Differentiator:** Only framework with built-in quality assurance
-
-### Phase 7-9: Polish & Release ⏳ FUTURE
+### Phase 6: Polish & Release ⏳ PLANNED
 **Goal:** CI/CD, PyPI package, documentation site
-**Duration:** 4 weeks
-**Status:** Future
+**Duration:** 2 weeks
+**Status:** Planned
+**Note:** Moved up from Phase 7-9 to enable earlier adoption
 
-**Total Timeline:** 7 months to v1.0
+### ⏸️ DEFERRED Phases
+
+**Phase 6 (Original): Quality Assurance** - Deferred to Phase 2.0 or community
+**Phase 7: Streaming Support** - Deferred indefinitely (niche use case)
+**Storage Backends** - Deferred to Phase 2.0 (memory sufficient for MVP)
+
+**Total Timeline:** 4-5 months to v1.0 (revised from 7 months)
 
 ---
 

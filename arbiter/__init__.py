@@ -1,8 +1,15 @@
-"""Arbiter: Streaming LLM evaluation framework with semantic comparison.
+"""Arbiter: Production-grade LLM evaluation framework with complete observability.
 
-Arbiter provides composable evaluation primitives for assessing LLM outputs
-through multiple metrics including semantic similarity, factuality, consistency,
-and custom criteria. Built on PydanticAI with optional streaming support.
+Arbiter provides simple APIs, complete observability, and provider-agnostic
+infrastructure for evaluating LLM outputs. Built on PydanticAI with automatic
+interaction tracking, multiple evaluators, and extensible architecture.
+
+**Key Features:**
+- Simple API: Evaluate with 3 lines of code
+- Multiple Evaluators: Semantic similarity, custom criteria, pairwise comparison
+- Complete Observability: Automatic LLM interaction tracking (unique differentiator)
+- Provider-Agnostic: Works with OpenAI, Anthropic, Google, Groq, Mistral, Cohere
+- Production-Ready: Middleware, error handling, partial results, registry system
 
 ## Quick Start:
 
@@ -27,20 +34,19 @@ and custom criteria. Built on PydanticAI with optional streaming support.
     ... )
     >>> print(f"Score: {score.value}")
 
-## Key Features:
+## Current Evaluators:
 
-- **Semantic Comparison**: Milvus-backed vector similarity for output comparison
-- **Multiple Metrics**: Factuality, consistency, semantic similarity, and more
-- **Composable**: Build custom evaluation pipelines with middleware
-- **Streaming Ready**: Optional ByteWax integration for streaming data
-- **Full Observability**: Complete audit trails and performance metrics
+- **SemanticEvaluator**: LLM-based semantic similarity evaluation
+- **CustomCriteriaEvaluator**: Domain-specific criteria evaluation (single & multi-criteria)
+- **PairwiseComparisonEvaluator**: A/B testing and model comparison
 
 ## Main Components:
 
-- `evaluate()`: Primary async function for evaluation
-- `SemanticEvaluator`: Evaluator with semantic comparison
-- `EvaluationResult`: Contains scores, metrics, and metadata
-- `Config`: Configuration object for models and behavior
+- `evaluate()`: Primary async function for evaluation (supports multiple evaluators)
+- `compare()`: Pairwise comparison function for A/B testing
+- `SemanticEvaluator`, `CustomCriteriaEvaluator`, `PairwiseComparisonEvaluator`: Built-in evaluators
+- `EvaluationResult`, `ComparisonResult`: Result models with complete interaction tracking
+- `register_evaluator()`: Extend with custom evaluators via registry system
 
 For more information, see the documentation at:
 https://docs.arbiter.ai/
