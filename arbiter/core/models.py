@@ -8,11 +8,17 @@ This module defines the primary data structures used throughout Arbiter:
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
-__all__ = ["Score", "Metric", "LLMInteraction", "EvaluationResult"]
+__all__ = [
+    "Score",
+    "Metric",
+    "LLMInteraction",
+    "EvaluationResult",
+    "ComparisonResult",
+]
 
 
 class Score(BaseModel):
@@ -35,9 +41,7 @@ class Score(BaseModel):
     confidence: Optional[float] = Field(
         None, ge=0.0, le=1.0, description="Confidence in this score"
     )
-    explanation: Optional[str] = Field(
-        None, description="Human-readable explanation of the score"
-    )
+    explanation: Optional[str] = Field(None, description="Human-readable explanation of the score")
     metadata: Dict[str, Any] = Field(
         default_factory=dict, description="Additional metadata about the score"
     )
@@ -95,9 +99,7 @@ class Metric(BaseModel):
     model: Optional[str] = Field(None, description="LLM model used (if applicable)")
     processing_time: float = Field(..., description="Time taken to compute (seconds)")
     tokens_used: int = Field(default=0, description="Tokens consumed (if applicable)")
-    metadata: Dict[str, Any] = Field(
-        default_factory=dict, description="Additional metadata"
-    )
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
 
 class EvaluationResult(BaseModel):
@@ -132,27 +134,19 @@ class EvaluationResult(BaseModel):
     )
 
     # Results
-    scores: List[Score] = Field(
-        default_factory=list, description="Individual metric scores"
-    )
+    scores: List[Score] = Field(default_factory=list, description="Individual metric scores")
     overall_score: float = Field(
         ..., ge=0.0, le=1.0, description="Aggregate score across all metrics"
     )
-    passed: bool = Field(
-        ..., description="Whether evaluation passed quality threshold"
-    )
+    passed: bool = Field(..., description="Whether evaluation passed quality threshold")
 
     # Metadata
     metrics: List[Metric] = Field(
         default_factory=list, description="Metadata about computed metrics"
     )
-    evaluator_names: List[str] = Field(
-        default_factory=list, description="Names of evaluators used"
-    )
+    evaluator_names: List[str] = Field(default_factory=list, description="Names of evaluators used")
     total_tokens: int = Field(default=0, description="Total tokens used")
-    processing_time: float = Field(
-        ..., description="Total processing time in seconds"
-    )
+    processing_time: float = Field(..., description="Total processing time in seconds")
     timestamp: datetime = Field(
         default_factory=datetime.utcnow, description="When evaluation completed"
     )
@@ -224,6 +218,107 @@ class EvaluationResult(BaseModel):
         Example:
             >>> cost = result.total_llm_cost(cost_per_1k_tokens=0.03)
             >>> print(f"Evaluation cost: ${cost:.4f}")
+        """
+        total_tokens = sum(i.tokens_used for i in self.interactions)
+        return (total_tokens / 1000) * cost_per_1k_tokens
+
+
+class ComparisonResult(BaseModel):
+    """Result of comparing two LLM outputs.
+
+    Used for pairwise comparison evaluation where two outputs are compared
+    against each other to determine which is better, or if they're equivalent.
+
+    This is different from EvaluationResult which evaluates a single output
+    against reference or criteria. ComparisonResult compares two outputs
+    directly against each other.
+
+    Example:
+        >>> comparison = ComparisonResult(
+        ...     output_a="GPT-4 response",
+        ...     output_b="Claude response",
+        ...     winner="output_a",
+        ...     confidence=0.85,
+        ...     reasoning="Output A is more accurate and complete",
+        ...     aspect_scores={
+        ...         "accuracy": {"output_a": 0.9, "output_b": 0.8},
+        ...         "clarity": {"output_a": 0.85, "output_b": 0.9},
+        ...     }
+        ... )
+        >>> print(f"Winner: {comparison.winner}")
+    """
+
+    # Input data
+    output_a: str = Field(..., description="First output being compared")
+    output_b: str = Field(..., description="Second output being compared")
+    reference: Optional[str] = Field(
+        None, description="Optional reference context (e.g., user question)"
+    )
+    criteria: Optional[str] = Field(None, description="Optional criteria used for comparison")
+
+    # Comparison results
+    winner: Literal["output_a", "output_b", "tie"] = Field(
+        ...,
+        description="Which output is better, or 'tie' if equivalent",
+    )
+    confidence: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Confidence in the comparison decision",
+    )
+    reasoning: str = Field(..., description="Detailed explanation of why this winner was chosen")
+    aspect_scores: Dict[str, Dict[str, float]] = Field(
+        default_factory=dict,
+        description="Scores for each aspect/criterion, mapping aspect name to scores for output_a and output_b",
+    )
+
+    # Metadata
+    total_tokens: int = Field(default=0, description="Total tokens used")
+    processing_time: float = Field(..., description="Total processing time in seconds")
+    timestamp: datetime = Field(
+        default_factory=datetime.utcnow, description="When comparison completed"
+    )
+
+    # LLM interaction tracking
+    interactions: List[LLMInteraction] = Field(
+        default_factory=list,
+        description="All LLM API calls made during comparison for full transparency",
+    )
+
+    # Audit trail
+    metadata: Dict[str, Any] = Field(
+        default_factory=dict, description="Additional metadata and context"
+    )
+
+    def get_aspect_score(
+        self, aspect: str, output: Literal["output_a", "output_b"]
+    ) -> Optional[float]:
+        """Get score for a specific aspect and output.
+
+        Args:
+            aspect: Name of the aspect (e.g., 'accuracy', 'clarity')
+            output: Which output to get score for ('output_a' or 'output_b')
+
+        Returns:
+            Score value if found, None otherwise
+
+        Example:
+            >>> accuracy_a = comparison.get_aspect_score("accuracy", "output_a")
+            >>> print(f"Output A accuracy: {accuracy_a}")
+        """
+        if aspect in self.aspect_scores:
+            return self.aspect_scores[aspect].get(output)
+        return None
+
+    def total_llm_cost(self, cost_per_1k_tokens: float = 0.01) -> float:
+        """Estimate total LLM cost based on token usage.
+
+        Args:
+            cost_per_1k_tokens: Cost per 1000 tokens (default: $0.01)
+
+        Returns:
+            Estimated cost in dollars
         """
         total_tokens = sum(i.tokens_used for i in self.interactions)
         return (total_tokens / 1000) * cost_per_1k_tokens

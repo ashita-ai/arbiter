@@ -49,13 +49,14 @@ https://docs.arbiter.ai/
 from dotenv import load_dotenv
 
 # Core API
-from .api import evaluate
+from .api import compare, evaluate
 
 # Core components
 from .core import (
     ArbiterError,
     BaseEvaluator,
     CachingMiddleware,
+    ComparisonResult,
     ConfigurationError,
     ConnectionMetrics,
     EvaluationResult,
@@ -87,7 +88,12 @@ from .core import (
 )
 
 # Evaluators
-from .evaluators import BasePydanticEvaluator, SemanticEvaluator
+from .evaluators import (
+    BasePydanticEvaluator,
+    CustomCriteriaEvaluator,
+    PairwiseComparisonEvaluator,
+    SemanticEvaluator,
+)
 
 # Load environment variables
 load_dotenv()
@@ -99,11 +105,15 @@ __all__ = [
     "__version__",
     # Main API
     "evaluate",
+    "compare",
     # Evaluators
     "SemanticEvaluator",
+    "CustomCriteriaEvaluator",
+    "PairwiseComparisonEvaluator",
     "BasePydanticEvaluator",
     # Core Models
     "EvaluationResult",
+    "ComparisonResult",
     "Score",
     "Metric",
     "LLMInteraction",

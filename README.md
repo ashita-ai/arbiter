@@ -75,8 +75,8 @@ print(f"Confidence: {score.confidence:.2f}")
 - **✅ Complete Observability**: Automatic LLM interaction tracking (unique differentiator)
 - **✅ Provider-Agnostic**: OpenAI, Anthropic, Google, Groq, Mistral, Cohere support
 - **✅ Production-Ready**: Middleware for logging, metrics, caching, rate limiting
-- **🚧 Semantic Evaluation**: Current evaluator with confidence scoring
-- **📋 Custom Criteria**: Domain-specific evaluation (Phase 2.5)
+- **✅ Semantic Evaluation**: Similarity scoring with confidence levels
+- **✅ Custom Criteria**: Domain-specific evaluation (medical, technical, brand voice)
 - **📋 Comparison Mode**: A/B testing for model outputs (Phase 2.5)
 - **📋 Multiple Evaluators**: Factuality, consistency, relevance (Phase 5+)
 
@@ -86,22 +86,40 @@ print(f"Confidence: {score.confidence:.2f}")
 
 Evaluators assess LLM outputs against criteria:
 
+**Semantic Similarity**
 ```python
 from arbiter import evaluate
 
-# Semantic similarity (currently available)
+# Compare output to reference text
 result = await evaluate(
-    output="Your LLM output here",
-    reference="Expected output",
+    output="Paris is the capital of France",
+    reference="The capital of France is Paris",
     evaluators=["semantic"],
     model="gpt-4o-mini"
 )
+```
 
-# Multiple evaluators (coming soon)
+**Custom Criteria** (No reference needed!)
+```python
+# Evaluate against domain-specific criteria
+result = await evaluate(
+    output="Medical advice about diabetes management",
+    criteria="Medical accuracy, HIPAA compliance, appropriate tone for patients",
+    evaluators=["custom_criteria"],
+    model="gpt-4o-mini"
+)
+
+print(f"Score: {result.overall_score:.2f}")
+print(f"Criteria met: {result.scores[0].metadata['criteria_met']}")
+print(f"Criteria not met: {result.scores[0].metadata['criteria_not_met']}")
+```
+
+**Multiple Evaluators** (Coming soon)
+```python
 # result = await evaluate(
 #     output="Your LLM output",
 #     reference="Expected output",
-#     evaluators=["semantic", "factuality", "consistency"],
+#     evaluators=["semantic", "custom_criteria", "factuality"],
 #     model="gpt-4o-mini"
 # )
 ```
@@ -175,7 +193,7 @@ pytest
 - [x] Complete observability (interaction tracking)
 
 **Phase 2.5 - Fill Critical Gaps** 🚧 (Current - Nov 22 to Dec 12)
-- [ ] CustomCriteriaEvaluator (domain-specific evaluation)
+- [x] CustomCriteriaEvaluator (domain-specific evaluation)
 - [ ] PairwiseComparisonEvaluator (A/B testing)
 - [ ] Multi-evaluator error handling
 - [ ] 10-15 comprehensive examples
