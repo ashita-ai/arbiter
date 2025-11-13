@@ -106,7 +106,9 @@ print(f"Confidence: {score.confidence:.2f}")
 - **✅ Semantic Evaluation**: Similarity scoring with confidence levels
 - **✅ Custom Criteria**: Domain-specific evaluation (medical, technical, brand voice)
 - **✅ Comparison Mode**: A/B testing with `compare()` API for pairwise evaluation
-- **📋 Multiple Evaluators**: Factuality, consistency, relevance (Phase 5+)
+- **✅ Multiple Evaluators**: Combine semantic, custom_criteria, and pairwise evaluators
+- **✅ Registry System**: Register custom evaluators for extensibility
+- **📋 Additional Evaluators**: Factuality, consistency, relevance (Phase 5+)
 
 ## Core Concepts
 
@@ -142,41 +144,79 @@ print(f"Criteria met: {result.scores[0].metadata['criteria_met']}")
 print(f"Criteria not met: {result.scores[0].metadata['criteria_not_met']}")
 ```
 
-**Multiple Evaluators** (Coming soon)
+**Multiple Evaluators** ✅
 ```python
-# result = await evaluate(
-#     output="Your LLM output",
-#     reference="Expected output",
-#     evaluators=["semantic", "custom_criteria", "factuality"],
-#     model="gpt-4o-mini"
-# )
+# Combine multiple evaluators for comprehensive assessment
+result = await evaluate(
+    output="Your LLM output",
+    reference="Expected output",
+    criteria="Accuracy, clarity, completeness",
+    evaluators=["semantic", "custom_criteria"],
+    model="gpt-4o-mini"
+)
+
+print(f"Overall Score: {result.overall_score:.2f}")
+print(f"Individual Scores: {len(result.scores)}")
+for score in result.scores:
+    print(f"  {score.name}: {score.value:.2f}")
 ```
 
-### Batch Evaluation (Coming Soon)
+### Batch Evaluation
 
-Process multiple outputs efficiently:
-
-```python
-# Planned API for Phase 4
-# from arbiter import batch_evaluate
-#
-# outputs = ["Output 1", "Output 2", "Output 3"]
-# references = ["Reference 1", "Reference 2", "Reference 3"]
-#
-# results = await batch_evaluate(outputs, references, evaluators=["semantic"])
-```
-
-### Streaming (Optional)
-
-Integrate with streaming pipelines:
+Process multiple outputs efficiently using `asyncio.gather`:
 
 ```python
-from arbiter.streaming import ByteWaxAdapter
+import asyncio
+from arbiter import evaluate
 
-async for batch in kafka_source:
-    results = await evaluator.batch_score(batch)
-    await sink.send(results)
+# Manual batching (batch_evaluate() API coming in Phase 4)
+outputs = ["Output 1", "Output 2", "Output 3"]
+references = ["Reference 1", "Reference 2", "Reference 3"]
+
+results = await asyncio.gather(*[
+    evaluate(output=o, reference=r, evaluators=["semantic"], model="gpt-4o-mini")
+    for o, r in zip(outputs, references)
+])
+
+for i, result in enumerate(results, 1):
+    print(f"Result {i}: {result.overall_score:.2f}")
 ```
+
+See [examples/batch_manual.py](examples/batch_manual.py) for complete batch evaluation patterns.
+
+**Note:** Result persistence (storage backends) is deferred to Phase 2.0. For now, you can persist results manually:
+```python
+import json
+from arbiter import evaluate
+
+result = await evaluate(output="...", reference="...")
+# Save results yourself
+with open("results.json", "w") as f:
+    json.dump(result.model_dump(), f, indent=2)
+```
+
+### RAG System Evaluation
+
+Evaluate Retrieval-Augmented Generation systems comprehensively:
+
+```python
+from arbiter import evaluate
+
+# Evaluate RAG response with multiple aspects
+result = await evaluate(
+    output=rag_answer,
+    reference=expected_answer,
+    criteria="Accuracy, completeness, source attribution, no hallucination",
+    evaluators=["semantic", "custom_criteria"],
+    model="gpt-4o-mini"
+)
+
+# Check for hallucinations and source attribution
+if result.scores[0].metadata.get("criteria_not_met"):
+    print("⚠️ Potential hallucination detected")
+```
+
+See [examples/rag_evaluation.py](examples/rag_evaluation.py) for complete RAG evaluation patterns.
 
 ## Architecture
 
@@ -191,11 +231,30 @@ See [DESIGN_SPEC.md](DESIGN_SPEC.md) for complete architecture details.
 
 ## Documentation
 
+### Core Documentation
 - **[DESIGN_SPEC.md](DESIGN_SPEC.md)** - Vision, architecture, and competitive analysis
 - **[AGENTS.md](AGENTS.md)** - How to contribute and work with this repository
-- **[PROJECT_PLAN.md](PROJECT_PLAN.md)** - Complete roadmap with all phases
-- **[PROJECT_TODO.md](PROJECT_TODO.md)** - Current milestone tracker (Phase 2.5)
-- **[PHASE2_REVIEW.md](PHASE2_REVIEW.md)** - Comprehensive Phase 2 assessment
+- **[PROJECT_PLAN.md](PROJECT_PLAN.md)** - Complete roadmap (revised scope: 4-5 months)
+- **[PROJECT_TODO.md](PROJECT_TODO.md)** - Current milestone tracker (Phase 2.5 - 80% complete)
+
+### Examples (12 total)
+- [Basic Evaluation](examples/basic_evaluation.py) - Simple semantic evaluation
+- [Multiple Evaluators](examples/multiple_evaluators.py) - Combining evaluators
+- [Custom Criteria](examples/custom_criteria_example.py) - Domain-specific evaluation
+- [Pairwise Comparison](examples/pairwise_comparison_example.py) - A/B testing
+- [Batch Processing](examples/batch_manual.py) - Manual batching patterns
+- [Advanced Config](examples/advanced_config.py) - Temperature, retries, custom clients
+- [Interaction Tracking](examples/interaction_tracking_example.py) - Complete observability
+- [RAG Evaluation](examples/rag_evaluation.py) - RAG system evaluation
+- [Error Handling](examples/error_handling_example.py) - Handling failures gracefully
+- [Middleware Usage](examples/middleware_usage.py) - Logging, metrics, caching
+- [Provider Switching](examples/provider_switching.py) - Multi-provider support
+- [Evaluator Registry](examples/evaluator_registry_example.py) - Custom evaluators
+
+### API Documentation
+- **[docs/api/](docs/api/)** - Complete API reference (16 pages)
+- **[docs/guides/](docs/guides/)** - In-depth guides and tutorials
+- **[MkDocs Setup](mkdocs.yml)** - Documentation site configuration
 
 ## Development
 
@@ -220,30 +279,30 @@ pytest
 - [x] Main evaluate() API
 - [x] Complete observability (interaction tracking)
 
-**Phase 2.5 - Fill Critical Gaps** 🚧 (Current - Nov 22 to Dec 12)
+**Phase 2.5 - Fill Critical Gaps** 🚧 (Current - 80% Complete)
 - [x] CustomCriteriaEvaluator (domain-specific evaluation)
 - [x] PairwiseComparisonEvaluator (A/B testing)
-- [ ] Multi-evaluator error handling
-- [ ] 10-15 comprehensive examples
-- [ ] Complete API documentation
+- [x] Multi-evaluator error handling with partial results
+- [x] 12 comprehensive examples (basic, custom criteria, pairwise, batch, advanced config, RAG evaluation, etc.)
+- [x] Complete API documentation (16 API reference pages + MkDocs setup)
+- [x] Evaluator registry system for extensibility
 
 **Phase 3 - Semantic Comparison** 📋 (Next - 2 weeks)
 - [ ] Milvus integration for vector storage
 - [ ] Embedding generation pipeline
 - [ ] Vector similarity scoring
 
-**Phase 4 - Storage & Scale** 📋 (2-3 weeks)
-- [ ] Storage backends (Memory, File, Redis)
-- [ ] Batch operations with parallel processing
-- [ ] ByteWax streaming adapter
+**Phase 4 - Batch Evaluation** 📋 (1 week)
+- [ ] Batch evaluation API (`batch_evaluate()` function)
+- [ ] Parallel processing with progress tracking
+- ⏸️ **Storage backends deferred to Phase 2.0** (users can persist results manually)
 
-**Phase 5 - Additional Evaluators** 📋 (4-5 weeks)
+**Phase 5 - Core Evaluators** 📋 (4-5 weeks, 5-7 evaluators)
 - [ ] Factuality evaluator (HIGHEST PRIORITY)
 - [ ] Relevance evaluator
-- [ ] Toxicity evaluator
-- [ ] Groundedness evaluator
+- [ ] Groundedness evaluator (RAG validation)
 - [ ] Consistency evaluator
-- [ ] ContextRelevance evaluator
+- [ ] Toxicity evaluator (if time permits)
 
 See [PROJECT_PLAN.md](PROJECT_PLAN.md) for the complete 9-phase roadmap.
 

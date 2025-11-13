@@ -385,7 +385,7 @@ result = await evaluate(evaluators=["my_evaluator"])  # Now works!
   - [x] examples/11_direct_evaluator.py - Using evaluators directly (covered in basic_evaluation.py) ✅
   - [x] examples/interaction_tracking_example.py - Comprehensive interaction tracking ✅
   - [ ] examples/13_confidence_filtering.py - Filter by confidence
-  - [ ] examples/14_rag_evaluation.py - RAG system evaluation pattern
+  - [x] examples/rag_evaluation.py - RAG system evaluation pattern ✅
   - [ ] examples/15_production_setup.py - Production best practices
 
 - [x] **API Reference Documentation** ✅ COMPLETED
