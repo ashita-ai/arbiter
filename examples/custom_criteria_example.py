@@ -10,9 +10,8 @@ Run with:
 import asyncio
 import os
 
-from arbiter.api import evaluate
+from arbiter import evaluate, CustomCriteriaEvaluator
 from arbiter.core import LLMManager
-from arbiter.evaluators import CustomCriteriaEvaluator
 
 
 async def main():

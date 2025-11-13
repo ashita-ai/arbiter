@@ -13,7 +13,7 @@ Run with:
 import asyncio
 import os
 
-from arbiter.api import evaluate
+from arbiter import evaluate
 from arbiter.core import LLMManager
 
 

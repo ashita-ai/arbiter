@@ -10,9 +10,8 @@ Run with:
 import asyncio
 import os
 
-from arbiter import compare
+from arbiter import compare, PairwiseComparisonEvaluator
 from arbiter.core import LLMManager
-from arbiter.evaluators import PairwiseComparisonEvaluator
 
 
 async def main():
