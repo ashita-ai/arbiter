@@ -21,6 +21,8 @@ Run with:
     python examples/advanced_config.py
 """
 
+from dotenv import load_dotenv
+
 import asyncio
 import os
 from typing import Optional
@@ -33,6 +35,9 @@ from arbiter.core.retry import RetryConfig, RETRY_STANDARD, RETRY_PERSISTENT
 
 async def main():
     """Run advanced configuration examples."""
+
+    # Load environment variables from .env file
+    load_dotenv()
 
     # Ensure API key is set
     if not os.getenv("OPENAI_API_KEY"):

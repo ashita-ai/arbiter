@@ -10,6 +10,8 @@ Run with:
     python examples/basic_evaluation.py
 """
 
+from dotenv import load_dotenv
+
 import asyncio
 import os
 
@@ -19,6 +21,9 @@ from arbiter.core import LLMManager
 
 async def main():
     """Run a basic evaluation with interaction tracking."""
+
+    # Load environment variables from .env file
+    load_dotenv()
 
     # Ensure API key is set
     if not os.getenv("OPENAI_API_KEY"):

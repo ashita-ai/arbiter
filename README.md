@@ -60,6 +60,29 @@ uv pip install -e .
 pip install -e .
 ```
 
+## Setup
+
+Arbiter requires API keys for the LLM providers you want to use. Configure them using a `.env` file:
+
+```bash
+# Copy the example environment file
+cp .env.example .env
+
+# Edit .env and add your API keys
+# At minimum, add your OpenAI API key:
+# OPENAI_API_KEY=sk-...
+```
+
+The `.env.example` file includes placeholders for all supported providers:
+- `OPENAI_API_KEY` - For GPT models (required for examples)
+- `ANTHROPIC_API_KEY` - For Claude models
+- `GOOGLE_API_KEY` - For Gemini models
+- `GROQ_API_KEY` - For Groq (fast inference)
+- `MISTRAL_API_KEY` - For Mistral models
+- `COHERE_API_KEY` - For Cohere models
+
+**Note:** All examples automatically load environment variables from `.env` using `python-dotenv`.
+
 ## Quick Start
 
 ```python

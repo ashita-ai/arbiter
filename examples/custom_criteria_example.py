@@ -7,6 +7,8 @@ Run with:
     python examples/custom_criteria_example.py
 """
 
+from dotenv import load_dotenv
+
 import asyncio
 import os
 
@@ -16,6 +18,9 @@ from arbiter.core import LLMManager
 
 async def main():
     """Run custom criteria evaluation examples."""
+
+    # Load environment variables from .env file
+    load_dotenv()
 
     # Ensure API key is set
     if not os.getenv("OPENAI_API_KEY"):

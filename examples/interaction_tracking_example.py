@@ -21,6 +21,8 @@ Run with:
     python examples/interaction_tracking_example.py
 """
 
+from dotenv import load_dotenv
+
 import asyncio
 import os
 from datetime import datetime
@@ -98,6 +100,9 @@ def analyze_interactions(interactions: List[LLMInteraction]) -> Dict:
 
 async def main():
     """Run interaction tracking examples."""
+
+    # Load environment variables from .env file
+    load_dotenv()
 
     # Ensure API key is set
     if not os.getenv("OPENAI_API_KEY"):

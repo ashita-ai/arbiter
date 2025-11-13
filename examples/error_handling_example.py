@@ -7,6 +7,8 @@ Run with:
     python examples/error_handling_example.py
 """
 
+from dotenv import load_dotenv
+
 import asyncio
 import os
 
@@ -17,6 +19,9 @@ from arbiter.core.exceptions import EvaluatorError
 
 async def main():
     """Run error handling examples."""
+
+    # Load environment variables from .env file
+    load_dotenv()
 
     # Ensure API key is set
     if not os.getenv("OPENAI_API_KEY"):

@@ -7,6 +7,8 @@ Run with:
     python examples/middleware_usage.py
 """
 
+from dotenv import load_dotenv
+
 import asyncio
 import logging
 import os
@@ -28,6 +30,9 @@ logging.basicConfig(
 
 async def main():
     """Run middleware usage examples."""
+
+    # Load environment variables from .env file
+    load_dotenv()
 
     # Ensure API key is set
     if not os.getenv("OPENAI_API_KEY"):

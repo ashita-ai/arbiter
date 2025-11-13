@@ -20,6 +20,8 @@ Run with:
     python examples/rag_evaluation.py
 """
 
+from dotenv import load_dotenv
+
 import asyncio
 import os
 from typing import List, Optional
@@ -173,6 +175,9 @@ async def evaluate_rag_response(
 
 async def main():
     """Run RAG evaluation examples."""
+
+    # Load environment variables from .env file
+    load_dotenv()
 
     # Ensure API key is set
     if not os.getenv("OPENAI_API_KEY"):

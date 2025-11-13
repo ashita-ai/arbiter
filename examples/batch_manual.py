@@ -20,6 +20,8 @@ Run with:
     python examples/batch_manual.py
 """
 
+from dotenv import load_dotenv
+
 import asyncio
 import os
 import time
@@ -175,6 +177,9 @@ def print_batch_summary(results: List[EvaluationResult], method: str):
 
 async def main():
     """Run batch evaluation examples."""
+
+    # Load environment variables from .env file
+    load_dotenv()
 
     # Ensure API key is set
     if not os.getenv("OPENAI_API_KEY"):

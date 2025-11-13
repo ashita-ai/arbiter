@@ -7,6 +7,8 @@ Run with:
     python examples/provider_switching.py
 """
 
+from dotenv import load_dotenv
+
 import asyncio
 import os
 
@@ -16,6 +18,9 @@ from arbiter.core import LLMManager, Provider
 
 async def main():
     """Run provider switching examples."""
+
+    # Load environment variables from .env file
+    load_dotenv()
 
     # Check for API keys
     has_openai = bool(os.getenv("OPENAI_API_KEY"))

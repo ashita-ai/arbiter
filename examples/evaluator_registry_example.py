@@ -6,6 +6,8 @@ This example demonstrates how to:
 3. Use registered evaluators in evaluate()
 """
 
+from dotenv import load_dotenv
+
 import asyncio
 
 from arbiter import (
@@ -80,6 +82,9 @@ Provide a toxicity assessment."""
 # Example 3: Register the custom evaluator
 async def main():
     """Main example function."""
+    # Load environment variables from .env file
+    load_dotenv()
+
     # Register custom evaluator
     register_evaluator("toxicity", ToxicityEvaluator)
 
