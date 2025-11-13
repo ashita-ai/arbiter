@@ -34,6 +34,8 @@ import time
 from typing import List, Optional, Union
 
 from .core import LLMClient, LLMManager, Provider
+from .core.exceptions import ValidationError
+from .core.middleware import MiddlewarePipeline
 from .core.models import EvaluationResult, LLMInteraction, Metric, Score
 from .evaluators import SemanticEvaluator
 
@@ -49,6 +51,7 @@ async def evaluate(
     model: str = "gpt-4o",
     provider: Provider = Provider.OPENAI,
     threshold: float = 0.7,
+    middleware: Optional[MiddlewarePipeline] = None,
 ) -> EvaluationResult:
     """Evaluate an LLM output with automatic interaction tracking.
 
@@ -65,11 +68,13 @@ async def evaluate(
         model: Model to use if creating new client (default: "gpt-4o")
         provider: Provider to use if creating new client (default: OPENAI)
         threshold: Score threshold for pass/fail (default: 0.7)
+        middleware: Optional middleware pipeline for cross-cutting concerns
 
     Returns:
         EvaluationResult with scores, metrics, and complete LLM interaction tracking
 
     Raises:
+        ValidationError: If input validation fails
         ValueError: If evaluator name is not recognized
         EvaluatorError: If evaluation fails
 
@@ -93,6 +98,56 @@ async def evaluate(
         >>> cost = result.total_llm_cost(cost_per_1k_tokens=0.03)
         >>> print(f"Total cost: ${cost:.4f}")
     """
+    # Input validation
+    if not output or not output.strip():
+        raise ValidationError("output cannot be empty or whitespace")
+
+    if reference is not None and not reference.strip():
+        raise ValidationError("reference cannot be empty or whitespace if provided")
+
+    if criteria is not None and not criteria.strip():
+        raise ValidationError("criteria cannot be empty or whitespace if provided")
+
+    # If middleware is provided, use it to wrap the evaluation
+    if middleware:
+        async def _evaluate_core(output: str, reference: Optional[str]) -> EvaluationResult:
+            return await _evaluate_impl(
+                output=output,
+                reference=reference,
+                criteria=criteria,
+                evaluators=evaluators,
+                llm_client=llm_client,
+                model=model,
+                provider=provider,
+                threshold=threshold,
+            )
+
+        return await middleware.execute(output, reference, _evaluate_core)
+
+    # No middleware, run directly
+    return await _evaluate_impl(
+        output=output,
+        reference=reference,
+        criteria=criteria,
+        evaluators=evaluators,
+        llm_client=llm_client,
+        model=model,
+        provider=provider,
+        threshold=threshold,
+    )
+
+
+async def _evaluate_impl(
+    output: str,
+    reference: Optional[str] = None,
+    criteria: Optional[str] = None,
+    evaluators: Optional[List[str]] = None,
+    llm_client: Optional[LLMClient] = None,
+    model: str = "gpt-4o",
+    provider: Provider = Provider.OPENAI,
+    threshold: float = 0.7,
+) -> EvaluationResult:
+    """Internal implementation of evaluation (called directly or via middleware)."""
     start_time = time.time()
 
     # Default to semantic evaluator if none specified

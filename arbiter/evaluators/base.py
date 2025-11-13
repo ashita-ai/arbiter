@@ -301,13 +301,24 @@ class BasePydanticEvaluator(BaseEvaluator):
             # Run evaluation
             result = await agent.run(user_prompt)
 
+            # Extract token usage from PydanticAI result
+            tokens_used = 0
+            try:
+                if hasattr(result, "usage"):
+                    usage = result.usage()  # Call as function
+                    if usage and hasattr(usage, "total_tokens"):
+                        tokens_used = getattr(usage, "total_tokens", 0)
+            except Exception:
+                # Fallback if usage() call fails or not available
+                tokens_used = 0
+
             # Record interaction for transparency
             latency = time.time() - start_time
             interaction = LLMInteraction(
                 prompt=user_prompt,
                 response=result.output.model_dump_json() if hasattr(result.output, 'model_dump_json') else str(result.output),
                 model=self.llm_client.model,
-                tokens_used=0,  # PydanticAI doesn't expose token counts directly
+                tokens_used=tokens_used,
                 latency=latency,
                 purpose=f"{self.name}_evaluation",
                 metadata={

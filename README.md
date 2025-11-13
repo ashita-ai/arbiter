@@ -3,7 +3,7 @@
 
   # Arbiter
 
-  **Streaming LLM evaluation framework with semantic comparison and composable metrics**
+  **Production-grade LLM evaluation framework with complete observability**
 
   [![Python](https://img.shields.io/badge/python-3.10+-blue)](https://python.org)
   [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -12,9 +12,11 @@
 
 ## What is Arbiter?
 
-Arbiter provides composable evaluation primitives for assessing LLM outputs through research-backed metrics. Instead of simple string matching, Arbiter uses semantic comparison, factuality checking, and consistency verification to provide meaningful quality scores.
+Arbiter is a production-grade LLM evaluation framework that provides simple APIs, complete observability, and provider-agnostic infrastructure for AI teams at scale.
 
-**Core Value**: Evaluate LLM outputs at scale with semantic understanding and complete observability.
+Evaluate LLM outputs with 3 lines of code while maintaining full visibility into cost, quality, and decision-making processes.
+
+**Core Value**: The pragmatic choice for teams that need reliable evaluation without complexity, vendor lock-in, or hidden costs.
 
 ## Installation
 
@@ -69,12 +71,14 @@ print(f"Confidence: {score.confidence:.2f}")
 
 ## Key Features
 
-- **🎯 Semantic Comparison**: Milvus-backed vector similarity for deep comparison
-- **📊 Multiple Metrics**: Factuality, consistency, semantic similarity, custom criteria
-- **🔌 Composable**: Build custom evaluation pipelines with middleware
-- **⚡ Streaming Ready**: Optional ByteWax integration for streaming data
-- **👁️ Complete Observability**: Full audit trails and performance metrics
-- **🧩 Extensible**: Plugin system for custom evaluators and storage
+- **✅ Simple API**: Evaluate LLM outputs with 3 lines of code
+- **✅ Complete Observability**: Automatic LLM interaction tracking (unique differentiator)
+- **✅ Provider-Agnostic**: OpenAI, Anthropic, Google, Groq, Mistral, Cohere support
+- **✅ Production-Ready**: Middleware for logging, metrics, caching, rate limiting
+- **🚧 Semantic Evaluation**: Current evaluator with confidence scoring
+- **📋 Custom Criteria**: Domain-specific evaluation (Phase 2.5)
+- **📋 Comparison Mode**: A/B testing for model outputs (Phase 2.5)
+- **📋 Multiple Evaluators**: Factuality, consistency, relevance (Phase 5+)
 
 ## Core Concepts
 
@@ -130,12 +134,22 @@ async for batch in kafka_source:
 
 ## Architecture
 
-Built on proven patterns from Sifaka with focus on evaluation:
+Built on proven patterns with production-grade foundations:
 
-- **PydanticAI**: Structured LLM interactions
-- **Milvus**: Vector storage for semantic comparison
-- **Middleware**: Logging, metrics, caching, rate limiting
-- **Plugin System**: Extensible evaluators and storage backends
+- **PydanticAI 1.14+**: Structured LLM interactions with type safety
+- **Template Method Pattern**: Consistent evaluator implementation
+- **Middleware Pipeline**: Composable logging, metrics, caching, rate limiting
+- **Provider-Agnostic Design**: Works with any LLM provider
+
+See [DESIGN_SPEC.md](DESIGN_SPEC.md) for complete architecture details.
+
+## Documentation
+
+- **[DESIGN_SPEC.md](DESIGN_SPEC.md)** - Vision, architecture, and competitive analysis
+- **[AGENTS.md](AGENTS.md)** - How to contribute and work with this repository
+- **[PROJECT_PLAN.md](PROJECT_PLAN.md)** - Complete roadmap with all phases
+- **[PROJECT_TODO.md](PROJECT_TODO.md)** - Current milestone tracker (Phase 2.5)
+- **[PHASE2_REVIEW.md](PHASE2_REVIEW.md)** - Comprehensive Phase 2 assessment
 
 ## Development
 
@@ -148,33 +162,44 @@ pytest
 
 ## Roadmap
 
-**Phase 1 - Foundation** ✅
+**Phase 1 - Foundation** ✅ (Completed)
 - [x] Project setup and structure
 - [x] Core infrastructure (LLM client, middleware, monitoring)
 - [x] Exception handling and retry logic
 
-**Phase 2 - Core Evaluation** ✅
+**Phase 2 - Core Evaluation** ✅ (Completed)
 - [x] Core evaluation engine with PydanticAI
 - [x] BasePydanticEvaluator with automatic LLM tracking
 - [x] SemanticEvaluator implementation
 - [x] Main evaluate() API
 - [x] Complete observability (interaction tracking)
 
-**Phase 3 - Semantic Comparison** 🚧
+**Phase 2.5 - Fill Critical Gaps** 🚧 (Current - Nov 22 to Dec 12)
+- [ ] CustomCriteriaEvaluator (domain-specific evaluation)
+- [ ] PairwiseComparisonEvaluator (A/B testing)
+- [ ] Multi-evaluator error handling
+- [ ] 10-15 comprehensive examples
+- [ ] Complete API documentation
+
+**Phase 3 - Semantic Comparison** 📋 (Next - 2 weeks)
 - [ ] Milvus integration for vector storage
 - [ ] Embedding generation pipeline
 - [ ] Vector similarity scoring
 
-**Phase 4 - Storage & Scale** 📋
+**Phase 4 - Storage & Scale** 📋 (2-3 weeks)
 - [ ] Storage backends (Memory, File, Redis)
 - [ ] Batch operations with parallel processing
 - [ ] ByteWax streaming adapter
 
-**Phase 5 - Additional Evaluators** 📋
-- [ ] Factuality evaluator
-- [ ] Consistency evaluator
+**Phase 5 - Additional Evaluators** 📋 (4-5 weeks)
+- [ ] Factuality evaluator (HIGHEST PRIORITY)
 - [ ] Relevance evaluator
-- [ ] Custom criteria support
+- [ ] Toxicity evaluator
+- [ ] Groundedness evaluator
+- [ ] Consistency evaluator
+- [ ] ContextRelevance evaluator
+
+See [PROJECT_PLAN.md](PROJECT_PLAN.md) for the complete 9-phase roadmap.
 
 ## License
 
