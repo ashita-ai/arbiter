@@ -68,6 +68,9 @@ docs/_build/
 # AI-generated documentation and analysis (Claude Code outputs)
 claudedocs/
 
+# Session context (Layer 3 of 4-layer context framework)
+PROJECT_TODO.md
+
 # Logs
 *.log
 
