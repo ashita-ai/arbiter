@@ -202,7 +202,7 @@ Provide clear, actionable feedback that helps understand why the score was assig
         criteria_response = cast(CustomCriteriaResponse, response)
 
         return Score(
-            name="custom_criteria",
+            name=self.name,  # Use evaluator's name property for consistency
             value=criteria_response.score,
             confidence=criteria_response.confidence,
             explanation=criteria_response.explanation,
