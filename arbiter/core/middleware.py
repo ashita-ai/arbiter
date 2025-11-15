@@ -217,12 +217,23 @@ class LoggingMiddleware(Middleware):
 
             elapsed = time.time() - start_time
             logger.log(self.log_level, f"Evaluation completed in {elapsed:.2f}s")
-            logger.log(
-                self.log_level,
-                f"Result: overall_score={result.overall_score:.3f}, "
-                f"passed={result.passed}, "
-                f"num_scores={len(result.scores)}",
-            )
+
+            # Handle both EvaluationResult and ComparisonResult
+            if hasattr(result, "overall_score"):
+                # EvaluationResult
+                logger.log(
+                    self.log_level,
+                    f"Result: overall_score={result.overall_score:.3f}, "
+                    f"passed={result.passed}, "
+                    f"num_scores={len(result.scores)}",
+                )
+            else:
+                # ComparisonResult
+                logger.log(
+                    self.log_level,
+                    f"Result: winner={result.winner}, "
+                    f"confidence={result.confidence:.3f}",
+                )
 
             return cast(EvaluationResult, result)
 
@@ -307,12 +318,14 @@ class MetricsMiddleware(Middleware):
             # Update average score
             total = self.metrics["total_requests"]
             old_avg = self.metrics["average_score"]
+            # Handle both EvaluationResult (has overall_score) and ComparisonResult (has confidence)
+            score_value = getattr(result, "overall_score", None) or getattr(result, "confidence", 0.0)
             self.metrics["average_score"] = (
-                old_avg * (total - 1) + result.overall_score
+                old_avg * (total - 1) + score_value
             ) / total
 
-            # Track pass/fail
-            if result.passed:
+            # Track pass/fail (ComparisonResult doesn't have 'passed' attribute)
+            if hasattr(result, "passed") and result.passed:
                 self.metrics["passed_count"] += 1
 
             # Track LLM calls
