@@ -180,13 +180,14 @@ class TestCostCalculator:
     @pytest.mark.asyncio
     async def test_fetch_with_all_retries_exhausted(self):
         """Test that all retry attempts are exhausted on persistent failure."""
+        import httpx
         calc = CostCalculator()
 
         with patch("httpx.AsyncClient") as mock_client:
             mock_context = AsyncMock()
-            # All 3 attempts will fail
+            # All 3 attempts will fail with httpx.ConnectError (retryable)
             mock_context.__aenter__.return_value.get = AsyncMock(
-                side_effect=Exception("Persistent network error")
+                side_effect=httpx.ConnectError("Persistent network error")
             )
             mock_client.return_value = mock_context
 
