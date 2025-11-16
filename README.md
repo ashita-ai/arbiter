@@ -284,8 +284,10 @@ See [DESIGN_SPEC.md](DESIGN_SPEC.md) for complete architecture details.
 - [Evaluator Registry](examples/evaluator_registry_example.py) - Custom evaluators
 
 ### API Documentation
-- **[docs/api/](docs/api/)** - Complete API reference (16 pages)
-- **[docs/guides/](docs/guides/)** - In-depth guides and tutorials
+- **[docs/api/](docs/api/)** - Complete API reference
+- **[docs/evaluator-registry.md](docs/evaluator-registry.md)** - Custom evaluator registration guide
+- **[docs/multiple-evaluators.md](docs/multiple-evaluators.md)** - Combining multiple evaluators
+- **[docs/TOOLS_PLUGIN_ARCHITECTURE.md](docs/TOOLS_PLUGIN_ARCHITECTURE.md)** - Tools & plugins architecture (Phase 5)
 - **[MkDocs Setup](mkdocs.yml)** - Documentation site configuration
 
 ## Development
