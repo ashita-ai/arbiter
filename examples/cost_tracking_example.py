@@ -182,7 +182,7 @@ async def cost_calculator_inspection():
         print(f"   Models available: {calc.model_count}")
 
         # Show pricing for specific models
-        models_to_check = ["gpt-4o-mini", "claude-3-5-sonnet", "gpt-4o"]
+        models_to_check = ["gpt-4o-mini", "claude-3.5-sonnet", "gpt-4o"]
 
         print(f"\n💵 Sample Pricing (per 1M tokens):")
         for model_id in models_to_check:
@@ -221,7 +221,7 @@ async def cached_tokens_example():
     await calc.ensure_loaded()
 
     # Simulate costs with and without caching
-    model = "claude-3-5-sonnet"
+    model = "claude-3.5-sonnet"
     input_tokens = 10000
     output_tokens = 1000
 
