@@ -107,7 +107,7 @@ async def main():
                 model=model_name,
             )
 
-            cost = result.total_llm_cost(cost_per_1k_tokens=cost_per_1k)
+            cost = await result.total_llm_cost()
             print(f"  {model_name:15s} ({description:15s}):")
             print(f"    Score: {result.overall_score:.3f}")
             print(f"    Tokens: {result.total_tokens:,}")

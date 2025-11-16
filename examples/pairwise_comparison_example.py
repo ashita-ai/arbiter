@@ -152,7 +152,7 @@ For more details, see the documentation.""",
     print(f"  Total Latency: {sum(i.latency for i in interactions):.2f}s")
 
     # Calculate cost
-    cost = comparison4.total_llm_cost(cost_per_1k_tokens=0.015)
+    cost = await comparison4.total_llm_cost()
     print(f"  Estimated Cost: ${cost:.6f}")
 
     # Summary

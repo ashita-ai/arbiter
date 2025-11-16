@@ -138,8 +138,7 @@ async def main():
         print_interaction_details(interaction, i)
 
     # Cost analysis
-    cost_per_1k = 0.15 / 1000  # GPT-4o-mini pricing ($0.15 per 1M tokens)
-    total_cost = result1.total_llm_cost(cost_per_1k_tokens=cost_per_1k)
+    total_cost = await result1.total_llm_cost()
     print(f"\n💰 Cost Analysis:")
     print(f"   Total Tokens: {result1.total_tokens:,}")
     print(f"   Estimated Cost: ${total_cost:.6f}")
@@ -186,12 +185,14 @@ async def main():
         print_interaction_details(interaction, i)
 
     # Cost breakdown
-    total_cost2 = result2.total_llm_cost(cost_per_1k_tokens=cost_per_1k)
+    total_cost2 = await result2.total_llm_cost()
     print(f"\n💰 Cost Breakdown:")
     print(f"   Total Cost: ${total_cost2:.6f}")
+
+    # Calculate per-purpose costs based on token proportion
     for purpose, interactions in analysis['by_purpose'].items():
         purpose_tokens = sum(i.tokens_used for i in interactions)
-        purpose_cost = (purpose_tokens / 1000) * cost_per_1k
+        purpose_cost = (purpose_tokens / result2.total_tokens) * total_cost2 if result2.total_tokens > 0 else 0
         print(f"   • {purpose}: ${purpose_cost:.6f} ({purpose_tokens:,} tokens)")
 
     # Example 3: Debugging - Inspect Prompts and Responses

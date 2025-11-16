@@ -1,7 +1,7 @@
 # Arbiter Design Specification
 
 **Version:** 1.0
-**Status:** Phase 3 In Progress
+**Status:** Phase 3 Complete | Specifications Complete
 **Purpose:** Technical vision and architecture
 
 ---
@@ -490,11 +490,40 @@ evaluator = load_evaluator("arbiter", evaluator_class=SemanticEvaluator)
 
 ## Related Documentation
 
-- **ROADMAP.md** - Development timeline and phases
+**Specification Documents:**
+- **ARCHITECTURE.md** - ✅ Detailed system architecture, interface contracts, failure modes, and recovery procedures
+- **IMPLEMENTATION_SPEC.md** - ✅ Coding standards, component requirements, testing strategy, and deployment configuration
 - **DESIGN_DECISIONS.md** - Architectural choices and rationale
-- **AGENTS.md** - Development workflow and patterns
+
+**Project Management:**
+- **ROADMAP.md** - Development timeline and phases
 - **PROJECT_TODO.md** - Current milestone tasks
-- **README.md** - User-facing overview
+- **AGENTS.md** - Development workflow and patterns
+
+**User-Facing:**
+- **README.md** - User-facing overview and quick start
+
+**Document Hierarchy:**
+```
+DESIGN_SPEC.md (This file)
+├── Vision, problem statement, key features
+├── High-level architecture overview
+└── Competitive positioning
+
+ARCHITECTURE.md
+├── System context and external dependencies
+├── Component architecture and interfaces
+├── State management and concurrency
+├── Failure modes and recovery procedures
+└── Security and deployment architecture
+
+IMPLEMENTATION_SPEC.md
+├── Coding standards and type annotations
+├── Component implementation requirements
+├── Testing requirements and strategies
+├── Documentation standards
+└── Error handling and performance requirements
+```
 
 ---
 
@@ -512,4 +541,4 @@ Built for AI engineers, MLOps teams, and researchers who need reliable evaluatio
 
 ---
 
-**Last Updated:** 2025-11-15
+**Last Updated:** 2025-11-16

@@ -151,7 +151,7 @@ async def batch_evaluate_with_progress(
     return results
 
 
-def print_batch_summary(results: List[EvaluationResult], method: str):
+async def print_batch_summary(results: List[EvaluationResult], method: str):
     """Print summary statistics for batch evaluation."""
     valid_results = [r for r in results if r is not None]
     failed_count = len(results) - len(valid_results)
@@ -162,7 +162,11 @@ def print_batch_summary(results: List[EvaluationResult], method: str):
 
     total_tokens = sum(r.total_tokens for r in valid_results)
     total_time = sum(r.processing_time for r in valid_results)
-    total_cost = sum(r.total_llm_cost(cost_per_1k_tokens=0.15/1000) for r in valid_results)
+
+    # Calculate costs asynchronously
+    costs = await asyncio.gather(*[r.total_llm_cost() for r in valid_results])
+    total_cost = sum(costs)
+
     avg_score = sum(r.overall_score for r in valid_results) / len(valid_results)
 
     print(f"\n📊 {method} Summary:")
@@ -218,7 +222,7 @@ async def main():
     sequential_results = await batch_evaluate_sequential(outputs, references)
     sequential_time = time.time() - start_time
 
-    print_batch_summary(sequential_results, "Sequential")
+    await print_batch_summary(sequential_results, "Sequential")
     print(f"   ⏱️  Total Wall Time: {sequential_time:.2f}s")
 
     # Example 2: Parallel Evaluation (Fast)
@@ -230,7 +234,7 @@ async def main():
     parallel_results = await batch_evaluate_parallel(outputs, references, max_concurrent=5)
     parallel_time = time.time() - start_time
 
-    print_batch_summary(parallel_results, "Parallel")
+    await print_batch_summary(parallel_results, "Parallel")
     print(f"   ⏱️  Total Wall Time: {parallel_time:.2f}s")
 
     # Performance comparison
@@ -258,7 +262,7 @@ async def main():
     )
     progress_time = time.time() - start_time
 
-    print_batch_summary(progress_results, "With Progress Tracking")
+    await print_batch_summary(progress_results, "With Progress Tracking")
     print(f"   ⏱️  Total Wall Time: {progress_time:.2f}s")
 
     # Example 4: Error Handling in Batch
@@ -293,7 +297,10 @@ async def main():
         valid_results = [r for r in parallel_results if r is not None]
 
         total_tokens = sum(r.total_tokens for r in valid_results)
-        total_cost = sum(r.total_llm_cost(cost_per_1k_tokens=0.15/1000) for r in valid_results)
+
+        # Calculate costs asynchronously
+        costs = await asyncio.gather(*[r.total_llm_cost() for r in valid_results])
+        total_cost = sum(costs)
 
         print(f"Batch Evaluation Cost Breakdown:")
         print(f"   Total Evaluations: {len(valid_results)}")

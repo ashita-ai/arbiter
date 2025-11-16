@@ -163,12 +163,16 @@ async def evaluate_rag_response(
         total_tokens += semantic_result.total_tokens
 
     results["total_tokens"] = total_tokens
-    results["total_cost"] = (
-        answer_quality_result.total_llm_cost(cost_per_1k_tokens=0.15/1000) +
-        attribution_result.total_llm_cost(cost_per_1k_tokens=0.15/1000) +
-        relevance_result.total_llm_cost(cost_per_1k_tokens=0.15/1000) +
-        (semantic_result.total_llm_cost(cost_per_1k_tokens=0.15/1000) if expected_answer else 0)
+
+    # Calculate costs asynchronously
+    costs = await asyncio.gather(
+        answer_quality_result.total_llm_cost(),
+        attribution_result.total_llm_cost(),
+        relevance_result.total_llm_cost()
     )
+    results["total_cost"] = sum(costs)
+    if expected_answer:
+        results["total_cost"] += await semantic_result.total_llm_cost()
 
     return results
 
@@ -373,4 +377,5 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 

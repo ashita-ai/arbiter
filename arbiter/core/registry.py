@@ -54,12 +54,16 @@ def _initialize_builtin_evaluators() -> None:
     from ..evaluators import (
         CustomCriteriaEvaluator,
         FactualityEvaluator,
+        GroundednessEvaluator,
+        RelevanceEvaluator,
         SemanticEvaluator,
     )
 
     AVAILABLE_EVALUATORS["semantic"] = SemanticEvaluator
     AVAILABLE_EVALUATORS["custom_criteria"] = CustomCriteriaEvaluator
     AVAILABLE_EVALUATORS["factuality"] = FactualityEvaluator
+    AVAILABLE_EVALUATORS["groundedness"] = GroundednessEvaluator
+    AVAILABLE_EVALUATORS["relevance"] = RelevanceEvaluator
 
 
 def register_evaluator(name: str, evaluator_class: Type[BaseEvaluator]) -> None:

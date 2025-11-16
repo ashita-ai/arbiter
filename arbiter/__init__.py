@@ -39,6 +39,8 @@ interaction tracking, multiple evaluators, and extensible architecture.
 - **SemanticEvaluator**: LLM-based semantic similarity evaluation
 - **CustomCriteriaEvaluator**: Domain-specific criteria evaluation (single & multi-criteria)
 - **FactualityEvaluator**: Hallucination detection and fact verification
+- **GroundednessEvaluator**: RAG system validation and source attribution
+- **RelevanceEvaluator**: Query-output alignment and completeness assessment
 - **PairwiseComparisonEvaluator**: A/B testing and model comparison
 
 ## Main Components:
@@ -108,7 +110,9 @@ from .evaluators import (
     BasePydanticEvaluator,
     CustomCriteriaEvaluator,
     FactualityEvaluator,
+    GroundednessEvaluator,
     PairwiseComparisonEvaluator,
+    RelevanceEvaluator,
     SemanticEvaluator,
 )
 
@@ -127,6 +131,8 @@ __all__ = [
     "SemanticEvaluator",
     "CustomCriteriaEvaluator",
     "FactualityEvaluator",
+    "GroundednessEvaluator",
+    "RelevanceEvaluator",
     "PairwiseComparisonEvaluator",
     "BasePydanticEvaluator",
     # Core Models

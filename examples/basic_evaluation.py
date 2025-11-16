@@ -73,7 +73,7 @@ async def main():
         print(f"    Timestamp: {interaction.timestamp.strftime('%H:%M:%S')}")
 
     # Calculate cost
-    cost1 = result1.total_llm_cost(cost_per_1k_tokens=0.015)  # GPT-4o-mini pricing
+    cost1 = await result1.total_llm_cost()
     print(f"\n💰 Estimated Cost: ${cost1:.6f}")
 
     # Example 2: Lower semantic similarity

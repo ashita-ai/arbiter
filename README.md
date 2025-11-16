@@ -126,9 +126,11 @@ print(f"Confidence: {score.confidence:.2f}")
 - **✅ Semantic Evaluation**: Similarity scoring with LLM or FAISS backends (significantly faster, zero cost for embeddings)
 - **✅ Custom Criteria**: Domain-specific evaluation (medical, technical, brand voice)
 - **✅ Comparison Mode**: A/B testing with `compare()` API for pairwise evaluation
-- **✅ Multiple Evaluators**: Combine semantic, custom_criteria, and pairwise evaluators
+- **✅ Multiple Evaluators**: Combine semantic, custom_criteria, pairwise, factuality, groundedness, and relevance evaluators
 - **✅ Registry System**: Register custom evaluators for extensibility
-- **📋 Additional Evaluators**: Factuality, consistency, relevance (planned Phase 3+)
+- **✅ Factuality Evaluation**: Hallucination detection and fact verification
+- **✅ Groundedness Evaluation**: RAG system validation (source attribution)
+- **✅ Relevance Evaluation**: Query-output alignment assessment
 
 ## Core Concepts
 
@@ -269,11 +271,14 @@ See [DESIGN_SPEC.md](DESIGN_SPEC.md) for complete architecture details.
 - **[ROADMAP.md](ROADMAP.md)** - Complete roadmap (4-5 months to v1.0)
 - **[PROJECT_TODO.md](PROJECT_TODO.md)** - Current milestone tracker (Phase 3 - Core Evaluators)
 
-### Examples (12 total)
+### Examples (15 total)
 - [Basic Evaluation](examples/basic_evaluation.py) - Simple semantic evaluation
 - [Multiple Evaluators](examples/multiple_evaluators.py) - Combining evaluators
 - [Custom Criteria](examples/custom_criteria_example.py) - Domain-specific evaluation
 - [Pairwise Comparison](examples/pairwise_comparison_example.py) - A/B testing
+- [Factuality Evaluation](examples/factuality_example.py) - Hallucination detection ✅
+- [Groundedness Evaluation](examples/groundedness_example.py) - RAG validation ✅
+- [Relevance Evaluation](examples/relevance_example.py) - Query alignment ✅
 - [Batch Processing](examples/batch_manual.py) - Manual batching patterns
 - [Advanced Config](examples/advanced_config.py) - Temperature, retries, custom clients
 - [Interaction Tracking](examples/interaction_tracking_example.py) - Complete observability
@@ -322,10 +327,10 @@ pytest
 - [x] Complete API documentation (16 API reference pages + MkDocs setup)
 - [x] Evaluator registry system for extensibility
 
-**Phase 3 - Core Evaluators** 🚧 (Current - 3 weeks)
-- [ ] FactualityEvaluator (hallucination detection)
-- [ ] GroundednessEvaluator (RAG validation)
-- [ ] RelevanceEvaluator (query alignment)
+**Phase 3 - Core Evaluators** ✅ (Complete - 2 days, accelerated from 3 weeks)
+- [x] FactualityEvaluator (hallucination detection) - 100% coverage
+- [x] GroundednessEvaluator (RAG validation) - 100% coverage
+- [x] RelevanceEvaluator (query alignment) - 100% coverage
 
 **Phase 4 - Batch Evaluation** 📋 (1 week)
 - [ ] Batch evaluation API (`batch_evaluate()` function)

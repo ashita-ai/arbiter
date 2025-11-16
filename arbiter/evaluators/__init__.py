@@ -23,11 +23,13 @@ from .custom_criteria import (
     MultiCriteriaResponse,
 )
 from .factuality import FactualityEvaluator, FactualityResponse
+from .groundedness import GroundednessEvaluator, GroundednessResponse
 from .pairwise import (
     AspectComparison,
     PairwiseComparisonEvaluator,
     PairwiseResponse,
 )
+from .relevance import RelevanceEvaluator, RelevanceResponse
 from .semantic import SemanticEvaluator, SemanticResponse
 from .similarity_backends import (
     SimilarityBackend,
@@ -46,6 +48,10 @@ __all__ = [
     "MultiCriteriaResponse",
     "FactualityEvaluator",
     "FactualityResponse",
+    "GroundednessEvaluator",
+    "GroundednessResponse",
+    "RelevanceEvaluator",
+    "RelevanceResponse",
     "PairwiseComparisonEvaluator",
     "PairwiseResponse",
     "AspectComparison",
