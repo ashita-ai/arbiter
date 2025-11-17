@@ -76,12 +76,19 @@ async def main():
         print(f"    Purpose: {interaction.purpose}")
         print(f"    Model: {interaction.model}")
         print(f"    Latency: {interaction.latency:.2f}s")
-        print(f"    Tokens Used: {interaction.tokens_used}")
+        print(f"    Tokens: {interaction.tokens_used:,}")
+        print(f"      • Input: {interaction.input_tokens:,}")
+        print(f"      • Output: {interaction.output_tokens:,}")
         print(f"    Timestamp: {interaction.timestamp.strftime('%H:%M:%S')}")
 
-    # Calculate cost
-    cost1 = await result1.total_llm_cost()
-    print(f"\n💰 Estimated Cost: ${cost1:.6f}")
+    # Cost breakdown
+    print(f"\n💰 Cost Analysis:")
+    breakdown1 = await result1.cost_breakdown()
+    print(f"  Total Cost: ${breakdown1['total']:.6f}")
+    print(f"  Token Breakdown:")
+    print(f"    • Input tokens: {breakdown1['token_breakdown']['input_tokens']:,}")
+    print(f"    • Output tokens: {breakdown1['token_breakdown']['output_tokens']:,}")
+    print(f"    • Total tokens: {breakdown1['token_breakdown']['total_tokens']:,}")
 
     # Example 2: Lower semantic similarity
     print("\n\n📝 Example 2: Lower Semantic Similarity")
@@ -99,6 +106,11 @@ async def main():
     print(f"\n📊 Results:")
     print(f"  Overall Score: {result2.overall_score:.3f}")
     print(f"  Passed: {'✅' if result2.passed else '❌'}")
+
+    # Show cost for comparison
+    cost2 = await result2.total_llm_cost()
+    print(f"\n💰 Cost: ${cost2:.6f}")
+    print(f"  Tokens: {result2.total_tokens:,}")
 
     # Example 3: Using the evaluator directly for more control
     print("\n\n📝 Example 3: Direct Evaluator Usage")
@@ -126,18 +138,35 @@ async def main():
     # Access interactions directly from evaluator
     print(f"\n🔬 Evaluator Interactions:")
     interactions = evaluator.get_interactions()
+    total_tokens = sum(i.tokens_used for i in interactions)
     print(f"  Total Calls: {len(interactions)}")
+    print(f"  Total Tokens: {total_tokens:,}")
     print(f"  Total Latency: {sum(i.latency for i in interactions):.2f}s")
 
-    # Summary
+    # Summary with total costs
     print("\n\n" + "=" * 50)
     print("✅ Examples Complete!")
-    print("\nKey Features Demonstrated:")
+
+    # Calculate total session cost
+    total_cost = breakdown1['total'] + cost2
+    total_tokens_all = result1.total_tokens + result2.total_tokens
+    print(f"\n💰 Total Session Cost:")
+    print(f"  Total Evaluations: 3")
+    print(f"  Total Cost: ${total_cost:.6f}")
+    print(f"  Total Tokens: {total_tokens_all:,}")
+    print(f"  Average per Evaluation: ${total_cost / 3:.6f}")
+
+    print("\n📚 Key Features Demonstrated:")
     print("  • Semantic similarity evaluation")
     print("  • Automatic LLM interaction tracking")
-    print("  • Cost calculation from token usage")
-    print("  • Score confidence levels")
+    print("  • Detailed cost tracking and token breakdown")
+    print("  • Score confidence levels and explanations")
     print("  • Both high-level API and direct evaluator usage")
+
+    print("\n📖 Next Steps:")
+    print("  • See observability_example.py for comprehensive cost analysis")
+    print("  • See batch_evaluation_example.py for parallel processing")
+    print("  • See multiple_evaluators.py for multi-perspective evaluation")
 
 
 if __name__ == "__main__":
