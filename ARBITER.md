@@ -1,24 +1,29 @@
 # Arbiter Presentation - AI Tinkerers
 
-## Opening
+## Opening (30 seconds)
 ```
-"Quick question: When your AI agent makes 15 LLM calls to answer ONE user question,
-and something goes wrong... which call failed? What did it cost? How do you know
-your fix worked?
+"Quick question: How much did your last LLM evaluation cost?
 
-[pause]
+[pause for awkward silence]
 
-That's the problem Arbiter solves. Let me show you."
+If you don't know... you're not alone. Most evaluation frameworks don't tell you.
+
+Arbiter is different. It's a PydanticAI-native evaluation library with automatic
+cost tracking built in.
+
+Let me show you what that means."
 ```
+
+**Key Hook**: Cost transparency - something no other framework emphasizes
+**Positioning**: PydanticAI-native (not generic), cost-first (unique)
 
 ---
 
-## Evaluation
-### `examples/basic_evaluation.py` lines 47-84
-
+## Cost Transparency Demo
+### `examples/cost_comparison.py` (NEW)
 
 ```python
-# "This looks simple - evaluate output vs reference"
+# "Here's the simplest possible evaluation..."
 from arbiter import evaluate
 
 result = await evaluate(
@@ -28,19 +33,55 @@ result = await evaluate(
     model="gpt-4o-mini"
 )
 
-# "But look what's happening under the hood..."
-print(f"🔬 LLM Interaction Tracking:")
-print(f"  Total LLM Calls: {len(result.interactions)}")  # Automatic tracking!
+# "Notice what you get automatically - no extra code:"
+print(f"✓ Score: {result.overall_score:.2f}")
+print(f"💰 Cost: ${await result.total_llm_cost():.6f}")  # UNIQUE TO ARBITER
+print(f"⏱️  Time: {result.processing_time:.2f}s")
+print(f"🔍 LLM Calls: {len(result.interactions)}")
 
-for interaction in result.interactions:
-    print(f"    Purpose: {interaction.purpose}")
-    print(f"    Model: {interaction.model}")
-    print(f"    Latency: {interaction.latency:.2f}s")
-    print(f"    Tokens Used: {interaction.tokens_used}")
-
-cost = await result.total_llm_cost()  # Real pricing from llm-prices.com
-print(f"💰 Cost: ${cost:.6f}")
+# "This is real pricing data from llm-prices.com"
+# "Same source Langfuse uses"
+# "But we show it by DEFAULT, not hidden in dashboards"
 ```
+
+**Talk track**:
+- "Cost is front and center - not buried"
+- "Real pricing data, updated automatically"
+- "No other evaluation framework does this"
+
+---
+
+## Cost Comparison Demo
+### `examples/cost_comparison.py` example2
+
+```python
+# "Now watch this - let's compare models"
+
+# Expensive model
+result_gpt4 = await evaluate(
+    output=output, reference=reference,
+    model="gpt-4o", evaluators=["semantic"]
+)
+
+# Cheaper model
+result_mini = await evaluate(
+    output=output, reference=reference,
+    model="gpt-4o-mini", evaluators=["semantic"]
+)
+
+cost_gpt4 = await result_gpt4.total_llm_cost()
+cost_mini = await result_mini.total_llm_cost()
+
+print(f"GPT-4o: ${cost_gpt4:.6f}")
+print(f"GPT-4o-mini: ${cost_mini:.6f}")
+print(f"Savings: {((cost_gpt4 - cost_mini) / cost_gpt4 * 100):.1f}%")
+print(f"Score difference: {abs(result_gpt4.overall_score - result_mini.overall_score):.3f}")
+```
+
+**Talk track**:
+- "80%+ cost savings with minimal quality loss"
+- "Make informed decisions about model selection"
+- "This is the kind of insight Arbiter gives you automatically"
 
 ---
 
@@ -266,25 +307,40 @@ for interaction in result.interactions:
     print(f"  Response: {interaction.response[:100]}...")
 ```
 ---
-### Key Differences from Other Tools
 
-**LangSmith/Langfuse:**
-```python
-# Require explicit instrumentation
-from langsmith import traceable
+## Why Arbiter vs Competitors?
 
-@traceable  # ← Manual decorator on EVERY function
-async def my_function():
-    # ... your code ...
-    pass
+### DeepEval (2.8k stars)
+```
+DeepEval: Pytest integration, 50+ metrics, Confident AI platform (SaaS)
+Arbiter: PydanticAI-native, cost-first, pure library (no platform)
+
+Use DeepEval if: You need pytest CI/CD integration and comprehensive metrics
+Use Arbiter if: You use PydanticAI and want cost transparency without platform lock-in
 ```
 
-**Arbiter:**
-```python
-# Inheritance = automatic
-# If you use our evaluators, tracking is built-in
-# No decorators, no spans, no manual instrumentation
+### TruLens / Phoenix
 ```
+TruLens/Phoenix: Enterprise observability platforms with dashboards
+Arbiter: Lightweight library, automatic tracking, no server required
+
+Use TruLens/Phoenix if: You need enterprise features and visualization dashboards
+Use Arbiter if: You want a simple library that shows costs and tracks interactions
+```
+
+### Key Differentiators
+
+**1. Cost Transparency** (Unique)
+- Arbiter: Automatic, prominent, real pricing data
+- Others: Hidden, require platform, or not tracked at all
+
+**2. PydanticAI Native**
+- Arbiter: Built on PydanticAI, same patterns
+- Others: Generic (support everything = great at nothing)
+
+**3. Pure Library**
+- Arbiter: `pip install`, no signup, no server
+- Others: Open-core + SaaS platforms
 
 ---
 
@@ -327,19 +383,42 @@ https://github.com/evanvolgas/arbiter/issues
 
 ---
 
-## Closing
+## Closing (1 minute)
 
-So that's Arbiter:
+**Summary - What Makes Arbiter Different:**
 
-- ✅ Zero-integration observability - automatic tracking via inheritance
-- ✅ Provider-agnostic from day one - OpenAI, Anthropic, Google, Groq
-- ✅ Extensible via template method pattern - 4 methods to custom evaluators
-- ✅ Production-grade - 95% test coverage, strict mypy typing
-- ✅ Built for the multi-model, multi-agent future
+```
+1. PydanticAI Native
+   → If you use PydanticAI, Arbiter feels familiar
+   → Same patterns, same type safety
 
-What evaluation problem do YOU have?
+2. Cost Transparency First
+   → Real-time cost tracking with live pricing data
+   → No other framework makes this a first-class feature
+   → Make informed decisions about model selection
 
-Submit an issue - let's solve it together.
+3. Pure Library Philosophy
+   → No platform signup
+   → No server to run
+   → No vendor lock-in to SaaS
+   → Just pip install and go
+
+4. Automatic Observability
+   → Every LLM call tracked automatically
+   → Complete visibility into evaluation process
+   → Perfect for debugging
+```
+
+**Who is Arbiter for?**
+- PydanticAI users who want native evaluation
+- Teams who need to know what evaluations cost
+- Developers who want a library, not a platform
+- Anyone tired of evaluation framework complexity
+
+**What's next:**
+- Currently v0.1.0-alpha
+- Looking for early adopters and feedback
+- What evaluation problems do YOU have?
 
 **github.com/evanvolgas/arbiter**
 
