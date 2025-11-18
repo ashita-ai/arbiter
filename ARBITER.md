@@ -34,10 +34,10 @@ result = await evaluate(
 )
 
 # "Notice what you get automatically - no extra code:"
-print(f"✓ Score: {result.overall_score:.2f}")
-print(f"💰 Cost: ${await result.total_llm_cost():.6f}")  # UNIQUE TO ARBITER
-print(f"⏱️  Time: {result.processing_time:.2f}s")
-print(f"🔍 LLM Calls: {len(result.interactions)}")
+print(f"Score: {result.overall_score:.2f}")
+print(f"Cost: ${await result.total_llm_cost():.6f}")  # UNIQUE TO ARBITER
+print(f"Time: {result.processing_time:.2f}s")
+print(f"LLM Calls: {len(result.interactions)}")
 
 # "This is real pricing data from llm-prices.com"
 # "Same source Langfuse uses"
@@ -150,9 +150,9 @@ result = await evaluate(
 # Shows which criteria were met/not met
 for score in result.scores:
     if score.metadata.get("criteria_met"):
-        print(f"✅ Criteria Met: {score.metadata['criteria_met']}")
+        print(f"Criteria Met: {score.metadata['criteria_met']}")
     if score.metadata.get("criteria_not_met"):
-        print(f"❌ Criteria Not Met: {score.metadata['criteria_not_met']}")
+        print(f"Criteria Not Met: {score.metadata['criteria_not_met']}")
     print(f"Explanation: {score.explanation}")
 ```
 
@@ -240,11 +240,56 @@ AVAILABLE_EVALUATORS = {
 |-----------|----------|---------|
 | **semantic** | "Same meaning?" | "Paris is capital" ≈ "Capital is Paris" |
 | **custom_criteria** | "Meets criteria?" | Medical accuracy, HIPAA compliance |
-| **factuality** | "Is it TRUE?" | "Paris founded 1985" ❌ (false fact) |
-| **groundedness** | "In the SOURCE?" | "Paris 2.2M people" ❌ (source says 2.16M) |
-| **relevance** | "Answers query?" | "Eiffel Tower height" for "What's capital?" ❌ |
+| **factuality** | "Is it TRUE?" | "Paris founded 1985" FALSE (false fact) |
+| **groundedness** | "In the SOURCE?" | "Paris 2.2M people" FALSE (source says 2.16M) |
+| **relevance** | "Answers query?" | "Eiffel Tower height" for "What's capital?" FALSE |
 
 
+
+---
+
+## Production-Grade Middleware
+### `examples/circuit_breaker_example.py`
+
+```python
+# "One more thing that makes Arbiter production-ready: Middleware"
+
+from arbiter import evaluate
+from arbiter.core.middleware import CircuitBreakerMiddleware, MiddlewarePipeline
+
+# Circuit breaker prevents cascading failures
+circuit_breaker = CircuitBreakerMiddleware(
+    failure_threshold=3,    # Open after 3 failures
+    recovery_timeout=60.0,  # Try again after 60s
+    half_open_max_calls=2   # Test with 2 calls before fully closing
+)
+
+pipeline = MiddlewarePipeline()
+pipeline.add(circuit_breaker)
+
+# If evaluations start failing, circuit breaker opens automatically
+# Protects your application from costly retry storms
+result = await evaluate(
+    output=output,
+    reference=reference,
+    evaluators=["semantic"],
+    middleware=pipeline
+)
+
+# "Other frameworks don't have this - they assume evaluations always work"
+# "Arbiter is built for production from day one"
+```
+
+**Other Middleware:**
+- Rate limiting - Control evaluation throughput
+- Caching - Avoid redundant LLM calls
+- Logging - Structured observability
+- Metrics - Performance monitoring
+
+**Talk track:**
+- "DeepEval, TruLens, Phoenix - none have middleware"
+- "Arbiter treats evaluation as a production system"
+- "Circuit breakers, rate limiting, caching - built in"
 
 ---
 
@@ -252,7 +297,7 @@ AVAILABLE_EVALUATORS = {
 
 **Before Arbiter (Manual Tracking):**
 ```python
-# ❌ WITHOUT Arbiter: Manual tracking nightmare
+# WITHOUT Arbiter: Manual tracking nightmare
 import time
 from openai import AsyncOpenAI
 
@@ -284,7 +329,7 @@ logger.info(f"Call took {latency}s, used {tokens} tokens, cost ${cost}")
 
 **With Arbiter (Automatic Tracking):**
 ```python
-# ✅ WITH Arbiter: Inheritance handles everything
+# WITH Arbiter: Inheritance handles everything
 from arbiter import evaluate
 
 result = await evaluate(
@@ -493,7 +538,7 @@ A: "Maybe - 95% test coverage, strict mypy typing, production-grade error handli
 
 
 
-## 🚀 Pre-Presentation Setup
+## Pre-Presentation Setup
 
 ### Environment Check (Do This Thursday Morning)
 ```bash
