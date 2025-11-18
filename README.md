@@ -315,22 +315,31 @@ Built on proven patterns with type-safe foundations:
 
 ## Examples
 
-15 comprehensive examples demonstrating all evaluators:
-- [Basic Evaluation](examples/basic_evaluation.py) - Simple semantic evaluation
+17 comprehensive examples demonstrating all features:
+
+**Getting Started:**
+- [Basic Evaluation](examples/basic_evaluation.py) - Simple semantic evaluation with cost tracking
+- [Cost Comparison](examples/cost_comparison.py) - **NEW:** Model cost/quality analysis ⭐
 - [Multiple Evaluators](examples/multiple_evaluators.py) - Combining evaluators
+
+**Evaluators:**
+- [Semantic Similarity](examples/faiss_semantic_example.py) - LLM and FAISS backends
 - [Custom Criteria](examples/custom_criteria_example.py) - Domain-specific evaluation
+- [Factuality](examples/factuality_example.py) - Hallucination detection
+- [Groundedness](examples/groundedness_example.py) - RAG validation
+- [Relevance](examples/relevance_example.py) - Query alignment
 - [Pairwise Comparison](examples/pairwise_comparison_example.py) - A/B testing
-- [Factuality Evaluation](examples/factuality_example.py) - Hallucination detection ✅
-- [Groundedness Evaluation](examples/groundedness_example.py) - RAG validation ✅
-- [Relevance Evaluation](examples/relevance_example.py) - Query alignment ✅
-- [Batch Processing](examples/batch_manual.py) - Manual batching patterns
-- [Advanced Config](examples/advanced_config.py) - Temperature, retries, custom clients
-- [Interaction Tracking](examples/interaction_tracking_example.py) - Complete observability
-- [RAG Evaluation](examples/rag_evaluation.py) - RAG system evaluation
+
+**Advanced Features:**
+- [Batch Evaluation](examples/batch_evaluation_example.py) - Parallel processing with progress tracking
+- [RAG Evaluation](examples/rag_evaluation.py) - Complete RAG system evaluation
+- [Observability](examples/observability_example.py) - Interaction tracking and debugging
 - [Error Handling](examples/error_handling_example.py) - Handling failures gracefully
 - [Middleware Usage](examples/middleware_usage.py) - Logging, metrics, caching
+- [Circuit Breaker](examples/circuit_breaker_example.py) - Fault tolerance patterns
 - [Provider Switching](examples/provider_switching.py) - Multi-provider support
 - [Evaluator Registry](examples/evaluator_registry_example.py) - Custom evaluators
+- [Advanced Config](examples/advanced_config.py) - Temperature, retries, custom clients
 
 ## Development
 
@@ -393,6 +402,12 @@ pytest
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
-## Acknowledgments
+## Contributing
 
-Built with inspiration from [Sifaka](https://sifaka.ai) and leveraging proven patterns for AI systems.
+Contributions are welcome! Please feel free to submit issues or pull requests.
+
+**Areas where we'd love help:**
+- Additional evaluators for specific domains
+- Performance optimizations
+- Documentation improvements
+- Integration examples with popular frameworks

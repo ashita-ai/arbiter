@@ -91,7 +91,7 @@ class LLMInteraction(BaseModel):
     """Record of a single LLM API call during evaluation.
 
     Tracks all LLM interactions for complete observability and debugging.
-    Similar to Sifaka's Generation tracking but focused on evaluation context.
+    Provides automatic transparency into evaluation processes.
 
     This provides:
     - Complete audit trail of LLM usage
@@ -259,7 +259,7 @@ class EvaluationResult(BaseModel):
         default_factory=_utc_now, description="When evaluation completed"
     )
 
-    # LLM interaction tracking (like Sifaka's generations)
+    # LLM interaction tracking for complete transparency
     interactions: List[LLMInteraction] = Field(
         default_factory=list,
         description="All LLM API calls made during evaluation for full transparency",
