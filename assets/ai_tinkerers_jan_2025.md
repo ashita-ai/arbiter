@@ -1,4 +1,22 @@
 # Arbiter Presentation - AI Tinkerers
+**Date:** January 20, 2025
+
+## Setup Instructions
+
+**Required API Key:**
+```bash
+export OPENAI_API_KEY=your_key_here
+```
+
+**Optional (for provider comparison demos):**
+```bash
+export ANTHROPIC_API_KEY=your_key_here
+export GOOGLE_API_KEY=your_key_here
+```
+
+All examples work with just OpenAI. Additional providers only needed for `provider_switching.py` demo.
+
+---
 
 ## Opening
 ```
