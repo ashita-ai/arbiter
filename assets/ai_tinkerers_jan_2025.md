@@ -18,16 +18,6 @@ All examples work with just OpenAI. Additional providers only needed for `provid
 
 ---
 
-## Opening
-```
-"Multi-call LLM systems are black boxes. 15 calls to answer one question,
-zero visibility into what failed, what it cost, or if your fix worked.
-
-Arbiter changes that. Let me show you."
-```
-
----
-
 ## Basic Evaluation
 ### `examples/basic_evaluation.py` lines 47-84
 
@@ -136,7 +126,7 @@ result3 = await evaluate(
     model="gemini-1.5-pro"
 )
 
-# "Same code. Zero changes. No vendor lock-in."
+# Same code across providers
 ```
 
 **Supported Providers:**
@@ -153,8 +143,6 @@ result3 = await evaluate(
 ### `examples/circuit_breaker_example.py`
 
 ```python
-# "Here's what makes Arbiter production-ready - middleware pipeline"
-
 from arbiter import evaluate
 from arbiter.core.middleware import CircuitBreakerMiddleware, MiddlewarePipeline
 
@@ -178,7 +166,7 @@ result = await evaluate(
     model="gpt-4o-mini"
 )
 
-# "Circuit breaker state: closed (healthy) | open (failing) | half_open (testing)"
+# Circuit breaker state: closed (healthy) | open (failing) | half_open (testing)
 print(f"Circuit state: {circuit_breaker.state}")
 ```
 
@@ -198,12 +186,9 @@ print(f"Circuit state: {circuit_breaker.state}")
 ## Custom Evaluations & Evaluators
 ### Part A: `examples/custom_criteria_example.py` lines 43-70
 
-**Narrative:**
+**Example: Domain-specific evaluation**
 ```python
-# "You need domain-specific evaluation - medical accuracy, brand voice, etc."
-# "Arbiter: 4 methods to build custom evaluators."
-
-# Medical domain example
+# Medical domain evaluation
 result = await evaluate(
     output="""Diabetes management requires careful attention to diet, exercise,
     and medication. Patients should monitor their blood glucose levels regularly...""",
@@ -223,9 +208,9 @@ for score in result.scores:
 
 ### Part B: `arbiter/arbiter/evaluators/custom_criteria.py`, lines 104-418
 
-```python
-# "How is this built? Template method pattern - just 4 methods:"
+**Template method pattern - 4 required methods:**
 
+```python
 from arbiter.evaluators import BasePydanticEvaluator
 from pydantic import BaseModel, Field
 from typing import Optional, Type
@@ -275,19 +260,20 @@ class CustomCriteriaEvaluator(BasePydanticEvaluator):
             }
         )
 
-# "That's it. 4 methods. Production-ready evaluator."
-# "Now export it and use it anywhere:"
+# 4 methods. Inherits automatic tracking from base class.
 ```
 
 ---
 
 ## Built-in Evaluators & Registry
 
+**How string-based evaluators work:**
+
 ```python
-# "When you write this..."
+# String lookup
 evaluators=["custom_criteria"]
 
-# "...it's just a registry lookup (arbiter/core/registry.py)"
+# Registry maps strings to classes (arbiter/core/registry.py)
 AVAILABLE_EVALUATORS = {
     "semantic": SemanticEvaluator,           # Meaning comparison
     "custom_criteria": CustomCriteriaEvaluator,  # Domain-specific
@@ -435,11 +421,11 @@ Use Arbiter if: You want a simple library that shows costs and tracks interactio
 
 ## Closing
 
-**What Makes Arbiter Different:**
+**Key Points:**
 1. **PydanticAI Native** - Same patterns, same type safety
-2. **Cost Transparency** - Real-time tracking with live pricing data
-3. **Pure Library** - No platform, no server, no signup
-4. **Automatic Observability** - Every LLM call tracked automatically
+2. **Cost Tracking** - Real-time with live pricing data
+3. **Library, Not Platform** - No server, no signup
+4. **Automatic Tracking** - Every LLM call tracked automatically
 
 **How You Can Help:**
 - 🔍 **REVIEW THIS PR**: https://github.com/evanvolgas/arbiter/pull/7
@@ -501,7 +487,7 @@ Also middleware for custom rate limiting - see middleware.py:462"
 **Q: "Can I evaluate without reference text?"**
 ```
 A: "Yes - CustomCriteriaEvaluator does this. Reference-free evaluation against
-criteria strings. Perfect for brand voice, tone, compliance checks."
+criteria strings. Useful for brand voice, tone, compliance checks."
 
 [Show custom_criteria_example.py]
 ```
