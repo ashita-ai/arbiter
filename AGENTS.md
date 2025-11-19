@@ -8,7 +8,7 @@
 ## Quick Orientation
 
 **Arbiter**: Production-grade LLM evaluation framework (v0.1.0-alpha)
-**Stack**: Python 3.10+, PydanticAI, provider-agnostic (OpenAI/Anthropic/Google/Groq)
+**Stack**: Python 3.11+, PydanticAI, provider-agnostic (OpenAI/Anthropic/Google/Groq)
 **Coverage**: 95% test coverage, strict mypy, comprehensive examples
 
 ### Directory Structure
@@ -110,6 +110,19 @@ make format      # Black formatted
 ---
 
 ## Common Tasks
+
+### Run Examples
+```bash
+# All examples work with uv run
+uv run python examples/basic_evaluation.py
+uv run python examples/cost_comparison.py
+uv run python examples/custom_criteria_example.py
+
+# Or use make
+make run-example EXAMPLE=basic_evaluation.py
+```
+
+**Important**: Always use `uv run` to execute examples. The virtual environment created by `uv sync` requires `uv run` for proper package discovery.
 
 ### Add New Evaluator
 ```bash

@@ -9,13 +9,12 @@ description = "Streaming LLM evaluation framework with semantic comparison and c
 authors = [{name = "Evan Volgas", email = "evan.volgas@gmail.com"}]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.10,<3.14"
+requires-python = ">=3.11,<3.14"
 keywords = ["ai", "llm", "evaluation", "testing", "metrics", "semantic-comparison"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -73,9 +72,7 @@ dev = [
     "types-aiofiles>=25.0.0",
 
     # Interactive development
-    "ipython>=9.0.0",
     "rich>=14.0.0",
-    "ipdb>=0.13.13",
 
     # Documentation
     "mkdocs>=1.6.0",

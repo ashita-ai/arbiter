@@ -4,7 +4,7 @@
   <p><strong>Native PydanticAI evaluation with automatic cost tracking</strong></p>
 
   <p>
-    <a href="https://python.org"><img src="https://img.shields.io/badge/python-3.10+-blue" alt="Python"></a>
+    <a href="https://python.org"><img src="https://img.shields.io/badge/python-3.11+-blue" alt="Python"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"></a>
     <a href="https://github.com/evanvolgas/arbiter"><img src="https://img.shields.io/badge/version-0.1.0--alpha-blue" alt="Version"></a>
     <a href="https://ai.pydantic.dev"><img src="https://img.shields.io/badge/PydanticAI-native-purple" alt="PydanticAI"></a>
@@ -61,15 +61,19 @@ print(f"Calls: {len(result.interactions)}")           # Every LLM interaction
 
 ## Installation
 
+**Requirements**: Python 3.11+
+
 ```bash
 # Clone the repository
 git clone https://github.com/evanvolgas/arbiter.git
 cd arbiter
 
-# Install with uv (recommended)
-uv pip install -e .
+# Install with uv (recommended - handles environment automatically)
+uv sync
 
-# Or with standard pip
+# Or with pip (manual environment management)
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -e .
 ```
 
@@ -315,10 +319,19 @@ Built on proven patterns with type-safe foundations:
 
 ## Examples
 
-18 comprehensive examples demonstrating all features:
+18 comprehensive examples demonstrating all features.
+
+**Running Examples:**
+```bash
+# With uv (recommended)
+uv run python examples/basic_evaluation.py
+
+# Or if you activated venv manually
+python examples/basic_evaluation.py
+```
 
 **Getting Started:**
-- [Debugging Multi-Call Systems](examples/debugging_multi_call.py) - ⭐ The black box problem solved
+- [Debugging Multi-Call Systems](examples/debugging_multi_call.py) - The black box problem solved
 - [Basic Evaluation](examples/basic_evaluation.py) - Simple semantic evaluation with cost tracking
 - [Cost Comparison](examples/cost_comparison.py) - Model cost/quality analysis
 - [Multiple Evaluators](examples/multiple_evaluators.py) - Combining evaluators
@@ -345,10 +358,22 @@ Built on proven patterns with type-safe foundations:
 ## Development
 
 ```bash
+# Clone and setup
 git clone https://github.com/evanvolgas/arbiter.git
 cd arbiter
-pip install -e ".[dev]"
-pytest
+
+# Install with development dependencies
+uv sync --all-extras
+
+# Run tests
+uv run pytest
+
+# Or use make commands
+make test          # Run tests
+make test-cov      # Tests with coverage
+make lint          # Check code quality
+make format        # Format code
+make type-check    # Type checking
 ```
 
 ## Roadmap
