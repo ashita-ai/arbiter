@@ -36,6 +36,56 @@ print(f"LLM Calls: {len(result.interactions)}")
 
 ---
 
+## Debugging Multi-Call Systems
+### `examples/debugging_multi_call.py`
+
+```python
+# Run a 15-call customer support agent
+data = await run_multi_stage_agent(
+    "I can't log in to my account, getting authentication error"
+)
+
+results = data["results"]  # 15 EvaluationResults
+
+# Show what was tracked
+print_interaction_breakdown(results)    # All 15 calls with tokens/latency
+await print_cost_analysis(results)      # Cost by stage
+print_performance_analysis(results)     # Slowest calls
+print_debug_example(results)            # Full prompt/response inspection
+```
+
+**Output shows:**
+- Call breakdown: All 15 calls across 5 stages with token counts and latency
+- Cost analysis: Total cost ($0.002652), cost by stage with percentages
+- Performance: Slowest calls identified (routing: 12.34s, context_assembly: 9.20s)
+- Debug inspection: Full prompt and response for any call
+
+**Code structure:**
+```python
+# Each evaluate() returns an EvaluationResult
+result = await evaluate(...)
+
+# Access tracked data
+result.interactions       # List of all LLM calls
+result.total_tokens       # Sum of tokens
+result.processing_time    # Total latency
+await result.total_llm_cost()  # Calculated cost
+
+# Each interaction contains
+interaction.prompt        # Full prompt sent
+interaction.response      # Full response
+interaction.tokens_used   # Token count
+interaction.latency       # Call duration
+interaction.model         # Which model
+```
+
+**Run it:**
+```bash
+python examples/debugging_multi_call.py
+```
+
+---
+
 ## Provider flexibility
 ### `examples/provider_switching.py` lines 54-93
 
@@ -124,135 +174,6 @@ print(f"Circuit state: {circuit_breaker.state}")
 - DeepEval, TruLens, Phoenix - none have this
 - They assume evaluations always work
 - Arbiter treats evaluation as production infrastructure
-
----
-
-## Debugging Multi-Call Systems
-### `examples/debugging_multi_call.py`
-
-**Narrative:**
-```
-"Now let me show you the problem we opened with - the 15-call black box.
-This example simulates a realistic customer support agent."
-```
-
-**Demo Flow:**
-
-### 1. The Black Box Problem (lines 127-146)
-```python
-# WITHOUT Arbiter: You're flying blind
-# - Which of the 15 calls failed?
-# - What did each stage cost?
-# - How do you verify fixes worked?
-# - No audit trail for debugging
-
-# You end up:
-# 😫 Adding print statements everywhere
-# 😫 Manually tracking costs in spreadsheets
-# 😫 Guessing which changes helped
-# 😫 Hoping nothing breaks in production
-```
-
-### 2. The Agent (lines 38-122)
-```python
-# 15 LLM calls across 5 stages for ONE user question:
-# Stage 1: Intent Classification (3 calls)
-# Stage 2: Knowledge Retrieval (4 calls)
-# Stage 3: Response Generation (3 calls)
-# Stage 4: Quality Checks (2 calls)
-# Stage 5: Final Review (3 calls)
-```
-
-### 3. Complete Visibility (lines 175-203)
-```python
-# "With Arbiter, you see EVERYTHING automatically:"
-
-📊 Total LLM Calls: 15
-
-   Stage 1: Intent Classification
-     • routing              →  557 tokens, 12.34s
-     • sentiment            →  580 tokens, 7.94s
-     • priority             →  565 tokens, 6.14s
-
-   Stage 2: Knowledge Retrieval
-     • query_expansion      →  555 tokens, 6.62s
-     • semantic_search      →  579 tokens, 4.20s
-     # ... all 15 calls tracked
-```
-
-### 4. Cost Transparency (lines 215-232)
-```python
-💰 Cost Analysis for ONE User Question:
-   Total Cost: $0.002652
-   Total Tokens: 8,977
-   Average per Call: $0.000177
-
-   Cost by Stage:
-     Intent Classification (calls 1-3)   $0.000537 (20.3%)
-     Knowledge Retrieval (calls 4-7)     $0.000714 (26.9%)
-     Response Generation (calls 8-10)    $0.000494 (18.6%)
-     Quality Checks (calls 11-12)        $0.000394 (14.8%)
-     Final Review (calls 13-15)          $0.000513 (19.3%)
-
-# "Now you KNOW where your money is going."
-```
-
-### 5. Performance Insights (lines 244-256)
-```python
-⚡ Performance Analysis:
-   Total Processing Time: 90.24s
-   Average per Call: 6.02s
-
-   Slowest Calls (optimization targets):
-     • routing: 12.34s
-     • context_assembly: 9.20s
-     • sentiment: 7.94s
-
-# "Identify bottlenecks immediately."
-```
-
-### 6. Debugging Support (lines 268-285)
-```python
-🔍 Example: Debugging Call #9 (Fact-Check)
-
-   Purpose: custom_criteria_evaluation
-   Model: gpt-4o-mini
-   Tokens: 546
-   Latency: 3.69s
-
-   Full Prompt: [shows complete prompt]
-   Response: [shows complete response]
-
-# "Inspect ANY of the 15 calls like this!"
-```
-
-### 7. Verification (lines 297-308)
-```python
-✅ After Making Changes, Compare:
-   Before: 15 calls, $0.002652, 90.24s
-   After:  [run again to compare]
-
-   You'll KNOW if:
-     • Costs went down (which stage improved?)
-     • Performance improved (which calls got faster?)
-     • Quality improved (which evaluators scored better?)
-     • Issues were fixed (compare interaction logs)
-
-# "No more guessing. No more flying blind."
-```
-
-**Key Talking Points:**
-- This is a realistic scenario - 15 calls is typical for complex agents
-- Without observability: impossible to debug, optimize, or validate
-- With Arbiter: automatic visibility into everything
-- No manual instrumentation - just use evaluate() and get all this
-- Competitors don't show you this level of detail
-- Cost transparency lets you optimize spend stage-by-stage
-
-**Demo Command:**
-```bash
-python examples/debugging_multi_call.py
-```
 
 ---
 
