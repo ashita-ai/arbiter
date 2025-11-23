@@ -61,8 +61,7 @@ import openai
 from dotenv import load_dotenv
 from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel, Field
-from pydantic_ai import Agent
-from pydantic_ai.models import ModelSettings
+from pydantic_ai import Agent, ModelSettings
 
 from .circuit_breaker import CircuitBreaker
 from .exceptions import ModelProviderError

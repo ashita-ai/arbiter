@@ -14,6 +14,29 @@ last_updated: 2025-01-22
 
 ---
 
+## Quick Start (First Session Commands)
+
+**New to this repo? Run these 5 commands first:**
+
+```bash
+# 1. Verify you're on a feature branch (NEVER work on main)
+git status && git branch
+
+# 2. Run all quality checks
+make all
+
+# 3. Run specific evaluator test to verify environment
+pytest tests/unit/test_semantic.py -v
+
+# 4. Check for any TODOs or placeholders (should be NONE)
+grep -r "TODO\|FIXME\|NotImplementedError" arbiter/ || echo "✅ No placeholders found"
+
+# 5. Verify coverage is >80%
+make test-cov | tail -1
+```
+
+---
+
 ## Boundaries
 
 ### Always Do (No Permission Needed)
@@ -30,15 +53,20 @@ last_updated: 2025-01-22
 
 ### Ask First
 
-- Add new evaluators to `arbiter/evaluators/`
-- Modify core API in `arbiter/api.py` (evaluate, compare functions)
-- Change template method pattern in `BasePydanticEvaluator`
-- Add/update dependencies in `pyproject.toml`
-- Change public API examples in `README.md`
-- Modify middleware pipeline in `arbiter/core/middleware.py`
-- Change LLM client abstraction in `arbiter/core/llm_client.py`
-- Add new storage backends in `arbiter/storage/`
-- Modify interaction tracking in `arbiter/core/monitoring.py`
+**Core Architecture** (Why: Breaks all evaluators):
+- Add new evaluators to `arbiter/evaluators/` - Must follow template pattern
+- Modify core API in `arbiter/api.py` (evaluate, compare functions) - Breaking change for all users
+- Change template method pattern in `BasePydanticEvaluator` - All evaluators inherit from this
+- Modify middleware pipeline in `arbiter/core/middleware.py` - Affects all evaluations
+- Change LLM client abstraction in `arbiter/core/llm_client.py` - Provider-agnostic guarantee at risk
+
+**Dependencies & Config** (Why: Security and maintenance burden):
+- Add/update dependencies in `pyproject.toml` - Increases attack surface
+- Change public API examples in `README.md` - User-facing documentation
+- Add new storage backends in `arbiter/storage/` - Data persistence implications
+
+**Monitoring & Observability** (Why: Production debugging):
+- Modify interaction tracking in `arbiter/core/monitoring.py` - Breaks observability
 
 ### Never Touch
 
@@ -59,11 +87,76 @@ last_updated: 2025-01-22
 - Type checking configuration to reduce strictness
 - Coverage thresholds (must maintain >80%)
 
+**Detection Commands** (Run before committing):
+```bash
+# Check for security violations
+grep -r "API_KEY\|SECRET\|PASSWORD" arbiter/ tests/ examples/ && echo "🚨 CREDENTIALS FOUND" || echo "✅ No credentials"
+
+# Check for code quality violations
+grep -r "TODO\|FIXME" arbiter/ && echo "🚨 TODO comments found" || echo "✅ No TODOs"
+
+# Check for incomplete features
+grep -r "NotImplementedError\|pass  # TODO" arbiter/ && echo "🚨 Placeholder code found" || echo "✅ No placeholders"
+
+# Verify on feature branch
+git branch --show-current | grep -E "^(main|master)$" && echo "🚨 ON MAIN BRANCH - CREATE FEATURE BRANCH" || echo "✅ On feature branch"
+
+# Verify coverage >80%
+make test 2>&1 | grep "TOTAL" | awk '{if ($NF+0 < 80) print "🚨 COVERAGE " $NF " < 80%"; else print "✅ Coverage " $NF}'
+```
+
 ---
 
 ## Communication Preferences
 
 Don't flatter me. I know what [AI sycophancy](https://www.seangoedecke.com/ai-sycophancy/) is and I don't want your praise. Be concise and direct. Don't use emdashes ever.
+
+---
+
+## Session Analysis & Continuous Improvement
+
+**When to Analyze** (Multiple Triggers):
+- During active sessions: After completing major tasks or every 30-60 minutes
+- When failures occur: Immediately analyze and update rules
+- Session end: Review entire session for patterns before closing
+- User corrections: Any time user points out a mistake
+
+**Identify Failures**:
+- Framework violations (boundaries crossed, rules ignored)
+- Repeated patterns (same mistake multiple times)
+- Rules that didn't prevent failures
+- User corrections (what needed fixing)
+
+**Analyze Each Failure**:
+- What rule should have prevented this?
+- Why didn't it work? (too vague, wrong priority, missing detection pattern)
+- What would have caught this earlier?
+
+**Update AGENTS.md** (In Real-Time):
+- Add new rules or strengthen existing rules immediately
+- Add detection patterns (git commands, test patterns, code patterns)
+- Include examples of violations and corrections
+- Update priority if rule was underweighted
+- Propose updates to user during session (don't wait until end)
+
+**Priority Levels**:
+- 🔴 **CRITICAL**: Security, credentials, production breaks → Update immediately, stop work
+- 🟡 **IMPORTANT**: Framework violations, repeated patterns → Update with detection patterns, continue work
+- 🟢 **RECOMMENDED**: Code quality, style issues → Update with examples, lowest priority
+
+**Example Pattern**:
+```
+Failure: Committed TODO comments in production code (violated "No Partial Features" rule)
+Detection: `grep -r "TODO" src/` before commit
+Rule Update: Add pre-commit check pattern to Boundaries section
+Priority: 🟡 IMPORTANT
+Action Taken: Proposed rule update to user mid-session, updated AGENTS.md
+```
+
+**Proactive Analysis**:
+- Before risky operations: Check if existing rules cover this scenario
+- After 3+ similar operations: Look for pattern that should be codified
+- When uncertainty arises: Document the decision-making gap
 
 ---
 
@@ -146,6 +239,87 @@ All evaluators use PydanticAI for type-safe LLM responses.
 
 ---
 
+## Common Mistakes & How to Avoid Them
+
+### Mistake 1: Breaking Template Method Pattern
+**Detection**: New evaluator doesn't implement all 4 required methods
+**Prevention**: Copy existing evaluator (semantic.py) as template
+**Fix**: Implement `name`, `_get_system_prompt`, `_get_user_prompt`, `_get_response_type`, `_compute_score`
+**Why It Matters**: Template pattern ensures all evaluators work consistently
+
+### Mistake 2: Hardcoding LLM Provider
+**Detection**: `from openai import OpenAI` in evaluator code
+**Prevention**: Use `LLMManager.get_client()` for provider abstraction
+**Fix**: Replace direct provider imports with LLMManager
+**Why It Matters**: Provider-agnostic design is core feature
+
+### Mistake 3: Not Exporting New Evaluators
+**Detection**: New evaluator not importable from `arbiter`
+**Prevention**: Add to `__init__.py` exports in both `evaluators/` and root
+**Fix**: Add `from .my_evaluator import MyEvaluator` and update `__all__`
+**Why It Matters**: Users can't use evaluator if not exported
+
+### Mistake 4: Missing Docstrings
+**Detection**: Functions without Args/Returns/Example sections
+**Prevention**: Write docstring before implementation
+**Fix**: Add complete docstring with all sections
+**Why It Matters**: Docstrings are user documentation
+
+### Mistake 5: Using `Any` Type
+**Detection**: `grep -r "from typing import Any" arbiter/`
+**Prevention**: Use specific Pydantic models for type safety
+**Fix**: Create Pydantic model for response structure
+**Why It Matters**: Type safety prevents bugs
+
+### Mistake 6: Skipping Examples
+**Detection**: New evaluator without example in `examples/`
+**Prevention**: Create example file showing usage
+**Fix**: Add `examples/my_evaluator_example.py`
+**Why It Matters**: Examples are how users learn API
+
+### Mistake 7: Low Test Coverage
+**Detection**: `make test` shows coverage <80%
+**Prevention**: Write tests as you code
+**Fix**: Add unit tests until coverage >80%
+**Why It Matters**: Untested evaluators will break
+
+---
+
+## Testing Decision Matrix
+
+**When to Mock:**
+- LLM API calls (OpenAI, Anthropic) - Use mocked responses to avoid costs
+- Network requests - Use mocked HTTP responses
+- File I/O for storage backends - Use temporary directories
+- Time-dependent code - Mock `datetime.now()`
+
+**When to Use Real Dependencies:**
+- Pydantic validation - Real validation catches schema bugs
+- Template method pattern - Real base class inheritance
+- Middleware pipeline - Real middleware execution
+- Score computation - Real math operations
+
+**Example:**
+```python
+# ✅ GOOD - Mock LLM call
+@pytest.mark.asyncio
+async def test_semantic_evaluator_mocked(mocker):
+    mocker.patch("arbiter.core.llm_client.LLMManager.get_client")
+    evaluator = SemanticEvaluator()
+    # Test logic without hitting real API
+
+# ✅ GOOD - Real Pydantic validation
+def test_score_validation():
+    score = Score(name="test", value=0.95, confidence=0.9)
+    assert score.value == 0.95  # Real validation
+
+# ❌ BAD - Using real API in tests
+async def test_evaluator():
+    result = await evaluate("test", model="gpt-4")  # Costs money!
+```
+
+---
+
 ## Development Workflow
 
 ### Before Starting
@@ -161,11 +335,36 @@ All evaluators use PydanticAI for type-safe LLM responses.
 
 ### Before Committing
 
+**Pre-Commit Validation (Run ALL these checks):**
 ```bash
-make test        # Tests pass
-make type-check  # Mypy clean
-make lint        # Ruff clean
-make format      # Black formatted
+# 1. Format code
+make format
+
+# 2. Lint code
+make lint
+if [ $? -ne 0 ]; then echo "🚨 LINT ERRORS - FIX BEFORE COMMIT"; exit 1; fi
+
+# 3. Type check
+make type-check
+if [ $? -ne 0 ]; then echo "🚨 TYPE ERRORS - FIX BEFORE COMMIT"; exit 1; fi
+
+# 4. Run tests with coverage
+make test
+if [ $? -ne 0 ]; then echo "🚨 TESTS FAILED OR COVERAGE <80%"; exit 1; fi
+
+# 5. No TODOs or placeholders
+grep -r "TODO\|FIXME\|NotImplementedError" arbiter/ && echo "🚨 REMOVE TODOs" && exit 1
+
+# 6. No credentials
+grep -r "API_KEY\|SECRET\|PASSWORD" arbiter/ tests/ examples/ && echo "🚨 CREDENTIALS FOUND" && exit 1
+
+# 7. Verify exports
+python -c "from arbiter import *; print('✅ All exports work')" || echo "🚨 EXPORT ERROR"
+
+# All checks passed
+echo "✅ All checks passed - ready to commit"
+git add <files>
+git commit -m "Clear message"
 ```
 
 ### After Completing

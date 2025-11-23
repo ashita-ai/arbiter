@@ -123,7 +123,7 @@ class CostCalculator:
         async with self._load_lock:
             # Double-check after acquiring lock (another coroutine may have loaded)
             if self._load_attempted:
-                return
+                return  # type: ignore[unreachable]
 
             self._load_attempted = True
 

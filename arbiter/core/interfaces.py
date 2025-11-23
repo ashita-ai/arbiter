@@ -25,9 +25,12 @@ flexibility in implementation.
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import TYPE_CHECKING, Any, Optional
 
-from .models import EvaluationResult, Score
+if TYPE_CHECKING:
+    from .llm_client import LLMClient
+
+from .models import EvaluationResult, LLMInteraction, Score
 
 __all__ = ["BaseEvaluator", "StorageBackend"]
 
@@ -59,6 +62,15 @@ class BaseEvaluator(ABC):
         ...             confidence=0.9
         ...         )
     """
+
+    def __init__(self, llm_client: Optional["LLMClient"] = None, **kwargs: Any) -> None:
+        """Initialize evaluator.
+
+        Args:
+            llm_client: Optional LLM client
+            **kwargs: Additional parameters for subclasses
+        """
+        pass
 
     @property
     @abstractmethod
@@ -107,6 +119,29 @@ class BaseEvaluator(ABC):
             >>> print(f"Score: {score.value}")
             Score: 0.95
         """
+
+    def get_interactions(self) -> list[LLMInteraction]:
+        """Get all LLM interactions recorded by this evaluator.
+
+        Returns:
+            List of LLM interactions
+
+        Example:
+            >>> interactions = evaluator.get_interactions()
+            >>> print(f"Made {len(interactions)} LLM calls")
+        """
+        return []
+
+    def clear_interactions(self) -> None:
+        """Clear all recorded interactions.
+
+        This is useful for resetting the evaluator state between evaluations.
+
+        Example:
+            >>> evaluator.clear_interactions()
+            >>> assert len(evaluator.get_interactions()) == 0
+        """
+        pass
 
 
 class StorageBackend(ABC):

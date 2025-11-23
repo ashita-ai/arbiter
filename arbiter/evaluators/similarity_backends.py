@@ -158,18 +158,15 @@ REFERENCE (ground truth):
 Assess how similar they are in MEANING. Consider whether they convey the same information,
 even if expressed differently. Provide a detailed analysis."""
 
-        # Call LLM via PydanticAI
-        from pydantic_ai import Agent
-
-        agent = Agent(
-            model=self.llm_client.model,
-            system_prompt=system_prompt,
-            result_type=SemanticResponse,
-        )
+        # Call LLM via PydanticAI using client's create_agent method
+        agent = self.llm_client.create_agent(system_prompt, SemanticResponse)
 
         # Run agent
         result = await agent.run(user_prompt)
-        response = result.output
+        # Type cast: result.output is SemanticResponse from create_agent
+        from typing import cast
+
+        response = cast(SemanticResponse, result.output)
 
         # Build detailed explanation
         explanation_parts = [response.explanation]

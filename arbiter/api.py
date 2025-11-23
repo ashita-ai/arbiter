@@ -218,7 +218,7 @@ async def _evaluate_impl(
             )
 
         # Instantiate evaluator
-        evaluator_instances.append(evaluator_class(llm_client))
+        evaluator_instances.append(evaluator_class(llm_client=llm_client))
 
     # Run evaluations and collect scores
     scores: List[Score] = []

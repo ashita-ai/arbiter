@@ -29,7 +29,7 @@ from typing import Dict, List, Literal, Optional, Type, cast
 
 from pydantic import BaseModel, Field
 
-from ..core.models import ComparisonResult, LLMInteraction
+from ..core.models import ComparisonResult, LLMInteraction, Score
 from .base import BasePydanticEvaluator
 
 logger = logging.getLogger(__name__)
@@ -154,8 +154,12 @@ Provide clear reasoning that helps understand your decision."""
         """Use pairwise response model."""
         return PairwiseResponse
 
-    async def _compute_score(self, response: BaseModel) -> None:
-        """Not used for pairwise comparison - compare() returns ComparisonResult directly."""
+    async def _compute_score(self, response: BaseModel) -> Score:
+        """Not used for pairwise comparison - compare() returns ComparisonResult directly.
+
+        This method satisfies the abstract base class requirement but should not
+        be called in practice. Use compare() method instead.
+        """
         raise NotImplementedError(
             "PairwiseComparisonEvaluator uses compare() method, not evaluate()"
         )

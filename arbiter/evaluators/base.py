@@ -171,6 +171,10 @@ class BasePydanticEvaluator(BaseEvaluator):
         if self._llm_client is None:
             from ..core.llm_client import LLMManager
 
+            # model is guaranteed to be non-None here due to __init__ validation
+            if self._model is None:
+                raise RuntimeError("Model must be provided if llm_client is not set")
+
             self._llm_client = await LLMManager.get_client(
                 model=self._model,
                 provider=self._provider,
@@ -305,6 +309,8 @@ class BasePydanticEvaluator(BaseEvaluator):
 
             # Run evaluation
             result = await agent.run(user_prompt)
+            # Type hint: result.output is the Pydantic model from response_type
+            structured_output: BaseModel = result.output  # type: ignore[assignment]
 
             # Extract detailed token usage from PydanticAI result
             input_tokens = 0
@@ -354,9 +360,9 @@ class BasePydanticEvaluator(BaseEvaluator):
             interaction = LLMInteraction(
                 prompt=user_prompt,
                 response=(
-                    result.output.model_dump_json()
-                    if hasattr(result.output, "model_dump_json")
-                    else str(result.output)
+                    structured_output.model_dump_json()
+                    if hasattr(structured_output, "model_dump_json")
+                    else str(structured_output)
                 ),
                 model=self.llm_client.model,
                 input_tokens=input_tokens,
@@ -377,7 +383,7 @@ class BasePydanticEvaluator(BaseEvaluator):
             self.interactions.append(interaction)
 
             # Compute score from structured response
-            score = await self._compute_score(result.output)
+            score = await self._compute_score(structured_output)
             return score
 
         except Exception as e:

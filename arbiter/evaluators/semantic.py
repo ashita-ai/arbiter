@@ -45,7 +45,7 @@ even if they use different wording. Supports two backends:
     >>> print(f"Similarity: {score.value:.2f}")  # Fast, free, no explanation
 """
 
-from typing import Literal, Optional, Type
+from typing import Literal, Optional, Type, cast
 
 from pydantic import BaseModel, Field
 
@@ -287,7 +287,7 @@ even if expressed differently. Provide a detailed analysis."""
 
     async def _compute_score(self, response: BaseModel) -> Score:
         """Extract Score from semantic response."""
-        semantic_response = response  # Type hint: it's a SemanticResponse
+        semantic_response = cast(SemanticResponse, response)
 
         # Build detailed explanation
         explanation_parts = [semantic_response.explanation]

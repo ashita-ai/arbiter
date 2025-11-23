@@ -16,7 +16,7 @@ Example:
 
 import time
 from enum import Enum
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, Awaitable, Callable, Optional, TypeVar
 
 from .exceptions import CircuitBreakerOpenError
 
@@ -96,7 +96,9 @@ class CircuitBreaker:
         self.last_failure_time: Optional[float] = None
         self.half_open_calls = 0
 
-    async def call(self, func: Callable[..., T], *args: Any, **kwargs: Any) -> T:
+    async def call(
+        self, func: Callable[..., Awaitable[T]], *args: Any, **kwargs: Any
+    ) -> T:
         """Execute function with circuit breaker protection.
 
         Args:

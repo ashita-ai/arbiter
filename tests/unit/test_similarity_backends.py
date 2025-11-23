@@ -74,30 +74,27 @@ class TestLLMSimilarityBackend:
         mock_agent = AsyncMock()
         mock_agent.run = AsyncMock(return_value=mock_agent_result)
 
-        # Patch Agent class (imported inside the method)
-        with patch("pydantic_ai.Agent") as mock_agent_class:
-            mock_agent_class.return_value = mock_agent
+        # Mock llm_client.create_agent to return our mock agent
+        mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
 
-            backend = LLMSimilarityBackend(mock_llm_client)
-            result = await backend.compute_similarity(
-                "This is a test", "This is also a test"
-            )
+        backend = LLMSimilarityBackend(mock_llm_client)
+        result = await backend.compute_similarity(
+            "This is a test", "This is also a test"
+        )
 
-            # Verify result
-            assert isinstance(result, SimilarityResult)
-            assert result.score == 0.92
-            assert result.confidence == 0.88
-            assert "The texts are very similar" in result.explanation
-            assert "Both discuss testing" in result.explanation
-            assert "Different wording" in result.explanation
-            assert result.metadata["backend"] == "llm"
+        # Verify result
+        assert isinstance(result, SimilarityResult)
+        assert result.score == 0.92
+        assert result.confidence == 0.88
+        assert "The texts are very similar" in result.explanation
+        assert "Both discuss testing" in result.explanation
+        assert "Different wording" in result.explanation
+        assert result.metadata["backend"] == "llm"
 
-            # Verify Agent was called correctly
-            mock_agent_class.assert_called_once()
-            call_kwargs = mock_agent_class.call_args[1]
-            assert call_kwargs["model"] == mock_llm_client.model
-            assert "semantic similarity" in call_kwargs["system_prompt"]
-            assert call_kwargs["result_type"].__name__ == "SemanticResponse"
+        # Verify create_agent was called correctly
+        mock_llm_client.create_agent.assert_called_once()
+        call_args = mock_llm_client.create_agent.call_args
+        assert "semantic similarity" in call_args[0][0]  # system_prompt
 
     @pytest.mark.asyncio
     async def test_compute_similarity_no_key_differences(self, mock_llm_client):
@@ -123,16 +120,16 @@ class TestLLMSimilarityBackend:
         mock_agent = AsyncMock()
         mock_agent.run = AsyncMock(return_value=mock_agent_result)
 
-        with patch("pydantic_ai.Agent") as mock_agent_class:
-            mock_agent_class.return_value = mock_agent
+        # Mock llm_client.create_agent to return our mock agent
+        mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
 
-            backend = LLMSimilarityBackend(mock_llm_client)
-            result = await backend.compute_similarity("Text A", "Text B")
+        backend = LLMSimilarityBackend(mock_llm_client)
+        result = await backend.compute_similarity("Text A", "Text B")
 
-            # Should only contain base explanation, no similarity/difference sections
-            assert result.explanation == "Basic explanation"
-            assert "Key Similarities" not in result.explanation
-            assert "Key Differences" not in result.explanation
+        # Should only contain base explanation, no similarity/difference sections
+        assert result.explanation == "Basic explanation"
+        assert "Key Similarities" not in result.explanation
+        assert "Key Differences" not in result.explanation
 
 
 class TestFAISSSimilarityBackend:
