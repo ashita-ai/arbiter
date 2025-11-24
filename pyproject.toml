@@ -3,14 +3,14 @@ requires = ["setuptools>=70.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "arbiter"
-version = "0.1.0"
-description = "Streaming LLM evaluation framework with semantic comparison and composable metrics"
+name = "arbiter-ai"
+version = "0.1.0a0"
+description = "Native PydanticAI evaluation with automatic cost tracking"
 authors = [{name = "Evan Volgas", email = "evan.volgas@gmail.com"}]
-license = {text = "MIT"}
+license = "MIT"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
-keywords = ["ai", "llm", "evaluation", "testing", "metrics", "semantic-comparison"]
+keywords = ["ai", "llm", "evaluation", "testing", "metrics", "pydantic-ai", "cost-tracking"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -20,8 +20,8 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Software Development :: Testing",
+    "Typing :: Typed",
 ]
-
 # Core dependencies - minimal for basic functionality
 dependencies = [
     "pydantic>=2.12.0",
@@ -34,6 +34,13 @@ dependencies = [
     "numpy>=2.0.0",  # For vector operations
     "typing-extensions>=4.0.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/ashita-ai/arbiter"
+Documentation = "https://github.com/ashita-ai/arbiter#readme"
+Repository = "https://github.com/ashita-ai/arbiter"
+Issues = "https://github.com/ashita-ai/arbiter/issues"
+Changelog = "https://github.com/ashita-ai/arbiter/releases"
 
 [project.optional-dependencies]
 # Model providers
