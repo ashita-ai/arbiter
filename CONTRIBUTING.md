@@ -6,7 +6,7 @@ Thank you for your interest in contributing to Arbiter!
 
 ```bash
 # Clone the repository
-git clone https://github.com/evanvolgas/arbiter.git
+git clone https://github.com/ashita-ai/arbiter.git
 cd arbiter
 
 # Install with development dependencies
@@ -96,7 +96,7 @@ Arbiter uses semantic versioning (MAJOR.MINOR.PATCH) with alpha/beta pre-release
    ```
 
 5. **Create GitHub release**:
-   - Go to https://github.com/evanvolgas/arbiter/releases/new
+   - Go to https://github.com/ashita-ai/arbiter/releases/new
    - Select tag: `v0.1.0`
    - Release title: `v0.1.0`
    - Add release notes describing changes
@@ -104,7 +104,7 @@ Arbiter uses semantic versioning (MAJOR.MINOR.PATCH) with alpha/beta pre-release
 
 6. **Automated publishing**:
    - GitHub Actions will automatically build and publish to PyPI
-   - Monitor progress at https://github.com/evanvolgas/arbiter/actions
+   - Monitor progress at https://github.com/ashita-ai/arbiter/actions
    - Package will be available at https://pypi.org/project/arbiter-ai/
 
 ### Setting Up Trusted Publishing (Maintainers Only)
@@ -198,5 +198,5 @@ arbiter/
 
 ## Questions?
 
-- Open an issue: https://github.com/evanvolgas/arbiter/issues
-- Discussion: https://github.com/evanvolgas/arbiter/discussions
+- Open an issue: https://github.com/ashita-ai/arbiter/issues
+- Discussion: https://github.com/ashita-ai/arbiter/discussions

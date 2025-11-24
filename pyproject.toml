@@ -36,11 +36,11 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/evanvolgas/arbiter"
-Documentation = "https://github.com/evanvolgas/arbiter#readme"
-Repository = "https://github.com/evanvolgas/arbiter"
-Issues = "https://github.com/evanvolgas/arbiter/issues"
-Changelog = "https://github.com/evanvolgas/arbiter/releases"
+Homepage = "https://github.com/ashita-ai/arbiter"
+Documentation = "https://github.com/ashita-ai/arbiter#readme"
+Repository = "https://github.com/ashita-ai/arbiter"
+Issues = "https://github.com/ashita-ai/arbiter/issues"
+Changelog = "https://github.com/ashita-ai/arbiter/releases"
 
 [project.optional-dependencies]
 # Model providers
