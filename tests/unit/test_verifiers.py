@@ -1,0 +1,347 @@
+"""Unit tests for factuality verification plugins."""
+
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+from arbiter.evaluators import FactualityEvaluator
+from arbiter.verifiers import (
+    CitationVerifier,
+    FactualityVerifier,
+    KnowledgeBaseVerifier,
+    SearchVerifier,
+    VerificationResult,
+)
+
+
+class TestVerificationResult:
+    """Test VerificationResult model."""
+
+    def test_verification_result_creation(self):
+        """Test creating a verification result."""
+        result = VerificationResult(
+            is_verified=True,
+            confidence=0.9,
+            evidence=["Supporting evidence"],
+            explanation="Claim verified",
+            source="test_verifier",
+        )
+
+        assert result.is_verified is True
+        assert result.confidence == 0.9
+        assert len(result.evidence) == 1
+        assert result.explanation == "Claim verified"
+        assert result.source == "test_verifier"
+
+    def test_verification_result_validation(self):
+        """Test validation of confidence scores."""
+        # Valid confidence
+        result = VerificationResult(
+            is_verified=True,
+            confidence=0.5,
+            evidence=[],
+            explanation="Test",
+            source="test",
+        )
+        assert result.confidence == 0.5
+
+        # Invalid confidence (below 0)
+        with pytest.raises(Exception):
+            VerificationResult(
+                is_verified=True,
+                confidence=-0.1,
+                evidence=[],
+                explanation="Test",
+                source="test",
+            )
+
+        # Invalid confidence (above 1)
+        with pytest.raises(Exception):
+            VerificationResult(
+                is_verified=True,
+                confidence=1.5,
+                evidence=[],
+                explanation="Test",
+                source="test",
+            )
+
+
+class TestSearchVerifier:
+    """Test SearchVerifier with Tavily API.
+
+    Note: These tests require tavily-python package. If not installed,
+    we only test that ImportError is raised correctly.
+    """
+
+    def test_search_verifier_requires_tavily_package(self):
+        """Test that SearchVerifier raises ImportError without tavily package."""
+        # SearchVerifier will raise ImportError if tavily is not installed
+        with pytest.raises(ImportError, match="Tavily package not installed"):
+            SearchVerifier(api_key="test_key")
+
+
+class TestCitationVerifier:
+    """Test CitationVerifier."""
+
+    @pytest.mark.asyncio
+    async def test_citation_verifier_direct_match(self):
+        """Test citation verification with direct substring match."""
+        verifier = CitationVerifier()
+
+        result = await verifier.verify(
+            claim="Paris is the capital of France",
+            context="Paris is the capital of France and its largest city",
+        )
+
+        assert result.is_verified is True
+        assert result.confidence == 0.95  # High confidence for direct match
+        assert len(result.evidence) > 0
+        assert result.source == "citation_check"
+        assert "directly found" in result.explanation
+
+    @pytest.mark.asyncio
+    async def test_citation_verifier_semantic_match(self):
+        """Test citation verification with semantic similarity."""
+        verifier = CitationVerifier(min_similarity=0.6)
+
+        result = await verifier.verify(
+            claim="The Eiffel Tower is in Paris",
+            context="Paris has the famous Eiffel Tower landmark",
+        )
+
+        assert result.is_verified is True
+        assert result.confidence > 0.6  # Above threshold
+        assert result.source == "citation_check"
+        assert "semantically similar" in result.explanation
+
+    @pytest.mark.asyncio
+    async def test_citation_verifier_no_match(self):
+        """Test citation verification with contradicting information."""
+        verifier = CitationVerifier(min_similarity=0.7)
+
+        # Use completely different content to ensure no match
+        result = await verifier.verify(
+            claim="The moon is made of cheese",
+            context="The Earth has a rocky surface with water and continents",
+        )
+
+        assert result.is_verified is False
+        assert result.confidence < 0.7
+        assert "not sufficiently supported" in result.explanation
+
+    @pytest.mark.asyncio
+    async def test_citation_verifier_no_context(self):
+        """Test citation verification without context."""
+        verifier = CitationVerifier()
+
+        result = await verifier.verify(claim="Test claim", context=None)
+
+        assert result.is_verified is False
+        assert result.confidence == 0.0
+        assert "No source context provided" in result.explanation
+
+
+class TestKnowledgeBaseVerifier:
+    """Test KnowledgeBaseVerifier with Wikipedia."""
+
+    @pytest.mark.asyncio
+    async def test_knowledge_base_verifier_successful(self):
+        """Test successful Wikipedia verification."""
+        verifier = KnowledgeBaseVerifier()
+
+        # Mock Wikipedia search
+        with patch.object(
+            verifier, "_search_wikipedia", return_value=["Paris", "France"]
+        ):
+            # Mock Wikipedia content
+            with patch.object(
+                verifier,
+                "_get_wikipedia_content",
+                return_value="Paris is the capital and most populous city of France",
+            ):
+                result = await verifier.verify(
+                    claim="Paris is the capital of France", context=None
+                )
+
+                assert result.is_verified is True
+                assert result.confidence >= 0.7
+                assert result.source == "wikipedia"
+                assert len(result.evidence) > 0
+
+    @pytest.mark.asyncio
+    async def test_knowledge_base_verifier_no_articles(self):
+        """Test Wikipedia verification with no articles found."""
+        verifier = KnowledgeBaseVerifier()
+
+        # Mock empty search results
+        with patch.object(verifier, "_search_wikipedia", return_value=[]):
+            result = await verifier.verify(claim="Fake claim", context=None)
+
+            assert result.is_verified is False
+            assert result.confidence == 0.3
+            assert "No relevant Wikipedia articles" in result.explanation
+
+    @pytest.mark.asyncio
+    async def test_knowledge_base_verifier_api_failure(self):
+        """Test Wikipedia verification when API fails."""
+        verifier = KnowledgeBaseVerifier()
+
+        # Mock API failure
+        with patch.object(
+            verifier, "_search_wikipedia", side_effect=Exception("API error")
+        ):
+            result = await verifier.verify(claim="Test claim", context=None)
+
+            assert result.is_verified is False
+            assert result.confidence == 0.0
+            assert "Wikipedia verification failed" in result.explanation
+
+    def test_knowledge_base_compute_similarity(self):
+        """Test similarity computation."""
+        verifier = KnowledgeBaseVerifier()
+
+        # Direct match
+        similarity = verifier._compute_similarity(
+            claim="Paris is the capital of France",
+            content="Paris is the capital of France and its largest city",
+        )
+        assert similarity == 0.95
+
+        # Partial match
+        similarity = verifier._compute_similarity(
+            claim="Paris capital France", content="Paris is in France"
+        )
+        assert 0.0 < similarity < 1.0
+
+        # No match
+        similarity = verifier._compute_similarity(
+            claim="Berlin Germany", content="Paris France"
+        )
+        assert similarity < 0.5
+
+
+class TestFactualityEvaluatorWithVerifiers:
+    """Integration tests for FactualityEvaluator with verification plugins."""
+
+    @pytest.mark.asyncio
+    async def test_factuality_evaluator_without_verifiers(self):
+        """Test FactualityEvaluator without verifiers (LLM-only)."""
+        mock_client = MagicMock()
+        evaluator = FactualityEvaluator(llm_client=mock_client)
+
+        assert evaluator.verifiers == []
+        assert hasattr(evaluator, "_current_output")
+        assert hasattr(evaluator, "_current_reference")
+
+    @pytest.mark.asyncio
+    async def test_factuality_evaluator_with_verifiers(self):
+        """Test FactualityEvaluator with verification plugins."""
+        mock_client = MagicMock()
+
+        # Create mock verifiers
+        mock_verifier1 = AsyncMock(spec=FactualityVerifier)
+        mock_verifier1.verify = AsyncMock(
+            return_value=VerificationResult(
+                is_verified=True,
+                confidence=0.9,
+                evidence=["Evidence 1"],
+                explanation="Verified",
+                source="verifier1",
+            )
+        )
+
+        mock_verifier2 = AsyncMock(spec=FactualityVerifier)
+        mock_verifier2.verify = AsyncMock(
+            return_value=VerificationResult(
+                is_verified=True,
+                confidence=0.8,
+                evidence=["Evidence 2"],
+                explanation="Verified",
+                source="verifier2",
+            )
+        )
+
+        evaluator = FactualityEvaluator(
+            llm_client=mock_client, verifiers=[mock_verifier1, mock_verifier2]
+        )
+
+        assert len(evaluator.verifiers) == 2
+
+    @pytest.mark.asyncio
+    async def test_factuality_evaluator_stores_context(self):
+        """Test that FactualityEvaluator stores output and reference."""
+        from arbiter.core.models import Score
+
+        mock_client = MagicMock()
+        evaluator = FactualityEvaluator(llm_client=mock_client)
+
+        # Mock the parent evaluate to return a Score directly
+        mock_score = Score(
+            name="factuality",
+            value=0.8,
+            confidence=0.9,
+            explanation="Test",
+            metadata={},
+        )
+
+        with patch.object(
+            evaluator.__class__.__bases__[0], "evaluate", return_value=mock_score
+        ):
+            await evaluator.evaluate(
+                output="Test output", reference="Test reference", criteria=None
+            )
+
+            # Verify context was stored
+            assert evaluator._current_output == "Test output"
+            assert evaluator._current_reference == "Test reference"
+
+    def test_factuality_evaluator_init_signature(self):
+        """Test FactualityEvaluator accepts verifiers parameter."""
+        mock_client = MagicMock()
+        mock_verifier = MagicMock(spec=FactualityVerifier)
+
+        # Should accept verifiers parameter
+        evaluator = FactualityEvaluator(
+            llm_client=mock_client, verifiers=[mock_verifier]
+        )
+
+        assert evaluator.verifiers == [mock_verifier]
+
+        # Should default to empty list
+        evaluator2 = FactualityEvaluator(llm_client=mock_client)
+        assert evaluator2.verifiers == []
+
+
+class TestVerifierIntegration:
+    """Integration tests combining multiple verifiers."""
+
+    @pytest.mark.asyncio
+    async def test_multiple_verifiers_combined(self):
+        """Test using multiple verifiers together."""
+        # Create verifiers
+        citation_verifier = CitationVerifier()
+
+        # Test with citation verifier
+        result1 = await citation_verifier.verify(
+            claim="Paris is the capital of France",
+            context="Paris is the capital of France",
+        )
+
+        assert result1.is_verified is True
+        assert result1.source == "citation_check"
+
+    @pytest.mark.asyncio
+    async def test_verifier_error_handling(self):
+        """Test that verifiers handle errors gracefully using KnowledgeBaseVerifier."""
+        verifier = KnowledgeBaseVerifier()
+
+        # Mock API to raise exception
+        with patch.object(
+            verifier, "_search_wikipedia", side_effect=Exception("Network error")
+        ):
+            result = await verifier.verify(claim="Test", context=None)
+
+            # Should return unverified result, not crash
+            assert result.is_verified is False
+            assert result.confidence == 0.0
+            assert "failed" in result.explanation.lower()

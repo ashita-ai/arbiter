@@ -25,12 +25,17 @@ essential for catching hallucinations and ensuring trustworthy AI outputs.
     Non-factual claims: ['Paris was founded in 1985']
 """
 
-from typing import List, Optional, Type, cast
+from typing import TYPE_CHECKING, List, Optional, Type, cast
 
 from pydantic import BaseModel, Field
 
 from ..core.models import Score
 from .base import BasePydanticEvaluator
+
+if TYPE_CHECKING:
+    from ..core.llm_client import LLMClient
+    from ..core.types import Provider
+    from ..verifiers.base import FactualityVerifier
 
 __all__ = ["FactualityEvaluator", "FactualityResponse"]
 
@@ -110,12 +115,82 @@ class FactualityEvaluator(BasePydanticEvaluator):
         >>> # Check LLM interactions
         >>> interactions = evaluator.get_interactions()
         >>> print(f"Made {len(interactions)} LLM calls")
+        >>>
+        >>> # Use with external verification plugins
+        >>> from arbiter.verifiers import SearchVerifier, CitationVerifier
+        >>> verifiers = [SearchVerifier(api_key="tavily_key"), CitationVerifier()]
+        >>> evaluator = FactualityEvaluator(client, verifiers=verifiers)
+        >>> score = await evaluator.evaluate("Paris is the capital of France")
+        >>> # Score combines LLM judgment (50%) + external verification (50%)
     """
+
+    def __init__(
+        self,
+        llm_client: Optional["LLMClient"] = None,
+        model: Optional[str] = None,
+        provider: Optional["Provider"] = None,
+        temperature: float = 0.0,
+        verifiers: Optional[List["FactualityVerifier"]] = None,
+    ):
+        """Initialize factuality evaluator with optional verification plugins.
+
+        Args:
+            llm_client: Pre-configured LLM client
+            model: Model name (e.g., "gpt-4o-mini")
+            provider: Provider enum (auto-detected if not provided)
+            temperature: Temperature for generation (default: 0.0)
+            verifiers: Optional list of verification plugins for external fact-checking
+
+        Example:
+            >>> # Without verification plugins (LLM-only)
+            >>> evaluator = FactualityEvaluator(model="gpt-4o-mini")
+            >>>
+            >>> # With verification plugins
+            >>> from arbiter.verifiers import SearchVerifier, KnowledgeBaseVerifier
+            >>> verifiers = [SearchVerifier(), KnowledgeBaseVerifier()]
+            >>> evaluator = FactualityEvaluator(model="gpt-4o-mini", verifiers=verifiers)
+        """
+        super().__init__(
+            llm_client=llm_client,
+            model=model,
+            provider=provider,
+            temperature=temperature,
+        )
+        self.verifiers = verifiers or []
+        self._current_output: Optional[str] = None
+        self._current_reference: Optional[str] = None
 
     @property
     def name(self) -> str:
         """Return evaluator identifier."""
         return "factuality"
+
+    async def evaluate(
+        self,
+        output: str,
+        reference: Optional[str] = None,
+        criteria: Optional[str] = None,
+    ) -> Score:
+        """Evaluate output with optional external verification.
+
+        This method extends the base evaluate() to support external verification
+        plugins. It stores the output/reference for use in verification, then
+        delegates to the parent class for LLM evaluation.
+
+        Args:
+            output: The text to evaluate
+            reference: Optional reference text for comparison
+            criteria: Optional evaluation criteria
+
+        Returns:
+            Score with combined LLM + verification (if verifiers provided)
+        """
+        # Store for use in _compute_score
+        self._current_output = output
+        self._current_reference = reference
+
+        # Delegate to parent class for LLM evaluation
+        return await super().evaluate(output, reference, criteria)
 
     def _get_system_prompt(self) -> str:
         """Get system prompt defining factuality evaluation approach."""
@@ -219,8 +294,43 @@ Provide your assessment with detailed reasoning."""
         return FactualityResponse
 
     async def _compute_score(self, response: BaseModel) -> Score:
-        """Extract Score from factuality response."""
+        """Extract Score from factuality response with optional external verification."""
         factuality_response = cast(FactualityResponse, response)
+
+        # Get LLM judgment score
+        llm_score = factuality_response.score
+
+        # If verifiers available, run external verification
+        verification_results = []
+        final_score = llm_score
+
+        if self.verifiers and self._current_output:
+            # Run all verifiers on factual claims
+            all_claims = (
+                factuality_response.factual_claims
+                + factuality_response.non_factual_claims
+                + factuality_response.uncertain_claims
+            )
+
+            for verifier in self.verifiers:
+                for claim in all_claims:
+                    try:
+                        result = await verifier.verify(
+                            claim=claim, context=self._current_reference
+                        )
+                        verification_results.append(result)
+                    except Exception:
+                        # Continue if verification fails for one claim
+                        continue
+
+            # Compute average verification confidence
+            if verification_results:
+                avg_verification_confidence = sum(
+                    r.confidence for r in verification_results
+                ) / len(verification_results)
+
+                # Weighted average: LLM (50%) + External verification (50%)
+                final_score = (llm_score * 0.5) + (avg_verification_confidence * 0.5)
 
         # Build detailed explanation
         explanation_parts = [factuality_response.explanation]
@@ -252,25 +362,47 @@ Provide your assessment with detailed reasoning."""
                 + "\n- ".join(factuality_response.uncertain_claims)
             )
 
+        # Add verification results to explanation
+        if verification_results:
+            explanation_parts.append(
+                f"\n\nExternal Verification ({len(verification_results)} checks):"
+            )
+            for result in verification_results[:5]:  # Show first 5
+                explanation_parts.append(
+                    f"\n- [{result.source}] {result.explanation[:100]}"
+                )
+
         full_explanation = "".join(explanation_parts)
+
+        # Build metadata
+        metadata = {
+            "factual_claims": factuality_response.factual_claims,
+            "non_factual_claims": factuality_response.non_factual_claims,
+            "uncertain_claims": factuality_response.uncertain_claims,
+            "factual_count": len(getattr(factuality_response, "factual_claims", [])),
+            "non_factual_count": len(
+                getattr(factuality_response, "non_factual_claims", [])
+            ),
+            "uncertain_count": len(
+                getattr(factuality_response, "uncertain_claims", [])
+            ),
+            "llm_score": llm_score,
+        }
+
+        # Add verification metadata if verifiers were used
+        if verification_results:
+            metadata["verification_used"] = True
+            metadata["verification_count"] = len(verification_results)
+            metadata["verification_sources"] = list(
+                {r.source for r in verification_results}
+            )
+        else:
+            metadata["verification_used"] = False
 
         return Score(
             name=self.name,
-            value=factuality_response.score,
+            value=final_score,
             confidence=factuality_response.confidence,
             explanation=full_explanation,
-            metadata={
-                "factual_claims": factuality_response.factual_claims,
-                "non_factual_claims": factuality_response.non_factual_claims,
-                "uncertain_claims": factuality_response.uncertain_claims,
-                "factual_count": len(
-                    getattr(factuality_response, "factual_claims", [])
-                ),
-                "non_factual_count": len(
-                    getattr(factuality_response, "non_factual_claims", [])
-                ),
-                "uncertain_count": len(
-                    getattr(factuality_response, "uncertain_claims", [])
-                ),
-            },
+            metadata=metadata,
         )
