@@ -1,0 +1,18 @@
+# Include package metadata
+include LICENSE
+include README.md
+include pyproject.toml
+
+# Include type information
+include arbiter/py.typed
+
+# Exclude unnecessary files from distribution
+exclude .gitignore
+exclude .env.example
+exclude Makefile
+exclude test_examples.sh
+recursive-exclude tests *
+recursive-exclude examples *
+recursive-exclude .git *
+recursive-exclude __pycache__ *
+recursive-exclude *.pyc *
