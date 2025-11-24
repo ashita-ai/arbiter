@@ -176,6 +176,18 @@ wheels = [
 
 [[package]]
 name = "arbiter"
+version = "1.1.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "umsg" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/32/63/f94450189a91fc41fffd02246492dae5e937fbee4909be93f957d23e3613/arbiter-1.1.2.tar.gz", hash = "sha256:72896242a0d245a59a8dd124417d33906a4a1fdd6bcb6d28aac0801367599dd1", size = 12143, upload-time = "2021-06-24T19:32:42.381Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f1/b2/976d41806c5a58ae2a2f08fb2804633d169e2958c79888fefa3d730e2e73/arbiter-1.1.2-py3-none-any.whl", hash = "sha256:9e362684178e5b26635cac573ec9dee065f363629aa96e2095c98888641d5398", size = 16478, upload-time = "2021-06-24T19:32:39.973Z" },
+]
+
+[[package]]
+name = "arbiter-ai"
 version = "0.1.0a0"
 source = { editable = "." }
 dependencies = [
@@ -192,32 +204,7 @@ dependencies = [
 
 [package.optional-dependencies]
 all = [
-    { name = "anthropic" },
-    { name = "black" },
-    { name = "cohere" },
-    { name = "faiss-cpu" },
-    { name = "google-generativeai" },
-    { name = "mistralai" },
-    { name = "mkdocs" },
-    { name = "mkdocs-material" },
-    { name = "mkdocstrings", extra = ["python"] },
-    { name = "mypy" },
-    { name = "pre-commit" },
-    { name = "psutil" },
-    { name = "pymilvus" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-cov" },
-    { name = "pytest-mock" },
-    { name = "pytest-xdist" },
-    { name = "redis" },
-    { name = "rich" },
-    { name = "ruff" },
-    { name = "sentence-transformers" },
-    { name = "setuptools" },
-    { name = "types-aiofiles" },
-    { name = "types-redis" },
-    { name = "watchdog" },
+    { name = "arbiter" },
 ]
 anthropic = [
     { name = "anthropic" },
@@ -266,11 +253,7 @@ scale = [
     { name = "sentence-transformers" },
 ]
 storage = [
-    { name = "alembic" },
-    { name = "asyncpg" },
-    { name = "psycopg2-binary" },
-    { name = "redis" },
-    { name = "sqlalchemy" },
+    { name = "arbiter" },
 ]
 
 [package.metadata]
@@ -4253,6 +4236,14 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/95/32/1a225d6164441be760d75c2c42e2780dc0873fe382da3e98a2e1e48361e5/tzdata-2025.2.tar.gz", hash = "sha256:b60a638fcc0daffadf82fe0f57e53d06bdec2f36c4df66280ae79bce6bd6f2b9", size = 196380, upload-time = "2025-03-23T13:54:43.652Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/5c/23/c7abc0ca0a1526a0774eca151daeb8de62ec457e77262b66b359c3c7679e/tzdata-2025.2-py2.py3-none-any.whl", hash = "sha256:1a403fada01ff9221ca8044d701868fa132215d84beb92242d9acd2147f667a8", size = 347839, upload-time = "2025-03-23T13:54:41.845Z" },
+]
+
+[[package]]
+name = "umsg"
+version = "1.0.4"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6b/ca/e02a744119d0f3ba947f5244790baf1190b2dfc8e8009a6e001704fb96d8/umsg-1.0.4-py3-none-any.whl", hash = "sha256:66f51a8b9ae2b4cec8a7f7ad26121640b75fb2423aff7c2f460dc0fdf17f0705", size = 9863, upload-time = "2020-06-11T04:52:34.509Z" },
 ]
 
 [[package]]
