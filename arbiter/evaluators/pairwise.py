@@ -369,47 +369,14 @@ Provide clear reasoning that helps understand your decision."""
             result = await agent.run(user_prompt)
             pairwise_response = cast(PairwiseResponse, result.output)
 
-            # Extract detailed token usage
-            input_tokens = 0
-            output_tokens = 0
-            cached_tokens = 0
-            tokens_used = 0  # Backward compatibility
-
-            try:
-                if hasattr(result, "usage"):
-                    usage = result.usage()
-                    if usage:
-                        # PydanticAI usage object structure
-                        input_tokens = getattr(usage, "request_tokens", 0)
-                        output_tokens = getattr(usage, "response_tokens", 0)
-                        tokens_used = getattr(usage, "total_tokens", 0)
-
-                        # Some providers support cached tokens
-                        if hasattr(usage, "cached_tokens"):
-                            cached_tokens = getattr(usage, "cached_tokens", 0)
-            except Exception:
-                pass
-
-            # Calculate cost using cost calculator
-            cost = None
-            try:
-                from arbiter.core.cost_calculator import get_cost_calculator
-
-                calc = get_cost_calculator()
-                await calc.ensure_loaded()
-
-                cost = calc.calculate_cost(
-                    model=self.llm_client.model,
-                    input_tokens=input_tokens,
-                    output_tokens=output_tokens,
-                    cached_tokens=cached_tokens,
-                )
-            except Exception as e:
-                # If cost calculation fails, continue without cost
-                logger.warning(
-                    f"Cost calculation failed for model {self.llm_client.model}: {e}"
-                )
-                pass
+            # Extract token usage and calculate cost
+            (
+                input_tokens,
+                output_tokens,
+                cached_tokens,
+                tokens_used,
+                cost,
+            ) = await self._extract_usage_and_cost(result)
 
             # Build aspect_scores dictionary from aspect_comparisons
             aspect_scores: Dict[str, Dict[str, float]] = {}

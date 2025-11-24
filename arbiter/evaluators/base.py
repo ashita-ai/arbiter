@@ -31,7 +31,7 @@ and consistent error handling.
 import logging
 import time
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, Optional, Type
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Type
 
 from pydantic import BaseModel, Field
 
@@ -181,6 +181,72 @@ class BasePydanticEvaluator(BaseEvaluator):
                 temperature=self._temperature,
             )
 
+    async def _extract_usage_and_cost(
+        self, result: Any
+    ) -> Tuple[int, int, int, int, Optional[float]]:
+        """Extract token usage and calculate cost from PydanticAI result.
+
+        This helper method extracts detailed token usage from a PydanticAI
+        result object and calculates the cost using the cost calculator.
+
+        Args:
+            result: PydanticAI result object with usage information
+
+        Returns:
+            Tuple of (input_tokens, output_tokens, cached_tokens, tokens_used, cost)
+            where cost is None if calculation fails
+
+        Example:
+            >>> result = await agent.run(prompt)
+            >>> input_tokens, output_tokens, cached_tokens, tokens_used, cost = (
+            ...     await self._extract_usage_and_cost(result)
+            ... )
+        """
+        # Extract detailed token usage from PydanticAI result
+        input_tokens = 0
+        output_tokens = 0
+        cached_tokens = 0
+        tokens_used = 0  # Backward compatibility
+
+        try:
+            if hasattr(result, "usage"):
+                usage = result.usage()  # Call as function
+                if usage:
+                    # PydanticAI usage object structure
+                    input_tokens = getattr(usage, "request_tokens", 0)
+                    output_tokens = getattr(usage, "response_tokens", 0)
+                    tokens_used = getattr(usage, "total_tokens", 0)
+
+                    # Some providers support cached tokens
+                    if hasattr(usage, "cached_tokens"):
+                        cached_tokens = getattr(usage, "cached_tokens", 0)
+        except Exception:
+            # Fallback if usage() call fails or not available
+            pass
+
+        # Calculate cost using cost calculator
+        cost = None
+        try:
+            from arbiter.core.cost_calculator import get_cost_calculator
+
+            calc = get_cost_calculator()
+            await calc.ensure_loaded()
+
+            cost = calc.calculate_cost(
+                model=self.llm_client.model,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                cached_tokens=cached_tokens,
+            )
+        except Exception as e:
+            # If cost calculation fails, continue without cost
+            logger.warning(
+                f"Cost calculation failed for model {self.llm_client.model}: {e}"
+            )
+            pass
+
+        return input_tokens, output_tokens, cached_tokens, tokens_used, cost
+
     @abstractmethod
     def _get_system_prompt(self) -> str:
         """Get the system prompt that defines evaluator behavior.
@@ -312,48 +378,14 @@ class BasePydanticEvaluator(BaseEvaluator):
             # Type hint: result.output is the Pydantic model from response_type
             structured_output: BaseModel = result.output  # type: ignore[assignment]
 
-            # Extract detailed token usage from PydanticAI result
-            input_tokens = 0
-            output_tokens = 0
-            cached_tokens = 0
-            tokens_used = 0  # Backward compatibility
-
-            try:
-                if hasattr(result, "usage"):
-                    usage = result.usage()  # Call as function
-                    if usage:
-                        # PydanticAI usage object structure
-                        input_tokens = getattr(usage, "request_tokens", 0)
-                        output_tokens = getattr(usage, "response_tokens", 0)
-                        tokens_used = getattr(usage, "total_tokens", 0)
-
-                        # Some providers support cached tokens
-                        if hasattr(usage, "cached_tokens"):
-                            cached_tokens = getattr(usage, "cached_tokens", 0)
-            except Exception:
-                # Fallback if usage() call fails or not available
-                pass
-
-            # Calculate cost using cost calculator
-            cost = None
-            try:
-                from arbiter.core.cost_calculator import get_cost_calculator
-
-                calc = get_cost_calculator()
-                await calc.ensure_loaded()
-
-                cost = calc.calculate_cost(
-                    model=self.llm_client.model,
-                    input_tokens=input_tokens,
-                    output_tokens=output_tokens,
-                    cached_tokens=cached_tokens,
-                )
-            except Exception as e:
-                # If cost calculation fails, continue without cost
-                logger.warning(
-                    f"Cost calculation failed for model {self.llm_client.model}: {e}"
-                )
-                pass
+            # Extract token usage and calculate cost
+            (
+                input_tokens,
+                output_tokens,
+                cached_tokens,
+                tokens_used,
+                cost,
+            ) = await self._extract_usage_and_cost(result)
 
             # Record interaction for transparency
             latency = time.time() - start_time
