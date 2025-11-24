@@ -168,7 +168,7 @@ arbiter/
 │   ├── api.py              # Public API (evaluate, compare)
 │   ├── core/               # Infrastructure (llm_client, middleware, monitoring, registry)
 │   ├── evaluators/         # Semantic, CustomCriteria, Pairwise, Factuality, Groundedness, Relevance
-│   ├── storage/            # Storage backends (Phase 4)
+│   ├── storage/            # Storage backends (PostgreSQL, Redis)
 │   └── tools/              # Utilities
 ├── examples/               # 15+ comprehensive examples
 ├── tests/                  # Unit + integration tests

@@ -15,9 +15,15 @@ config = context.config
 
 # Override sqlalchemy.url with DATABASE_URL from environment
 # This allows sharing database connection with conduit
+# Escape % characters to avoid ConfigParser interpolation errors
 database_url = os.getenv("DATABASE_URL")
 if database_url:
-    config.set_main_option("sqlalchemy.url", database_url)
+    # Remove pgbouncer parameter (not supported by psycopg2 for Alembic)
+    # Asyncpg in the actual storage backend supports it fine
+    database_url = database_url.replace("?pgbouncer=true", "").replace("&pgbouncer=true", "")
+    # Replace % with %% for ConfigParser compatibility
+    escaped_url = database_url.replace("%", "%%")
+    config.set_main_option("sqlalchemy.url", escaped_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -54,6 +60,9 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        version_table="arbiter_alembic_version",  # Separate from conduit's version table
+        # Note: version_table_schema not set, uses default 'public' schema
+        # This avoids chicken-and-egg problem (schema doesn't exist until migration runs)
     )
 
     with context.begin_transaction():
@@ -75,7 +84,11 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection,
+            target_metadata=target_metadata,
+            version_table="arbiter_alembic_version",  # Separate from conduit's version table
+            # Note: version_table_schema not set, uses default 'public' schema
+            # This avoids chicken-and-egg problem (schema doesn't exist until migration runs)
         )
 
         with context.begin_transaction():

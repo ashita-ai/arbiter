@@ -300,16 +300,60 @@ for i, eval_result in enumerate(result.results):
 
 See [examples/batch_evaluation_example.py](examples/batch_evaluation_example.py) for comprehensive patterns including error handling and cost breakdown.
 
-**Note:** Result persistence (storage backends) is deferred to Phase 2.0. For now, you can persist results manually:
-```python
-import json
-from arbiter import evaluate
+### Result Persistence (Storage Backends)
 
-result = await evaluate(output="...", reference="...")
-# Save results yourself
-with open("results.json", "w") as f:
-    json.dump(result.model_dump(), f, indent=2)
+Arbiter supports optional storage backends for persisting evaluation results:
+
+**PostgreSQL** (persistent storage):
+```bash
+pip install arbiter[postgres]
 ```
+
+```python
+from arbiter import evaluate
+from arbiter.storage import PostgresStorage
+
+storage = PostgresStorage()  # Uses DATABASE_URL from environment
+
+async with storage:
+    result = await evaluate(
+        output="Paris is the capital of France",
+        reference="The capital of France is Paris",
+        evaluators=["semantic"],
+        model="gpt-4o-mini"
+    )
+
+    # Save to PostgreSQL
+    result_id = await storage.save_result(result)
+
+    # Retrieve later
+    retrieved = await storage.get_result(result_id)
+```
+
+**Redis** (fast caching with TTL):
+```bash
+pip install arbiter[redis]
+```
+
+```python
+from arbiter.storage import RedisStorage
+
+storage = RedisStorage(ttl=3600)  # 1 hour cache
+
+async with storage:
+    result = await evaluate(...)
+    result_id = await storage.save_result(result)
+
+    # Fast retrieval from cache
+    cached = await storage.get_result(result_id)
+```
+
+**Setup**:
+1. Set `DATABASE_URL` and/or `REDIS_URL` in your `.env` file
+2. For PostgreSQL: Run migrations with `alembic upgrade head`
+3. Use storage backends in your evaluation code
+
+See [examples/storage_postgres_example.py](examples/storage_postgres_example.py) and [examples/storage_redis_example.py](examples/storage_redis_example.py) for complete examples.
 
 ### RAG System Evaluation
 
@@ -414,11 +458,11 @@ make type-check    # Type checking
 - [x] Batch evaluation API
 - [x] Automatic cost tracking and observability
 - [x] FAISS backend for faster semantic evaluation
+- [x] Storage backends (PostgreSQL + Redis)
+- [x] PyPI package publication (arbiter-ai)
 
 **Future Ideas** (No timeline, exploring as needed)
 - [ ] Enhanced factuality with external verification plugins
-- [ ] Storage backends for result persistence
-- [ ] PyPI package publication
 - [ ] Additional evaluators for specific domains
 
 **Contributions welcome!** This is a personal project, but if you find it useful and want to contribute, pull requests are appreciated.
