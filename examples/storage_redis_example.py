@@ -8,7 +8,7 @@ Demonstrates:
 
 Prerequisites:
     1. pip install arbiter[redis]
-    2. Set REDIS_URL in .env (can share with conduit)
+    2. Set REDIS_URL in .env
 """
 
 import asyncio
@@ -24,8 +24,8 @@ async def main() -> None:
     print("=" * 60)
 
     # Initialize Redis storage with 1-hour TTL
-    # Uses REDIS_URL from environment (shared with conduit)
-    # Keys prefixed with 'arbiter:' (isolated from conduit keys)
+    # Uses REDIS_URL from environment
+    # Keys prefixed with 'arbiter:' (isolated from other applications)
     storage = RedisStorage(ttl=3600)  # 1 hour cache
 
     async with storage:
@@ -110,7 +110,7 @@ async def main() -> None:
     print("\nNotes:")
     print("- Results cached with TTL (auto-expiration)")
     print("- Keys prefixed with 'arbiter:' for isolation")
-    print("- Safe to share Redis with conduit")
+    print("- Safe to share Redis with other applications")
     print("- Ideal for frequently accessed results")
 
 

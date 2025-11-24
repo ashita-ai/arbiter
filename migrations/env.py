@@ -14,7 +14,6 @@ load_dotenv()
 config = context.config
 
 # Override sqlalchemy.url with DATABASE_URL from environment
-# This allows sharing database connection with conduit
 # Escape % characters to avoid ConfigParser interpolation errors
 database_url = os.getenv("DATABASE_URL")
 if database_url:
@@ -60,7 +59,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
-        version_table="arbiter_alembic_version",  # Separate from conduit's version table
+        version_table="arbiter_alembic_version",  # Separate version table for arbiter
         # Note: version_table_schema not set, uses default 'public' schema
         # This avoids chicken-and-egg problem (schema doesn't exist until migration runs)
     )
@@ -86,7 +85,7 @@ def run_migrations_online() -> None:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
-            version_table="arbiter_alembic_version",  # Separate from conduit's version table
+            version_table="arbiter_alembic_version",  # Separate version table for arbiter
             # Note: version_table_schema not set, uses default 'public' schema
             # This avoids chicken-and-egg problem (schema doesn't exist until migration runs)
         )

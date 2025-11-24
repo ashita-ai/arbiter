@@ -1,7 +1,7 @@
 """Redis storage backend for fast evaluation result caching.
 
 Uses Redis for high-performance caching of evaluation results.
-Reuses REDIS_URL from environment (shares Redis instance with conduit).
+Reads REDIS_URL from environment for Redis connection.
 """
 
 import json

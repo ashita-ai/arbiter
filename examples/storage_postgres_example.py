@@ -3,12 +3,12 @@
 Demonstrates:
 - Storing evaluation results in PostgreSQL
 - Retrieving results by ID
-- Schema isolation (arbiter schema, separate from conduit)
+- Schema isolation (arbiter schema for multi-tenant databases)
 - Connection pool management
 
 Prerequisites:
     1. pip install arbiter[postgres]
-    2. Set DATABASE_URL in .env (can share with conduit)
+    2. Set DATABASE_URL in .env
     3. Run migrations: alembic upgrade head
 """
 
@@ -25,8 +25,8 @@ async def main() -> None:
     print("=" * 60)
 
     # Initialize storage backend
-    # Uses DATABASE_URL from environment (shared with conduit)
-    # Results stored in 'arbiter' schema (isolated from conduit's 'public' schema)
+    # Uses DATABASE_URL from environment
+    # Results stored in 'arbiter' schema (isolated from other schemas)
     storage = PostgresStorage()
 
     async with storage:
@@ -98,7 +98,7 @@ async def main() -> None:
     print("=" * 60)
     print("\nNotes:")
     print("- Results stored in 'arbiter' schema in PostgreSQL")
-    print("- Safe to share database with conduit (separate schemas)")
+    print("- Safe to share database with other applications (separate schemas)")
     print("- Query results: SELECT * FROM arbiter.evaluation_results;")
 
 

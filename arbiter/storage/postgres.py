@@ -1,8 +1,8 @@
 """PostgreSQL storage backend for evaluation results.
 
 Uses asyncpg for high-performance async PostgreSQL connections.
-Creates 'arbiter' schema to isolate from other applications (e.g., conduit).
-Reuses DATABASE_URL from environment (shares database, separate schema).
+Creates 'arbiter' schema to isolate from other applications in shared databases.
+Reads DATABASE_URL from environment for database connection.
 """
 
 import json
