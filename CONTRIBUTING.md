@@ -105,7 +105,7 @@ Arbiter uses semantic versioning (MAJOR.MINOR.PATCH) with alpha/beta pre-release
 6. **Automated publishing**:
    - GitHub Actions will automatically build and publish to PyPI
    - Monitor progress at https://github.com/evanvolgas/arbiter/actions
-   - Package will be available at https://pypi.org/project/arbiter/
+   - Package will be available at https://pypi.org/project/arbiter-ai/
 
 ### Setting Up Trusted Publishing (Maintainers Only)
 
@@ -161,7 +161,7 @@ python -m venv test-env
 source test-env/bin/activate
 
 # Install from PyPI
-pip install arbiter
+pip install arbiter-ai
 
 # Test import
 python -c "from arbiter import evaluate; print('Success!')"

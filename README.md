@@ -186,7 +186,7 @@ result = await evaluate(
 )
 
 # FAISS backend (optional) - significantly faster, zero cost for embeddings
-# Requires: pip install arbiter[scale]
+# Requires: pip install arbiter-ai[scale]
 from arbiter import SemanticEvaluator, LLMManager
 
 client = await LLMManager.get_client(model="gpt-4o-mini")
