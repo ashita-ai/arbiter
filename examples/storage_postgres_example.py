@@ -13,9 +13,23 @@ Prerequisites:
 """
 
 import asyncio
+import sys
 
 from arbiter import evaluate
-from arbiter.storage import PostgresStorage
+
+try:
+    from arbiter.storage import PostgresStorage
+except ImportError:
+    print("=" * 60)
+    print("PostgreSQL Storage Example")
+    print("=" * 60)
+    print("\n⚠️  PostgreSQL storage requires asyncpg.")
+    print("Install with: pip install arbiter[postgres]")
+    print("\nThis example demonstrates:")
+    print("- Storing evaluation results in PostgreSQL")
+    print("- Retrieving results by ID")
+    print("- Schema isolation for multi-tenant databases")
+    sys.exit(0)
 
 
 async def main() -> None:

@@ -1,9 +1,7 @@
 """Comprehensive tests for PostgreSQL storage backend."""
 
 import json
-import os
 import uuid
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -15,6 +13,10 @@ from arbiter.core.models import (
     Score,
 )
 from arbiter.storage.base import ConnectionError, RetrievalError, SaveError
+
+# Skip all tests if asyncpg is not installed
+pytest.importorskip("asyncpg", reason="PostgreSQL storage requires asyncpg")
+
 from arbiter.storage.postgres import PostgresStorage
 
 
@@ -27,7 +29,12 @@ def mock_eval_result():
         overall_score=0.92,
         passed=True,
         scores=[
-            Score(name="semantic", value=0.92, confidence=0.95, explanation="High similarity")
+            Score(
+                name="semantic",
+                value=0.92,
+                confidence=0.95,
+                explanation="High similarity",
+            )
         ],
         interactions=[
             LLMInteraction(
@@ -146,7 +153,9 @@ class TestPostgresStorageConnect:
         async def mock_create_pool(*args, **kwargs):
             return mock_pool
 
-        with patch("arbiter.storage.postgres.asyncpg.create_pool", side_effect=mock_create_pool):
+        with patch(
+            "arbiter.storage.postgres.asyncpg.create_pool", side_effect=mock_create_pool
+        ):
             await storage.connect()
 
             assert storage.pool == mock_pool
@@ -162,8 +171,12 @@ class TestPostgresStorageConnect:
         async def mock_create_pool(*args, **kwargs):
             return pool
 
-        with patch("arbiter.storage.postgres.asyncpg.create_pool", side_effect=mock_create_pool):
-            with pytest.raises(ConnectionError, match="Schema 'arbiter' does not exist"):
+        with patch(
+            "arbiter.storage.postgres.asyncpg.create_pool", side_effect=mock_create_pool
+        ):
+            with pytest.raises(
+                ConnectionError, match="Schema 'arbiter' does not exist"
+            ):
                 await storage.connect()
 
     @pytest.mark.asyncio
@@ -171,7 +184,10 @@ class TestPostgresStorageConnect:
         """Test connection failure raises ConnectionError."""
         storage = PostgresStorage(database_url="postgresql://invalid/test")
 
-        with patch("arbiter.storage.postgres.asyncpg.create_pool", side_effect=Exception("Connection failed")):
+        with patch(
+            "arbiter.storage.postgres.asyncpg.create_pool",
+            side_effect=Exception("Connection failed"),
+        ):
             with pytest.raises(ConnectionError, match="PostgreSQL connection failed"):
                 await storage.connect()
 
@@ -234,7 +250,9 @@ class TestPostgresStorageSaveResult:
             await storage.save_result(mock_eval_result)
 
     @pytest.mark.asyncio
-    async def test_save_result_database_error_raises_save_error(self, mock_pool, mock_eval_result):
+    async def test_save_result_database_error_raises_save_error(
+        self, mock_pool, mock_eval_result
+    ):
         """Test database error during save raises SaveError."""
         storage = PostgresStorage(database_url="postgresql://localhost/test")
         storage.pool = mock_pool
@@ -287,7 +305,9 @@ class TestPostgresStorageSaveBatchResult:
             await storage.save_batch_result(mock_batch_result)
 
     @pytest.mark.asyncio
-    async def test_save_batch_result_database_error_raises_save_error(self, mock_pool, mock_batch_result):
+    async def test_save_batch_result_database_error_raises_save_error(
+        self, mock_pool, mock_batch_result
+    ):
         """Test database error during batch save raises SaveError."""
         storage = PostgresStorage(database_url="postgresql://localhost/test")
         storage.pool = mock_pool
@@ -310,7 +330,9 @@ class TestPostgresStorageGetResult:
 
         result_data = mock_eval_result.model_dump(mode="json")
         # Use mock_pool._conn instead
-        mock_pool._conn.fetchrow = AsyncMock(return_value={"result_data": json.dumps(result_data)})
+        mock_pool._conn.fetchrow = AsyncMock(
+            return_value={"result_data": json.dumps(result_data)}
+        )
 
         test_uuid = str(uuid.uuid4())
         retrieved = await storage.get_result(test_uuid)
@@ -363,7 +385,9 @@ class TestPostgresStorageGetBatchResult:
 
         result_data = mock_batch_result.model_dump(mode="json")
         # Use mock_pool._conn instead
-        mock_pool._conn.fetchrow = AsyncMock(return_value={"result_data": json.dumps(result_data)})
+        mock_pool._conn.fetchrow = AsyncMock(
+            return_value={"result_data": json.dumps(result_data)}
+        )
 
         test_uuid = str(uuid.uuid4())
         retrieved = await storage.get_batch_result(test_uuid)
@@ -394,7 +418,9 @@ class TestPostgresStorageGetBatchResult:
             await storage.get_batch_result(str(uuid.uuid4()))
 
     @pytest.mark.asyncio
-    async def test_get_batch_result_database_error_raises_retrieval_error(self, mock_pool):
+    async def test_get_batch_result_database_error_raises_retrieval_error(
+        self, mock_pool
+    ):
         """Test database error during batch retrieval raises RetrievalError."""
         storage = PostgresStorage(database_url="postgresql://localhost/test")
         storage.pool = mock_pool
@@ -416,7 +442,9 @@ class TestPostgresStorageContextManager:
         async def mock_create_pool(*args, **kwargs):
             return mock_pool
 
-        with patch("arbiter.storage.postgres.asyncpg.create_pool", side_effect=mock_create_pool):
+        with patch(
+            "arbiter.storage.postgres.asyncpg.create_pool", side_effect=mock_create_pool
+        ):
             async with storage:
                 assert storage.pool == mock_pool
 

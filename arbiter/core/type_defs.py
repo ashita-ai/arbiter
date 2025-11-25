@@ -4,14 +4,29 @@ This module provides TypedDict definitions and type aliases used throughout
 the Arbiter codebase for better type safety and IDE support.
 """
 
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, TypeVar, Union
 
 try:
     from typing import TypedDict
 except ImportError:
     from typing_extensions import TypedDict
 
-__all__ = ["MiddlewareContext"]
+__all__ = ["MiddlewareContext", "ResultT"]
+
+
+# Generic type for middleware results (EvaluationResult or ComparisonResult)
+ResultT = TypeVar("ResultT", bound="BaseResult")
+
+
+class BaseResult:
+    """Base class marker for result types used in middleware.
+
+    This is a protocol-like marker to indicate types that can flow
+    through the middleware pipeline. Both EvaluationResult and
+    ComparisonResult satisfy this contract.
+    """
+
+    pass
 
 
 class MiddlewareContext(TypedDict, total=False):

@@ -117,9 +117,7 @@ class RedisStorage(StorageBackend):
             data = {"result": result_dict, "metadata": metadata}
             key = self._make_key(result_id, "result")
 
-            await self.client.setex(
-                key, self.ttl, json.dumps(data)
-            )
+            await self.client.setex(key, self.ttl, json.dumps(data))
 
             logger.debug(f"Cached evaluation result: {result_id} (TTL={self.ttl}s)")
             return result_id
@@ -154,9 +152,7 @@ class RedisStorage(StorageBackend):
             data = {"result": result_dict, "metadata": metadata}
             key = self._make_key(batch_id, "batch")
 
-            await self.client.setex(
-                key, self.ttl, json.dumps(data)
-            )
+            await self.client.setex(key, self.ttl, json.dumps(data))
 
             logger.debug(f"Cached batch result: {batch_id} (TTL={self.ttl}s)")
             return batch_id
@@ -191,9 +187,7 @@ class RedisStorage(StorageBackend):
             logger.error(f"Failed to retrieve result from Redis: {e}")
             raise RetrievalError(f"Failed to retrieve cached result: {e}") from e
 
-    async def get_batch_result(
-        self, batch_id: str
-    ) -> Optional[BatchEvaluationResult]:
+    async def get_batch_result(self, batch_id: str) -> Optional[BatchEvaluationResult]:
         """Retrieve batch evaluation result from Redis cache.
 
         Args:

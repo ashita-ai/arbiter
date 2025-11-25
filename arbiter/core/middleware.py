@@ -62,10 +62,13 @@ import time
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, Callable, Dict, List, Optional, cast
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from .models import ComparisonResult, EvaluationResult
 from .type_defs import MiddlewareContext
+
+# Type alias for results that can flow through middleware
+MiddlewareResult = Union[EvaluationResult, ComparisonResult]
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +79,7 @@ __all__ = [
     "CachingMiddleware",
     "RateLimitingMiddleware",
     "MiddlewarePipeline",
+    "MiddlewareResult",
     "monitor",
 ]
 
@@ -111,7 +115,7 @@ class Middleware(ABC):
         reference: Optional[str],
         next_handler: Callable[[str, Optional[str]], Any],
         context: MiddlewareContext,
-    ) -> EvaluationResult:
+    ) -> MiddlewareResult:
         """Process the request through this middleware.
 
         This is the main method that each middleware must implement. It
@@ -131,8 +135,9 @@ class Middleware(ABC):
                 Common keys include 'evaluators', 'metrics', 'config'.
 
         Returns:
-            EvaluationResult from the evaluation process. Middleware can
-            inspect or modify this before returning.
+            MiddlewareResult (EvaluationResult or ComparisonResult) from
+            the evaluation process. Middleware can inspect or modify this
+            before returning.
 
         Raises:
             Any exception from the evaluation process. Middleware can
@@ -197,7 +202,7 @@ class LoggingMiddleware(Middleware):
         reference: Optional[str],
         next_handler: Callable[[str, Optional[str]], Any],
         context: MiddlewareContext,
-    ) -> EvaluationResult:
+    ) -> MiddlewareResult:
         """Log the evaluation process."""
         start_time = time.time()
 
@@ -213,29 +218,27 @@ class LoggingMiddleware(Middleware):
         )
 
         try:
-            result = await next_handler(output, reference)
+            result: MiddlewareResult = await next_handler(output, reference)
 
             elapsed = time.time() - start_time
             logger.log(self.log_level, f"Evaluation completed in {elapsed:.2f}s")
 
             # Handle both EvaluationResult and ComparisonResult
-            if hasattr(result, "overall_score"):
-                # EvaluationResult
+            if isinstance(result, EvaluationResult):
                 logger.log(
                     self.log_level,
                     f"Result: overall_score={result.overall_score:.3f}, "
                     f"passed={result.passed}, "
                     f"num_scores={len(result.scores)}",
                 )
-            else:
-                # ComparisonResult
+            elif isinstance(result, ComparisonResult):
                 logger.log(
                     self.log_level,
                     f"Result: winner={result.winner}, "
                     f"confidence={result.confidence:.3f}",
                 )
 
-            return cast(EvaluationResult, result)
+            return result
 
         except Exception as e:
             elapsed = time.time() - start_time
@@ -300,7 +303,7 @@ class MetricsMiddleware(Middleware):
         reference: Optional[str],
         next_handler: Callable[[str, Optional[str]], Any],
         context: MiddlewareContext,
-    ) -> EvaluationResult:
+    ) -> MiddlewareResult:
         """Collect metrics about the evaluation."""
         start_time = time.time()
         self.metrics["total_requests"] += 1
@@ -309,28 +312,28 @@ class MetricsMiddleware(Middleware):
             # Track LLM calls via context
             initial_llm_calls = context.get("llm_calls", 0)
 
-            result = await next_handler(output, reference)
+            result: MiddlewareResult = await next_handler(output, reference)
 
             # Update metrics
             elapsed = time.time() - start_time
             self.metrics["total_time"] += elapsed
 
-            # Update average score
+            # Update average score based on result type
             total = self.metrics["total_requests"]
             old_avg = self.metrics["average_score"]
-            # Handle both EvaluationResult (has overall_score) and ComparisonResult (has confidence)
-            score_value = (
-                getattr(result, "overall_score", None)
-                or getattr(result, "confidence", None)
-                or 0.0
-            )
+            if isinstance(result, EvaluationResult):
+                score_value = result.overall_score
+                # Track pass/fail
+                if result.passed:
+                    self.metrics["passed_count"] += 1
+            elif isinstance(result, ComparisonResult):
+                score_value = result.confidence
+            else:
+                score_value = 0.0
+
             self.metrics["average_score"] = (
                 old_avg * (total - 1) + float(score_value)
             ) / total
-
-            # Track pass/fail (ComparisonResult doesn't have 'passed' attribute)
-            if hasattr(result, "passed") and result.passed:
-                self.metrics["passed_count"] += 1
 
             # Track LLM calls
             final_llm_calls = context.get("llm_calls", 0)
@@ -342,7 +345,7 @@ class MetricsMiddleware(Middleware):
             # Track tokens
             self.metrics["tokens_used"] += result.total_tokens
 
-            return cast(EvaluationResult, result)
+            return result
 
         except Exception:
             self.metrics["errors"] += 1
@@ -395,7 +398,7 @@ class CachingMiddleware(Middleware):
             max_size: Maximum number of cached results. When exceeded,
                 oldest entries are removed (FIFO policy).
         """
-        self.cache: Dict[str, EvaluationResult] = {}
+        self.cache: Dict[str, MiddlewareResult] = {}
         self.max_size = max_size
         self.hits = 0
         self.misses = 0
@@ -421,7 +424,7 @@ class CachingMiddleware(Middleware):
         reference: Optional[str],
         next_handler: Callable[[str, Optional[str]], Any],
         context: MiddlewareContext,
-    ) -> EvaluationResult:
+    ) -> MiddlewareResult:
         """Check cache before processing."""
         cache_key = self._get_cache_key(output, reference, context)
 
@@ -433,7 +436,7 @@ class CachingMiddleware(Middleware):
 
         # Cache miss
         self.misses += 1
-        result = cast(EvaluationResult, await next_handler(output, reference))
+        result: MiddlewareResult = await next_handler(output, reference)
 
         # Store in cache
         if len(self.cache) >= self.max_size:
@@ -498,7 +501,7 @@ class RateLimitingMiddleware(Middleware):
         reference: Optional[str],
         next_handler: Callable[[str, Optional[str]], Any],
         context: MiddlewareContext,
-    ) -> EvaluationResult:
+    ) -> MiddlewareResult:
         """Check rate limit before processing."""
         now = time.time()
 
@@ -515,7 +518,7 @@ class RateLimitingMiddleware(Middleware):
         # Add current request
         self.requests.append(now)
 
-        return cast(EvaluationResult, await next_handler(output, reference))
+        return await next_handler(output, reference)
 
 
 class MiddlewarePipeline:
@@ -596,13 +599,13 @@ class MiddlewarePipeline:
         # Build the chain
         async def chain(
             index: int, current_output: str, current_reference: Optional[str]
-        ) -> EvaluationResult:
+        ) -> MiddlewareResult:
             if index >= len(self.middleware):
                 # End of middleware chain, call final handler
-                return cast(
-                    EvaluationResult,
-                    await final_handler(current_output, current_reference),
+                result: MiddlewareResult = await final_handler(
+                    current_output, current_reference
                 )
+                return result
 
             # Call current middleware
             current = self.middleware[index]
@@ -613,7 +616,13 @@ class MiddlewarePipeline:
                 context,
             )
 
-        return await chain(0, output, reference)
+        result = await chain(0, output, reference)
+        # Type narrow to EvaluationResult for this method's return type
+        if not isinstance(result, EvaluationResult):
+            raise TypeError(
+                f"Expected EvaluationResult from pipeline, got {type(result).__name__}"
+            )
+        return result
 
     async def execute_comparison(
         self,
@@ -683,7 +692,7 @@ class MiddlewarePipeline:
         # Build the chain - adapter pattern
         async def chain(
             index: int, current_output: str, current_reference: Optional[str]
-        ) -> Any:
+        ) -> MiddlewareResult:
             if index >= len(self.middleware):
                 # End of middleware chain, call final pairwise handler
                 # Use original outputs, not formatted version
@@ -700,15 +709,17 @@ class MiddlewarePipeline:
                 context,
             )
 
-            # For pairwise, middleware returns EvaluationResult but we need ComparisonResult
-            # The final_handler will return the correct type
             return result
 
         # Execute the chain - the formatted output is for middleware visibility only
         result = await chain(0, formatted_output, reference)
 
-        # Return the ComparisonResult from final_handler
-        return cast(ComparisonResult, result)
+        # Type narrow to ComparisonResult for this method's return type
+        if not isinstance(result, ComparisonResult):
+            raise TypeError(
+                f"Expected ComparisonResult from pipeline, got {type(result).__name__}"
+            )
+        return result
 
 
 @asynccontextmanager

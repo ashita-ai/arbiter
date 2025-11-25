@@ -27,7 +27,7 @@ async def example_factuality_llm_only():
     print("=" * 60)
 
     # Create evaluator without verifiers (traditional approach)
-    client = await LLMManager.get_client(model="claude-3-5-sonnet-20241022")
+    client = await LLMManager.get_client(model="gpt-4o-mini")
     evaluator = FactualityEvaluator(llm_client=client)
 
     # Test with a claim containing both factual and non-factual information
@@ -53,7 +53,7 @@ async def example_factuality_with_citation_verifier():
     print("=" * 60)
 
     # Create evaluator with CitationVerifier
-    client = await LLMManager.get_client(model="claude-3-5-sonnet-20241022")
+    client = await LLMManager.get_client(model="gpt-4o-mini")
     citation_verifier = CitationVerifier()
     evaluator = FactualityEvaluator(
         llm_client=client, verifiers=[citation_verifier]
@@ -85,7 +85,7 @@ async def example_factuality_with_wikipedia():
     print("=" * 60)
 
     # Create evaluator with WikipediaVerifier
-    client = await LLMManager.get_client(model="claude-3-5-sonnet-20241022")
+    client = await LLMManager.get_client(model="gpt-4o-mini")
     wikipedia_verifier = KnowledgeBaseVerifier()
     evaluator = FactualityEvaluator(
         llm_client=client, verifiers=[wikipedia_verifier]
@@ -114,7 +114,7 @@ async def example_factuality_with_search(tavily_api_key: str):
 
     try:
         # Create evaluator with SearchVerifier
-        client = await LLMManager.get_client(model="claude-3-5-sonnet-20241022")
+        client = await LLMManager.get_client(model="gpt-4o-mini")
         search_verifier = SearchVerifier(api_key=tavily_api_key)
         evaluator = FactualityEvaluator(
             llm_client=client, verifiers=[search_verifier]
@@ -166,7 +166,7 @@ async def example_factuality_with_multiple_verifiers(tavily_api_key: str):
         print("(SearchVerifier requires: pip install tavily-python)")
 
     # Create evaluator with all verifiers
-    client = await LLMManager.get_client(model="claude-3-5-sonnet-20241022")
+    client = await LLMManager.get_client(model="gpt-4o-mini")
     evaluator = FactualityEvaluator(llm_client=client, verifiers=verifiers)
 
     # Test with mixed factual/non-factual content
@@ -196,7 +196,7 @@ async def example_factuality_with_multiple_verifiers(tavily_api_key: str):
     print(f"\nLLM Interactions: {len(interactions)} calls")
     if interactions:
         print(f"  - Model: {interactions[0].model}")
-        print(f"  - Total Tokens: {interactions[0].response_metadata.get('usage', {}).get('total_tokens', 'N/A')}")
+        print(f"  - Total Tokens: {interactions[0].total_tokens}")
 
 
 async def main():

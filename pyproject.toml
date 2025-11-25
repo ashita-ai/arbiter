@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arbiter-ai"
-version = "0.1.0a0"
+version = "0.1.0"
 description = "Native PydanticAI evaluation with automatic cost tracking"
 authors = [{name = "Evan Volgas", email = "evan.volgas@gmail.com"}]
 license = "MIT"
@@ -12,7 +12,7 @@ readme = "README.md"
 requires-python = ">=3.11,<3.14"
 keywords = ["ai", "llm", "evaluation", "testing", "metrics", "pydantic-ai", "cost-tracking"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",

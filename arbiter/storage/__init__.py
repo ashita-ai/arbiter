@@ -30,8 +30,6 @@ from arbiter.storage.base import (
     StorageBackend,
     StorageError,
 )
-from arbiter.storage.postgres import PostgresStorage
-from arbiter.storage.redis import RedisStorage
 
 __all__ = [
     "StorageBackend",
@@ -42,3 +40,30 @@ __all__ = [
     "PostgresStorage",
     "RedisStorage",
 ]
+
+
+def __getattr__(name: str):
+    """Lazy import for optional storage backends.
+
+    This allows importing from arbiter.storage without requiring
+    optional dependencies (asyncpg, redis) to be installed.
+    """
+    if name == "PostgresStorage":
+        try:
+            from arbiter.storage.postgres import PostgresStorage
+
+            return PostgresStorage
+        except ImportError as e:
+            raise ImportError(
+                "PostgresStorage requires asyncpg. Install with: pip install arbiter[postgres]"
+            ) from e
+    elif name == "RedisStorage":
+        try:
+            from arbiter.storage.redis import RedisStorage
+
+            return RedisStorage
+        except ImportError as e:
+            raise ImportError(
+                "RedisStorage requires redis. Install with: pip install arbiter[redis]"
+            ) from e
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

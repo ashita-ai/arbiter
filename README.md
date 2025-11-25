@@ -1,23 +1,21 @@
 <div align="center">
   <h1>Arbiter</h1>
 
-  <p><strong>Native PydanticAI evaluation with automatic cost tracking</strong></p>
+  <p><strong>The only LLM evaluation framework that shows you exactly what your evaluations cost</strong></p>
 
   <p>
     <a href="https://python.org"><img src="https://img.shields.io/badge/python-3.11+-blue" alt="Python"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"></a>
-    <a href="https://github.com/ashita-ai/arbiter"><img src="https://img.shields.io/badge/version-0.1.0--alpha-blue" alt="Version"></a>
+    <a href="https://github.com/ashita-ai/arbiter"><img src="https://img.shields.io/badge/version-0.1.0-blue" alt="Version"></a>
     <a href="https://ai.pydantic.dev"><img src="https://img.shields.io/badge/PydanticAI-native-purple" alt="PydanticAI"></a>
   </p>
-
-  <p><em>Alpha Software: Early development stage. Use for evaluation and experimentation.</em></p>
 </div>
 
 ---
 
 ## Why Arbiter?
 
-Stop guessing what your LLM evaluations cost. Arbiter shows you exactly what happened in every evaluation - with **automatic cost tracking**, complete interaction visibility, and native PydanticAI integration.
+Most evaluation frameworks tell you if your outputs are good. **Arbiter tells you that AND exactly what it cost.** Every evaluation automatically tracks tokens, latency, and real dollar costs across any provider - no manual instrumentation required.
 
 ```python
 from arbiter import evaluate
@@ -57,7 +55,19 @@ print(f"Calls: {len(result.interactions)}")           # Every LLM interaction
 - Prompts, responses, tokens, latency - all visible
 - Perfect for debugging evaluation issues
 
-**Status**: Alpha software (v0.1.0-alpha). Functional but early-stage. Best suited for evaluation, experimentation, and development. Not recommended for mission-critical use yet.
+### How Arbiter Compares
+
+| Feature | Arbiter | LangSmith | Ragas | DeepEval |
+|---------|---------|-----------|-------|----------|
+| **Automatic cost tracking** | ✅ Real-time | ❌ | ❌ | ❌ |
+| **Pure library** (no platform) | ✅ | ❌ Platform | ✅ | ✅ |
+| **Provider-agnostic** | ✅ 6 providers | ✅ | ✅ | ✅ |
+| **Interaction visibility** | ✅ Every call | Manual | ❌ | Manual |
+| **PydanticAI native** | ✅ | ❌ | ❌ | ❌ |
+| **Built-in evaluators** | 6 | - | 8 | 20+ |
+| **Type-safe** (strict mypy) | ✅ | ❌ | ❌ | ❌ |
+
+**Best for**: Teams who need cost transparency, complete observability, and no platform lock-in.
 
 ## Installation
 
@@ -381,6 +391,40 @@ See [examples/rag_evaluation.py](examples/rag_evaluation.py) for complete RAG ev
 ## Architecture
 
 Built on proven patterns with type-safe foundations:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         Public API                              │
+│                  evaluate() | compare() | batch_evaluate()      │
+└─────────────────────────────┬───────────────────────────────────┘
+                              │
+┌─────────────────────────────▼───────────────────────────────────┐
+│                    Middleware Pipeline                          │
+│         Logging → Metrics → Caching → Rate Limiting             │
+└─────────────────────────────┬───────────────────────────────────┘
+                              │
+┌─────────────────────────────▼───────────────────────────────────┐
+│                        Evaluators                               │
+│  Semantic | CustomCriteria | Pairwise | Factuality | ...        │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │              BasePydanticEvaluator                      │    │
+│  │  Template Method: 4 abstract methods per evaluator      │    │
+│  └─────────────────────────────────────────────────────────┘    │
+└─────────────────────────────┬───────────────────────────────────┘
+                              │
+┌─────────────────────────────▼───────────────────────────────────┐
+│                     LLM Client Layer                            │
+│              Provider-Agnostic (via PydanticAI)                 │
+│    OpenAI | Anthropic | Google | Groq | Mistral | Cohere        │
+└─────────────────────────────┬───────────────────────────────────┘
+                              │
+┌─────────────────────────────▼───────────────────────────────────┐
+│                      Infrastructure                             │
+│  Cost Calculator | Circuit Breaker | Retry | Monitoring         │
+│  Storage: PostgreSQL | Redis                                    │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 - **PydanticAI 1.14+**: Structured LLM interactions with type safety
 - **Template Method Pattern**: Consistent evaluator implementation

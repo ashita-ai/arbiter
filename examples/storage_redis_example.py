@@ -12,9 +12,23 @@ Prerequisites:
 """
 
 import asyncio
+import sys
 
 from arbiter import evaluate
-from arbiter.storage import RedisStorage
+
+try:
+    from arbiter.storage import RedisStorage
+except ImportError:
+    print("=" * 60)
+    print("Redis Storage Example")
+    print("=" * 60)
+    print("\n⚠️  Redis storage requires redis-py.")
+    print("Install with: pip install arbiter[redis]")
+    print("\nThis example demonstrates:")
+    print("- Caching evaluation results in Redis")
+    print("- TTL (Time To Live) for automatic expiration")
+    print("- Fast retrieval from cache")
+    sys.exit(0)
 
 
 async def main() -> None:

@@ -258,9 +258,7 @@ class PostgresStorage(StorageBackend):
             logger.error(f"Failed to retrieve result {result_id}: {e}")
             raise RetrievalError(f"Failed to retrieve result: {e}") from e
 
-    async def get_batch_result(
-        self, batch_id: str
-    ) -> Optional[BatchEvaluationResult]:
+    async def get_batch_result(self, batch_id: str) -> Optional[BatchEvaluationResult]:
         """Retrieve batch evaluation result by ID.
 
         Args:

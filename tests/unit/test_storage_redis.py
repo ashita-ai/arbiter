@@ -12,6 +12,10 @@ from arbiter.core.models import (
     Score,
 )
 from arbiter.storage.base import ConnectionError, RetrievalError, SaveError
+
+# Skip all tests if redis is not installed
+pytest.importorskip("redis", reason="Redis storage requires redis")
+
 from arbiter.storage.redis import RedisStorage
 
 
@@ -24,7 +28,12 @@ def mock_eval_result():
         overall_score=0.85,
         passed=True,
         scores=[
-            Score(name="semantic", value=0.85, confidence=0.90, explanation="Good similarity")
+            Score(
+                name="semantic",
+                value=0.85,
+                confidence=0.90,
+                explanation="Good similarity",
+            )
         ],
         interactions=[
             LLMInteraction(
@@ -129,7 +138,10 @@ class TestRedisStorageConnect:
         """Test connection failure raises ConnectionError."""
         storage = RedisStorage(redis_url="redis://invalid:6379")
 
-        with patch("arbiter.storage.redis.redis.from_url", side_effect=Exception("Connection failed")):
+        with patch(
+            "arbiter.storage.redis.redis.from_url",
+            side_effect=Exception("Connection failed"),
+        ):
             with pytest.raises(ConnectionError, match="Redis connection failed"):
                 await storage.connect()
 
@@ -210,7 +222,9 @@ class TestRedisStorageSaveResult:
         assert stored_data["metadata"] == metadata
 
     @pytest.mark.asyncio
-    async def test_save_result_deterministic_id(self, mock_redis_client, mock_eval_result):
+    async def test_save_result_deterministic_id(
+        self, mock_redis_client, mock_eval_result
+    ):
         """Test that same result generates same ID (deterministic hashing)."""
         storage = RedisStorage(redis_url="redis://localhost:6379")
         storage.client = mock_redis_client
@@ -229,7 +243,9 @@ class TestRedisStorageSaveResult:
             await storage.save_result(mock_eval_result)
 
     @pytest.mark.asyncio
-    async def test_save_result_redis_error_raises_save_error(self, mock_redis_client, mock_eval_result):
+    async def test_save_result_redis_error_raises_save_error(
+        self, mock_redis_client, mock_eval_result
+    ):
         """Test Redis error during save raises SaveError."""
         storage = RedisStorage(redis_url="redis://localhost:6379")
         storage.client = mock_redis_client
@@ -244,7 +260,9 @@ class TestRedisStorageSaveBatchResult:
     """Test RedisStorage save_batch_result() method."""
 
     @pytest.mark.asyncio
-    async def test_save_batch_result_success(self, mock_redis_client, mock_batch_result):
+    async def test_save_batch_result_success(
+        self, mock_redis_client, mock_batch_result
+    ):
         """Test successful batch save to Redis."""
         storage = RedisStorage(redis_url="redis://localhost:6379", ttl=7200)
         storage.client = mock_redis_client
@@ -260,7 +278,9 @@ class TestRedisStorageSaveBatchResult:
         assert "arbiter:batch:" in call_args[0][0]  # Key prefix
 
     @pytest.mark.asyncio
-    async def test_save_batch_result_with_metadata(self, mock_redis_client, mock_batch_result):
+    async def test_save_batch_result_with_metadata(
+        self, mock_redis_client, mock_batch_result
+    ):
         """Test saving batch with metadata."""
         storage = RedisStorage(redis_url="redis://localhost:6379")
         storage.client = mock_redis_client
@@ -274,7 +294,9 @@ class TestRedisStorageSaveBatchResult:
         assert stored_data["metadata"] == metadata
 
     @pytest.mark.asyncio
-    async def test_save_batch_result_deterministic_id(self, mock_redis_client, mock_batch_result):
+    async def test_save_batch_result_deterministic_id(
+        self, mock_redis_client, mock_batch_result
+    ):
         """Test that same batch generates same ID."""
         storage = RedisStorage(redis_url="redis://localhost:6379")
         storage.client = mock_redis_client
@@ -285,7 +307,9 @@ class TestRedisStorageSaveBatchResult:
         assert batch_id_1 == batch_id_2
 
     @pytest.mark.asyncio
-    async def test_save_batch_result_without_client_raises_error(self, mock_batch_result):
+    async def test_save_batch_result_without_client_raises_error(
+        self, mock_batch_result
+    ):
         """Test save without connection raises ConnectionError."""
         storage = RedisStorage(redis_url="redis://localhost:6379")
 
@@ -293,7 +317,9 @@ class TestRedisStorageSaveBatchResult:
             await storage.save_batch_result(mock_batch_result)
 
     @pytest.mark.asyncio
-    async def test_save_batch_result_redis_error_raises_save_error(self, mock_redis_client, mock_batch_result):
+    async def test_save_batch_result_redis_error_raises_save_error(
+        self, mock_redis_client, mock_batch_result
+    ):
         """Test Redis error during batch save raises SaveError."""
         storage = RedisStorage(redis_url="redis://localhost:6379")
         storage.client = mock_redis_client
@@ -346,7 +372,9 @@ class TestRedisStorageGetResult:
             await storage.get_result("test_id")
 
     @pytest.mark.asyncio
-    async def test_get_result_redis_error_raises_retrieval_error(self, mock_redis_client):
+    async def test_get_result_redis_error_raises_retrieval_error(
+        self, mock_redis_client
+    ):
         """Test Redis error during retrieval raises RetrievalError."""
         storage = RedisStorage(redis_url="redis://localhost:6379")
         storage.client = mock_redis_client
@@ -398,7 +426,9 @@ class TestRedisStorageGetBatchResult:
             await storage.get_batch_result("test_id")
 
     @pytest.mark.asyncio
-    async def test_get_batch_result_redis_error_raises_retrieval_error(self, mock_redis_client):
+    async def test_get_batch_result_redis_error_raises_retrieval_error(
+        self, mock_redis_client
+    ):
         """Test Redis error during batch retrieval raises RetrievalError."""
         storage = RedisStorage(redis_url="redis://localhost:6379")
         storage.client = mock_redis_client
@@ -432,7 +462,9 @@ class TestRedisStorageIntegration:
     """Integration tests for full save/retrieve cycle."""
 
     @pytest.mark.asyncio
-    async def test_save_and_retrieve_result_roundtrip(self, mock_redis_client, mock_eval_result):
+    async def test_save_and_retrieve_result_roundtrip(
+        self, mock_redis_client, mock_eval_result
+    ):
         """Test full cycle: save result and retrieve it back."""
         storage = RedisStorage(redis_url="redis://localhost:6379")
         storage.client = mock_redis_client
@@ -452,7 +484,9 @@ class TestRedisStorageIntegration:
         assert len(retrieved.scores) == len(mock_eval_result.scores)
 
     @pytest.mark.asyncio
-    async def test_save_and_retrieve_batch_roundtrip(self, mock_redis_client, mock_batch_result):
+    async def test_save_and_retrieve_batch_roundtrip(
+        self, mock_redis_client, mock_batch_result
+    ):
         """Test full cycle: save batch and retrieve it back."""
         storage = RedisStorage(redis_url="redis://localhost:6379")
         storage.client = mock_redis_client

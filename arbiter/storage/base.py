@@ -6,7 +6,7 @@ All storage backends must implement this async interface.
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
-from arbiter.core.models import EvaluationResult, BatchEvaluationResult
+from arbiter.core.models import BatchEvaluationResult, EvaluationResult
 
 
 class StorageBackend(ABC):
@@ -93,9 +93,7 @@ class StorageBackend(ABC):
         pass
 
     @abstractmethod
-    async def get_batch_result(
-        self, batch_id: str
-    ) -> Optional[BatchEvaluationResult]:
+    async def get_batch_result(self, batch_id: str) -> Optional[BatchEvaluationResult]:
         """Retrieve batch evaluation result by ID.
 
         Args:
