@@ -154,7 +154,7 @@ class TestPostgresStorageConnect:
             return mock_pool
 
         with patch(
-            "arbiter.storage.postgres.asyncpg.create_pool", side_effect=mock_create_pool
+            "arbiter_ai.storage.postgres.asyncpg.create_pool", side_effect=mock_create_pool
         ):
             await storage.connect()
 
@@ -172,7 +172,7 @@ class TestPostgresStorageConnect:
             return pool
 
         with patch(
-            "arbiter.storage.postgres.asyncpg.create_pool", side_effect=mock_create_pool
+            "arbiter_ai.storage.postgres.asyncpg.create_pool", side_effect=mock_create_pool
         ):
             with pytest.raises(
                 ConnectionError, match="Schema 'arbiter' does not exist"
@@ -185,7 +185,7 @@ class TestPostgresStorageConnect:
         storage = PostgresStorage(database_url="postgresql://invalid/test")
 
         with patch(
-            "arbiter.storage.postgres.asyncpg.create_pool",
+            "arbiter_ai.storage.postgres.asyncpg.create_pool",
             side_effect=Exception("Connection failed"),
         ):
             with pytest.raises(ConnectionError, match="PostgreSQL connection failed"):
@@ -443,7 +443,7 @@ class TestPostgresStorageContextManager:
             return mock_pool
 
         with patch(
-            "arbiter.storage.postgres.asyncpg.create_pool", side_effect=mock_create_pool
+            "arbiter_ai.storage.postgres.asyncpg.create_pool", side_effect=mock_create_pool
         ):
             async with storage:
                 assert storage.pool == mock_pool

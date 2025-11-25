@@ -270,7 +270,7 @@ class TestGlobalMonitor:
     def test_get_global_monitor_creates_instance(self):
         """Test that get_global_monitor creates a monitor."""
         # Clear any existing global monitor
-        import arbiter.core.monitoring as mon_module
+        import arbiter_ai.core.monitoring as mon_module
 
         mon_module._global_monitor = None
 
@@ -290,7 +290,7 @@ class TestGlobalMonitor:
     async def test_monitor_context_manager(self):
         """Test the monitor() context manager."""
         # Reset global monitor
-        import arbiter.core.monitoring as mon_module
+        import arbiter_ai.core.monitoring as mon_module
 
         mon_module._global_monitor = None
 
@@ -309,7 +309,7 @@ class TestGlobalMonitor:
     async def test_monitor_context_manager_default_name(self):
         """Test monitor() with default operation name."""
         # Reset global monitor
-        import arbiter.core.monitoring as mon_module
+        import arbiter_ai.core.monitoring as mon_module
 
         mon_module._global_monitor = PerformanceMonitor()
 
@@ -325,7 +325,7 @@ class TestLogfireIntegration:
     """Test Logfire integration."""
 
     @patch.dict("os.environ", {"LOGFIRE_TOKEN": "test_token"})
-    @patch("arbiter.core.monitoring.logfire.configure")
+    @patch("arbiter_ai.core.monitoring.logfire.configure")
     def test_logfire_configured_when_token_present(self, mock_configure):
         """Test that logfire is configured when LOGFIRE_TOKEN is set."""
         # Re-import to trigger configuration

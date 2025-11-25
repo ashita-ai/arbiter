@@ -194,7 +194,7 @@ class TestGetInteractionCostHelper:
         )
 
         # Mock the cost calculator (patch where it's imported)
-        with patch("arbiter.core.cost_calculator.get_cost_calculator") as mock_get_calc:
+        with patch("arbiter_ai.core.cost_calculator.get_cost_calculator") as mock_get_calc:
             mock_calc = MagicMock()
             mock_calc.calculate_cost.return_value = 0.00055
             mock_get_calc.return_value = mock_calc
@@ -226,7 +226,7 @@ class TestGetInteractionCostHelper:
             cost=None,
         )
 
-        with patch("arbiter.core.cost_calculator.get_cost_calculator") as mock_get_calc:
+        with patch("arbiter_ai.core.cost_calculator.get_cost_calculator") as mock_get_calc:
             mock_calc = MagicMock()
             mock_calc.calculate_cost.return_value = 0.0
             mock_get_calc.return_value = mock_calc

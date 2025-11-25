@@ -327,7 +327,7 @@ class TestEvaluateFunction:
             )
 
     @pytest.mark.asyncio
-    @patch("arbiter.api.LLMManager")
+    @patch("arbiter_ai.api.LLMManager")
     async def test_evaluate_creates_client(self, mock_manager, mock_agent):
         """Test that client is created if not provided."""
         from arbiter_ai.api import evaluate
@@ -549,7 +549,7 @@ class TestCompareFunction:
         assert result.processing_time > 0
 
     @pytest.mark.asyncio
-    @patch("arbiter.api.LLMManager")
+    @patch("arbiter_ai.api.LLMManager")
     async def test_compare_creates_client(self, mock_manager, mock_agent):
         """Test that client is created if not provided."""
         from arbiter_ai.api import compare

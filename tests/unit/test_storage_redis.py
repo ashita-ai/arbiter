@@ -127,7 +127,7 @@ class TestRedisStorageConnect:
         async def mock_from_url(*args, **kwargs):
             return mock_redis_client
 
-        with patch("arbiter.storage.redis.redis.from_url", side_effect=mock_from_url):
+        with patch("arbiter_ai.storage.redis.redis.from_url", side_effect=mock_from_url):
             await storage.connect()
 
             assert storage.client == mock_redis_client
@@ -139,7 +139,7 @@ class TestRedisStorageConnect:
         storage = RedisStorage(redis_url="redis://invalid:6379")
 
         with patch(
-            "arbiter.storage.redis.redis.from_url",
+            "arbiter_ai.storage.redis.redis.from_url",
             side_effect=Exception("Connection failed"),
         ):
             with pytest.raises(ConnectionError, match="Redis connection failed"):
@@ -450,7 +450,7 @@ class TestRedisStorageContextManager:
         async def mock_from_url(*args, **kwargs):
             return mock_redis_client
 
-        with patch("arbiter.storage.redis.redis.from_url", side_effect=mock_from_url):
+        with patch("arbiter_ai.storage.redis.redis.from_url", side_effect=mock_from_url):
             async with storage:
                 assert storage.client == mock_redis_client
                 mock_redis_client.ping.assert_called_once()

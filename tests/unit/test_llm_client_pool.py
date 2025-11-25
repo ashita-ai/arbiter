@@ -123,7 +123,7 @@ class TestConnectionMetrics:
 class TestPooledConnection:
     """Test suite for PooledConnection."""
 
-    @patch("arbiter.core.llm_client_pool.LLMClient")
+    @patch("arbiter_ai.core.llm_client_pool.LLMClient")
     def test_connection_initialization(self, mock_client_class):
         """Test connection wrapper initialization."""
         mock_client = MagicMock()
@@ -137,7 +137,7 @@ class TestPooledConnection:
         assert conn.use_count == 0
         assert conn.is_healthy is True
 
-    @patch("arbiter.core.llm_client_pool.LLMClient")
+    @patch("arbiter_ai.core.llm_client_pool.LLMClient")
     def test_mark_used(self, mock_client_class):
         """Test marking connection as used."""
         mock_client = MagicMock()
@@ -155,7 +155,7 @@ class TestPooledConnection:
         assert conn.use_count == initial_use_count + 1
         assert conn.last_used > initial_last_used
 
-    @patch("arbiter.core.llm_client_pool.LLMClient")
+    @patch("arbiter_ai.core.llm_client_pool.LLMClient")
     def test_is_expired(self, mock_client_class):
         """Test connection expiration check."""
         mock_client = MagicMock()
@@ -176,7 +176,7 @@ class TestPooledConnection:
         )
         assert new_conn.is_expired(max_age=10.0) is False
 
-    @patch("arbiter.core.llm_client_pool.LLMClient")
+    @patch("arbiter_ai.core.llm_client_pool.LLMClient")
     def test_is_idle(self, mock_client_class):
         """Test connection idle check."""
         mock_client = MagicMock()
@@ -230,7 +230,7 @@ class TestLLMClientPool:
         assert key == "openai:gpt-4o-mini:0.7"
 
     @pytest.mark.asyncio
-    @patch("arbiter.core.llm_client_pool.LLMClient")
+    @patch("arbiter_ai.core.llm_client_pool.LLMClient")
     async def test_get_client_creates_new(self, mock_client_class, initialized_pool):
         """Test getting client when pool is empty creates new one."""
         mock_client = MagicMock()
@@ -250,7 +250,7 @@ class TestLLMClientPool:
         assert metrics.active_connections == 1
 
     @pytest.mark.asyncio
-    @patch("arbiter.core.llm_client_pool.LLMClient")
+    @patch("arbiter_ai.core.llm_client_pool.LLMClient")
     async def test_get_client_from_pool(self, mock_client_class, initialized_pool):
         """Test getting client from pool (cache hit)."""
         mock_client = MagicMock()
@@ -273,7 +273,7 @@ class TestLLMClientPool:
         assert metrics.pool_misses == 1
 
     @pytest.mark.asyncio
-    @patch("arbiter.core.llm_client_pool.LLMClient")
+    @patch("arbiter_ai.core.llm_client_pool.LLMClient")
     async def test_return_client_to_pool(self, mock_client_class, initialized_pool):
         """Test returning client to pool."""
         mock_client = MagicMock()
@@ -290,7 +290,7 @@ class TestLLMClientPool:
         assert metrics.active_connections == 0
 
     @pytest.mark.asyncio
-    @patch("arbiter.core.llm_client_pool.LLMClient")
+    @patch("arbiter_ai.core.llm_client_pool.LLMClient")
     async def test_return_unknown_client(self, mock_client_class, initialized_pool):
         """Test returning client not from pool (should be ignored)."""
         unknown_client = MagicMock()
@@ -303,7 +303,7 @@ class TestLLMClientPool:
         assert metrics.returned_connections == 0
 
     @pytest.mark.asyncio
-    @patch("arbiter.core.llm_client_pool.LLMClient")
+    @patch("arbiter_ai.core.llm_client_pool.LLMClient")
     async def test_pool_size_limit(self, mock_client_class, initialized_pool):
         """Test that pool respects max_pool_size."""
         initialized_pool.config.max_pool_size = 2
@@ -345,7 +345,7 @@ class TestLLMClientPool:
         assert len(initialized_pool._pools.get(pool_key, [])) <= 2
 
     @pytest.mark.asyncio
-    @patch("arbiter.core.llm_client_pool.LLMClient")
+    @patch("arbiter_ai.core.llm_client_pool.LLMClient")
     async def test_warm_up(self, mock_client_class, initialized_pool):
         """Test pool warm-up functionality."""
         mock_client = MagicMock()
@@ -370,7 +370,7 @@ class TestLLMClientPool:
         assert metrics.idle_connections == 1  # 1 connection idle at end
 
     @pytest.mark.asyncio
-    @patch("arbiter.core.llm_client_pool.LLMClient", side_effect=Exception("API Error"))
+    @patch("arbiter_ai.core.llm_client_pool.LLMClient", side_effect=Exception("API Error"))
     async def test_get_client_error_handling(self, mock_client_class, initialized_pool):
         """Test error handling when creating client fails."""
         with pytest.raises(ModelProviderError, match="Failed to create LLM client"):
@@ -392,7 +392,7 @@ class TestPoolCleanup:
     """Test suite for connection cleanup and lifecycle."""
 
     @pytest.mark.asyncio
-    @patch("arbiter.core.llm_client_pool.LLMClient")
+    @patch("arbiter_ai.core.llm_client_pool.LLMClient")
     async def test_expired_connection_cleanup(self, mock_client_class):
         """Test that expired connections are cleaned up."""
         # Use minimum valid value for faster test
@@ -431,7 +431,7 @@ class TestPoolCleanup:
             await pool.close()
 
     @pytest.mark.asyncio
-    @patch("arbiter.core.llm_client_pool.LLMClient")
+    @patch("arbiter_ai.core.llm_client_pool.LLMClient")
     async def test_idle_connection_cleanup(self, mock_client_class):
         """Test that idle connections are cleaned up."""
         # Use minimum valid value for faster test
@@ -473,7 +473,7 @@ class TestPoolCleanup:
     async def test_pool_close(self, initialized_pool):
         """Test pool cleanup on close."""
         # Add some connections to pool
-        with patch("arbiter.core.llm_client_pool.LLMClient") as mock_client_class:
+        with patch("arbiter_ai.core.llm_client_pool.LLMClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client_class.return_value = mock_client
 
@@ -550,7 +550,7 @@ class TestPoolMetrics:
     """Test suite for pool metrics tracking."""
 
     @pytest.mark.asyncio
-    @patch("arbiter.core.llm_client_pool.LLMClient")
+    @patch("arbiter_ai.core.llm_client_pool.LLMClient")
     async def test_metrics_tracking_disabled(self, mock_client_class):
         """Test pool with metrics disabled."""
         config = PoolConfig(enable_metrics=False)
@@ -571,7 +571,7 @@ class TestPoolMetrics:
             await pool.close()
 
     @pytest.mark.asyncio
-    @patch("arbiter.core.llm_client_pool.LLMClient")
+    @patch("arbiter_ai.core.llm_client_pool.LLMClient")
     async def test_comprehensive_metrics_tracking(
         self, mock_client_class, initialized_pool
     ):

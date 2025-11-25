@@ -431,7 +431,7 @@ class TestMultiEvaluatorErrorHandling:
         mock_agent.run = AsyncMock(side_effect=mock_agent_run)
         mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
 
-        with patch("arbiter.api.logger") as mock_logger:
+        with patch("arbiter_ai.api.logger") as mock_logger:
             _result = await evaluate(
                 output="Test",
                 reference="Test",
@@ -480,7 +480,7 @@ class TestMultiEvaluatorErrorHandling:
         mock_agent.run = AsyncMock(side_effect=mock_agent_run)
         mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
 
-        with patch("arbiter.api.logger") as mock_logger:
+        with patch("arbiter_ai.api.logger") as mock_logger:
             _result = await evaluate(
                 output="Test",
                 reference="Test",

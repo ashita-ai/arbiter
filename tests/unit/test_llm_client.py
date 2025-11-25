@@ -36,7 +36,7 @@ class TestLLMClient:
 
     def test_client_initialization_openai(self):
         """Test client initialization for OpenAI."""
-        with patch("arbiter.core.llm_client.openai.AsyncOpenAI") as mock_openai:
+        with patch("arbiter_ai.core.llm_client.openai.AsyncOpenAI") as mock_openai:
             with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
                 client = LLMClient(
                     provider=Provider.OPENAI, model="gpt-4o-mini", temperature=0.7
@@ -50,7 +50,7 @@ class TestLLMClient:
 
     def test_client_initialization_groq(self):
         """Test client initialization for Groq."""
-        with patch("arbiter.core.llm_client.openai.AsyncOpenAI") as mock_openai:
+        with patch("arbiter_ai.core.llm_client.openai.AsyncOpenAI") as mock_openai:
             with patch.dict(os.environ, {"GROQ_API_KEY": "test-key"}):
                 client = LLMClient(
                     provider=Provider.GROQ, model="gpt-4", temperature=0.5
@@ -67,7 +67,7 @@ class TestLLMClient:
         """Test client initialization with custom circuit breaker."""
         custom_breaker = CircuitBreaker(failure_threshold=10)
 
-        with patch("arbiter.core.llm_client.openai.AsyncOpenAI"):
+        with patch("arbiter_ai.core.llm_client.openai.AsyncOpenAI"):
             with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
                 client = LLMClient(
                     provider=Provider.OPENAI,
@@ -79,7 +79,7 @@ class TestLLMClient:
 
     def test_client_initialization_with_api_key_override(self):
         """Test client initialization with API key override."""
-        with patch("arbiter.core.llm_client.openai.AsyncOpenAI") as mock_openai:
+        with patch("arbiter_ai.core.llm_client.openai.AsyncOpenAI") as mock_openai:
             _client = LLMClient(
                 provider=Provider.OPENAI, model="gpt-4", api_key="custom-api-key"
             )
@@ -119,7 +119,7 @@ class TestLLMClient:
 
     def test_get_provider_model_openai(self):
         """Test provider model mapping for OpenAI."""
-        with patch("arbiter.core.llm_client.openai.AsyncOpenAI"):
+        with patch("arbiter_ai.core.llm_client.openai.AsyncOpenAI"):
             with patch.dict(os.environ, {"OPENAI_API_KEY": "test"}):
                 client = LLMClient(Provider.OPENAI, "gpt-4")
                 model = client._get_provider_model()
@@ -127,7 +127,7 @@ class TestLLMClient:
 
     def test_get_provider_model_groq(self):
         """Test provider model mapping for Groq."""
-        with patch("arbiter.core.llm_client.openai.AsyncOpenAI"):
+        with patch("arbiter_ai.core.llm_client.openai.AsyncOpenAI"):
             with patch.dict(os.environ, {"GROQ_API_KEY": "test"}):
                 client = LLMClient(Provider.GROQ, "gpt-4o-mini")
                 model = client._get_provider_model()
@@ -136,7 +136,7 @@ class TestLLMClient:
 
     def test_get_provider_model_unmapped(self):
         """Test provider model for unmapped model name."""
-        with patch("arbiter.core.llm_client.openai.AsyncOpenAI"):
+        with patch("arbiter_ai.core.llm_client.openai.AsyncOpenAI"):
             with patch.dict(os.environ, {"OPENAI_API_KEY": "test"}):
                 client = LLMClient(Provider.OPENAI, "custom-model-123")
                 model = client._get_provider_model()
@@ -145,9 +145,9 @@ class TestLLMClient:
 
     def test_create_agent(self):
         """Test agent creation for PydanticAI."""
-        with patch("arbiter.core.llm_client.openai.AsyncOpenAI"):
+        with patch("arbiter_ai.core.llm_client.openai.AsyncOpenAI"):
             with patch.dict(os.environ, {"OPENAI_API_KEY": "test"}):
-                with patch("arbiter.core.llm_client.Agent") as mock_agent_class:
+                with patch("arbiter_ai.core.llm_client.Agent") as mock_agent_class:
                     client = LLMClient(Provider.OPENAI, "gpt-4o-mini")
 
                     _agent = client.create_agent(
@@ -175,7 +175,7 @@ class TestLLMClient:
         mock_response.usage.completion_tokens = 50
         mock_response.usage.total_tokens = 100
 
-        with patch("arbiter.core.llm_client.openai.AsyncOpenAI") as mock_openai_class:
+        with patch("arbiter_ai.core.llm_client.openai.AsyncOpenAI") as mock_openai_class:
             mock_client = AsyncMock()
             mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
             mock_openai_class.return_value = mock_client
@@ -196,7 +196,7 @@ class TestLLMClient:
     @pytest.mark.asyncio
     async def test_execute_completion_rate_limit_error(self):
         """Test completion with rate limit error."""
-        with patch("arbiter.core.llm_client.openai.AsyncOpenAI") as mock_openai_class:
+        with patch("arbiter_ai.core.llm_client.openai.AsyncOpenAI") as mock_openai_class:
             mock_client = AsyncMock()
             mock_client.chat.completions.create = AsyncMock(
                 side_effect=Exception("Rate limit exceeded")
@@ -214,7 +214,7 @@ class TestLLMClient:
     @pytest.mark.asyncio
     async def test_execute_completion_auth_error(self):
         """Test completion with authentication error."""
-        with patch("arbiter.core.llm_client.openai.AsyncOpenAI") as mock_openai_class:
+        with patch("arbiter_ai.core.llm_client.openai.AsyncOpenAI") as mock_openai_class:
             mock_client = AsyncMock()
             mock_client.chat.completions.create = AsyncMock(
                 side_effect=Exception("Invalid API key")
@@ -232,7 +232,7 @@ class TestLLMClient:
     @pytest.mark.asyncio
     async def test_execute_completion_generic_error(self):
         """Test completion with generic error."""
-        with patch("arbiter.core.llm_client.openai.AsyncOpenAI") as mock_openai_class:
+        with patch("arbiter_ai.core.llm_client.openai.AsyncOpenAI") as mock_openai_class:
             mock_client = AsyncMock()
             mock_client.chat.completions.create = AsyncMock(
                 side_effect=Exception("Network error")
@@ -260,7 +260,7 @@ class TestLLMClient:
         mock_response.usage.completion_tokens = 25
         mock_response.usage.total_tokens = 50
 
-        with patch("arbiter.core.llm_client.openai.AsyncOpenAI") as mock_openai_class:
+        with patch("arbiter_ai.core.llm_client.openai.AsyncOpenAI") as mock_openai_class:
             mock_client = AsyncMock()
             mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
             mock_openai_class.return_value = mock_client
@@ -287,7 +287,7 @@ class TestLLMClient:
         mock_response.usage.completion_tokens = 35
         mock_response.usage.total_tokens = 75
 
-        with patch("arbiter.core.llm_client.openai.AsyncOpenAI") as mock_openai_class:
+        with patch("arbiter_ai.core.llm_client.openai.AsyncOpenAI") as mock_openai_class:
             mock_client = AsyncMock()
             mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
             mock_openai_class.return_value = mock_client
@@ -339,9 +339,9 @@ class TestLLMManager:
     async def test_get_client_with_openai_key(self):
         """Test get_client with OpenAI API key."""
         with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
-            with patch("arbiter.core.llm_client.openai.AsyncOpenAI"):
+            with patch("arbiter_ai.core.llm_client.openai.AsyncOpenAI"):
                 with patch(
-                    "arbiter.core.llm_client_pool.LLMClient"
+                    "arbiter_ai.core.llm_client_pool.LLMClient"
                 ) as mock_client_class:
                     mock_client = MagicMock()
                     mock_client_class.return_value = mock_client
@@ -353,9 +353,9 @@ class TestLLMManager:
     async def test_get_client_with_provider_string(self):
         """Test get_client with provider as string."""
         with patch.dict(os.environ, {"GROQ_API_KEY": "test-key"}):
-            with patch("arbiter.core.llm_client.openai.AsyncOpenAI"):
+            with patch("arbiter_ai.core.llm_client.openai.AsyncOpenAI"):
                 with patch(
-                    "arbiter.core.llm_client_pool.LLMClient"
+                    "arbiter_ai.core.llm_client_pool.LLMClient"
                 ) as mock_client_class:
                     mock_client = MagicMock()
                     mock_client_class.return_value = mock_client
@@ -376,7 +376,7 @@ class TestLLMManager:
     async def test_return_client(self):
         """Test returning client to pool."""
         with patch.dict(os.environ, {"OPENAI_API_KEY": "test"}):
-            with patch("arbiter.core.llm_client.openai.AsyncOpenAI"):
+            with patch("arbiter_ai.core.llm_client.openai.AsyncOpenAI"):
                 mock_client = MagicMock()
 
                 # Mock the pool's return_client method
