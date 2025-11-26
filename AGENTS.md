@@ -8,7 +8,7 @@ last_updated: 2025-01-22
 
 **Purpose**: Quick reference for working on Arbiter
 
-**Arbiter**: Production-grade LLM evaluation framework (v0.1.0-alpha)
+**Arbiter**: Production-grade LLM evaluation framework (v0.1.1)
 **Stack**: Python 3.10+, PydanticAI, provider-agnostic (OpenAI/Anthropic/Google/Groq)
 **Coverage**: 95% test coverage, strict mypy, comprehensive examples
 

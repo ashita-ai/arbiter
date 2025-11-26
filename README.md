@@ -6,7 +6,7 @@
   <p>
     <a href="https://python.org"><img src="https://img.shields.io/badge/python-3.11+-blue" alt="Python"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"></a>
-    <a href="https://github.com/ashita-ai/arbiter"><img src="https://img.shields.io/badge/version-0.1.0-blue" alt="Version"></a>
+    <a href="https://github.com/ashita-ai/arbiter"><img src="https://img.shields.io/badge/version-0.1.1-blue" alt="Version"></a>
     <a href="https://ai.pydantic.dev"><img src="https://img.shields.io/badge/PydanticAI-native-purple" alt="PydanticAI"></a>
   </p>
 </div>
@@ -107,6 +107,19 @@ The `.env.example` file includes placeholders for all supported providers:
 - `GROQ_API_KEY` - For Groq (fast inference)
 - `MISTRAL_API_KEY` - For Mistral models
 - `COHERE_API_KEY` - For Cohere models
+- `TAVILY_API_KEY` - For SearchVerifier (web search fact verification, optional)
+
+**Optional Features:**
+```bash
+# For web search fact verification (SearchVerifier)
+pip install arbiter-ai[verifiers]
+
+# For fast semantic evaluation (FAISS backend)
+pip install arbiter-ai[scale]
+
+# For result persistence (PostgreSQL + Redis)
+pip install arbiter-ai[storage]
+```
 
 **Note:** All examples automatically load environment variables from `.env` using `python-dotenv`.
 
@@ -504,10 +517,10 @@ make type-check    # Type checking
 - [x] FAISS backend for faster semantic evaluation
 - [x] Storage backends (PostgreSQL + Redis)
 - [x] PyPI package publication (arbiter-ai)
+- [x] Enhanced factuality with external verification plugins (SearchVerifier, CitationVerifier, KnowledgeBaseVerifier)
 
 **Future Ideas** (No timeline, exploring as needed)
-- [ ] Enhanced factuality with external verification plugins
-- [ ] Additional evaluators for specific domains
+- [ ] Additional evaluators for specific domains (medical, legal, technical writing)
 
 **Contributions welcome!** This is a personal project, but if you find it useful and want to contribute, pull requests are appreciated.
 

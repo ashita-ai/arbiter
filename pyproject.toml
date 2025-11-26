@@ -60,7 +60,10 @@ scale = [
 # Storage backends
 postgres = ["asyncpg>=0.29.0", "alembic>=1.13.0", "sqlalchemy>=2.0.0", "psycopg2-binary>=2.9.0"]
 redis = ["redis>=5.0.0"]
-storage = ["arbiter[postgres,redis]"]  # All storage backends
+storage = ["arbiter-ai[postgres,redis]"]  # All storage backends
+
+# Fact verification plugins
+verifiers = ["tavily-python>=0.5.0"]  # SearchVerifier for web search verification
 
 # Development tools
 dev = [
@@ -98,7 +101,7 @@ dev = [
 ]
 
 # All features
-all = ["arbiter[anthropic,gemini,mistral,cohere,scale,redis,dev]"]
+all = ["arbiter-ai[anthropic,gemini,mistral,cohere,scale,storage,verifiers,dev]"]
 
 [tool.setuptools.packages.find]
 where = ["."]
