@@ -155,7 +155,7 @@ class TestSearchVerifier:
         mock_tavily_client.return_value = mock_client_instance
 
         verifier = SearchVerifier(api_key="test_key")
-        result = await verifier.verify("Capital", context="France geography")
+        await verifier.verify("Capital", context="France geography")
 
         # Verify query includes context
         mock_client_instance.search.assert_called_once()
@@ -399,7 +399,9 @@ class TestKnowledgeBaseVerifier:
 
         # Mock successful API response
         mock_response = MagicMock()
-        mock_response.read.return_value = b'["paris", ["Paris", "Paris, France"], [], []]'
+        mock_response.read.return_value = (
+            b'["paris", ["Paris", "Paris, France"], [], []]'
+        )
         mock_response.__enter__ = MagicMock(return_value=mock_response)
         mock_response.__exit__ = MagicMock(return_value=False)
         mock_urlopen.return_value = mock_response
@@ -440,9 +442,7 @@ class TestKnowledgeBaseVerifier:
 
         # Mock successful API response
         mock_response = MagicMock()
-        mock_response.read.return_value = (
-            b'{"query": {"pages": {"123": {"extract": "Paris is the capital of France"}}}}'
-        )
+        mock_response.read.return_value = b'{"query": {"pages": {"123": {"extract": "Paris is the capital of France"}}}}'
         mock_response.__enter__ = MagicMock(return_value=mock_response)
         mock_response.__exit__ = MagicMock(return_value=False)
         mock_urlopen.return_value = mock_response
@@ -481,7 +481,9 @@ class TestKnowledgeBaseVerifier:
         verifier = KnowledgeBaseVerifier()
 
         # Test snippet extraction with matching sentence
-        content = "Paris is a city. It is the capital of France. The Eiffel Tower is there."
+        content = (
+            "Paris is a city. It is the capital of France. The Eiffel Tower is there."
+        )
         snippet = verifier._extract_snippet("capital of France", content, length=100)
         assert "capital of France" in snippet or "capital" in snippet
 
@@ -582,6 +584,136 @@ class TestFactualityEvaluatorWithVerifiers:
         # Should default to empty list
         evaluator2 = FactualityEvaluator(llm_client=mock_client)
         assert evaluator2.verifiers == []
+
+    @pytest.mark.asyncio
+    async def test_factuality_evaluator_with_verification_integration(
+        self, mock_llm_client, mock_agent
+    ):
+        """Test full integration of FactualityEvaluator with external verifiers."""
+        from arbiter_ai.evaluators.factuality import FactualityResponse
+        from tests.conftest import MockAgentResult
+
+        # Create mock verifiers that will be called
+        mock_verifier = AsyncMock(spec=FactualityVerifier)
+        mock_verifier.verify = AsyncMock(
+            return_value=VerificationResult(
+                is_verified=True,
+                confidence=0.9,
+                evidence=["Web search confirms this"],
+                explanation="Claim verified by search",
+                source="web_search",
+            )
+        )
+
+        # Mock the LLM response with claims
+        mock_llm_response = FactualityResponse(
+            score=0.7,
+            confidence=0.85,
+            explanation="LLM evaluation complete",
+            factual_claims=["Paris is the capital of France"],
+            non_factual_claims=["Paris was founded in 1985"],
+            uncertain_claims=["Paris has 10 million residents"],
+        )
+
+        # Use MockAgentResult to wrap response
+        mock_result = MockAgentResult(mock_llm_response)
+        mock_agent.run = AsyncMock(return_value=mock_result)
+        mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
+
+        evaluator = FactualityEvaluator(
+            llm_client=mock_llm_client, verifiers=[mock_verifier]
+        )
+
+        # Run evaluation - this should trigger verifier calls
+        score = await evaluator.evaluate(
+            output="Paris is the capital of France, founded in 1985",
+            reference="Paris is the capital of France",
+        )
+
+        # Verify verifier was called for each claim
+        assert mock_verifier.verify.called
+        # Should be called 3 times (one for each claim)
+        assert mock_verifier.verify.call_count == 3
+
+        # Verify score combines LLM + verification
+        # Score should be weighted: (0.7 * 0.5) + (0.9 * 0.5) = 0.8
+        assert 0.75 <= score.value <= 0.85
+
+        # Verify metadata includes verification info
+        assert score.metadata["verification_used"] is True
+        assert score.metadata["verification_count"] > 0
+        assert "web_search" in score.metadata["verification_sources"]
+
+    @pytest.mark.asyncio
+    async def test_factuality_evaluator_verification_failures(
+        self, mock_llm_client, mock_agent
+    ):
+        """Test that FactualityEvaluator handles verifier failures gracefully."""
+        from arbiter_ai.evaluators.factuality import FactualityResponse
+        from tests.conftest import MockAgentResult
+
+        # Create mock verifier that fails
+        mock_verifier = AsyncMock(spec=FactualityVerifier)
+        mock_verifier.verify = AsyncMock(side_effect=Exception("Verification failed"))
+
+        # Mock LLM response
+        mock_llm_response = FactualityResponse(
+            score=0.7,
+            confidence=0.85,
+            explanation="LLM evaluation",
+            factual_claims=["Some claim"],
+            non_factual_claims=[],
+            uncertain_claims=[],
+        )
+
+        mock_result = MockAgentResult(mock_llm_response)
+        mock_agent.run = AsyncMock(return_value=mock_result)
+        mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
+
+        evaluator = FactualityEvaluator(
+            llm_client=mock_llm_client, verifiers=[mock_verifier]
+        )
+
+        # Should not crash despite verifier failure
+        score = await evaluator.evaluate(output="Some claim")
+
+        # Should fall back to LLM score only
+        assert score.value == 0.7
+        assert score.metadata["verification_used"] is False
+
+    @pytest.mark.asyncio
+    async def test_factuality_evaluator_no_claims(self, mock_llm_client, mock_agent):
+        """Test FactualityEvaluator when there are no claims to verify."""
+        from arbiter_ai.evaluators.factuality import FactualityResponse
+        from tests.conftest import MockAgentResult
+
+        mock_verifier = AsyncMock(spec=FactualityVerifier)
+
+        # Mock LLM response with no claims
+        mock_llm_response = FactualityResponse(
+            score=0.5,
+            confidence=0.8,
+            explanation="No verifiable claims",
+            factual_claims=[],
+            non_factual_claims=[],
+            uncertain_claims=[],
+        )
+
+        mock_result = MockAgentResult(mock_llm_response)
+        mock_agent.run = AsyncMock(return_value=mock_result)
+        mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
+
+        evaluator = FactualityEvaluator(
+            llm_client=mock_llm_client, verifiers=[mock_verifier]
+        )
+
+        score = await evaluator.evaluate(output="This is opinion, not fact")
+
+        # Verifier should not be called (no claims)
+        assert not mock_verifier.verify.called
+        # Score should be LLM score only
+        assert score.value == 0.5
+        assert score.metadata["verification_used"] is False
 
 
 class TestVerifierIntegration:
