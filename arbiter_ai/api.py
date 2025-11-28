@@ -220,14 +220,11 @@ async def _evaluate_impl(
         # Instantiate evaluator
         evaluator_instances.append(evaluator_class(llm_client=llm_client))
 
-    # Run evaluations and collect scores
-    scores: List[Score] = []
-    metrics: List[Metric] = []
-    all_interactions: List[LLMInteraction] = []
-    evaluator_names: List[str] = []
-    errors: Dict[str, str] = {}
-
-    for evaluator in evaluator_instances:
+    # Run evaluations in parallel for performance
+    async def run_evaluator(
+        evaluator: BaseEvaluator,
+    ) -> tuple[Optional[Score], Optional[Metric], List[LLMInteraction], Optional[str]]:
+        """Run single evaluator and return results or error."""
         # Clear previous interactions
         evaluator.clear_interactions()
 
@@ -237,13 +234,8 @@ async def _evaluate_impl(
             score = await evaluator.evaluate(output, reference, criteria)
             eval_time = time.time() - eval_start
 
-            # Collect results
-            scores.append(score)
-            evaluator_names.append(evaluator.name)
-
             # Collect interactions from this evaluator
             interactions = evaluator.get_interactions()
-            all_interactions.extend(interactions)
 
             # Create metric metadata
             metric = Metric(
@@ -258,7 +250,8 @@ async def _evaluate_impl(
                     "has_criteria": criteria is not None,
                 },
             )
-            metrics.append(metric)
+
+            return (score, metric, interactions, None)
 
         except ArbiterError as e:
             # Track evaluator-specific errors
@@ -266,23 +259,44 @@ async def _evaluate_impl(
             if hasattr(e, "details") and isinstance(e.details, dict):
                 # Extract more detailed error message if available
                 error_msg = e.details.get("error", error_msg)
-            errors[evaluator.name] = error_msg
             logger.warning(
                 f"Evaluator '{evaluator.name}' failed: {error_msg}",
                 extra={"evaluator": evaluator.name, "error_type": type(e).__name__},
             )
-            # Continue with other evaluators
+            return (None, None, [], error_msg)
 
         except Exception as e:
             # Catch any unexpected errors
             error_msg = f"Unexpected error: {str(e)}"
-            errors[evaluator.name] = error_msg
             logger.error(
                 f"Unexpected error in evaluator '{evaluator.name}': {type(e).__name__}: {str(e)}",
                 exc_info=True,
                 extra={"evaluator": evaluator.name, "error_type": type(e).__name__},
             )
-            # Continue with other evaluators
+            return (None, None, [], error_msg)
+
+    # Execute all evaluators in parallel
+    eval_results = await asyncio.gather(
+        *[run_evaluator(e) for e in evaluator_instances]
+    )
+
+    # Collect scores from results
+    scores: List[Score] = []
+    metrics: List[Metric] = []
+    all_interactions: List[LLMInteraction] = []
+    evaluator_names: List[str] = []
+    errors: Dict[str, str] = {}
+
+    for evaluator, (score, metric, interactions, error_msg) in zip(
+        evaluator_instances, eval_results
+    ):
+        if error_msg:
+            errors[evaluator.name] = error_msg
+        else:
+            scores.append(score)  # type: ignore[arg-type]
+            evaluator_names.append(evaluator.name)
+            all_interactions.extend(interactions)
+            metrics.append(metric)  # type: ignore[arg-type]
 
     # Check if we have any successful evaluations
     if not scores and errors:
