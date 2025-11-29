@@ -292,12 +292,14 @@ class TestBatchEvaluateFunction:
             score=0.9,
             confidence=0.85,
             explanation="High similarity",
+            key_similarities=["Same meaning"],  # Need supporting details
         )
 
         criteria_response = CustomCriteriaResponse(
             score=0.85,
             confidence=0.9,
             explanation="Meets criteria",
+            criteria_met=["Accuracy", "Clarity"],  # Need criteria for high confidence
         )
 
         # Alternate between semantic and criteria responses
@@ -539,6 +541,7 @@ class TestBatchEvaluateFunction:
             score=0.85,
             confidence=0.9,
             explanation="Meets criteria",
+            criteria_met=["Accuracy", "Clarity"],  # Need criteria for high confidence
         )
 
         mock_result = MockAgentResult(mock_response)

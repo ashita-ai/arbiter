@@ -690,9 +690,10 @@ class TestFactualityEvaluatorWithVerifiers:
         mock_verifier = AsyncMock(spec=FactualityVerifier)
 
         # Mock LLM response with no claims
+        # Use low confidence to avoid validator requiring claims (validator triggers at confidence > 0.7)
         mock_llm_response = FactualityResponse(
             score=0.5,
-            confidence=0.8,
+            confidence=0.7,  # At threshold - no claims required
             explanation="No verifiable claims",
             factual_claims=[],
             non_factual_claims=[],

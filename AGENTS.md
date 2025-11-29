@@ -1,7 +1,7 @@
 ---
 name: arbiter-agent
 description: Production-grade LLM evaluation framework developer
-last_updated: 2025-01-22
+last_updated: 2025-11-29
 ---
 
 # Arbiter Agent Guide
@@ -239,6 +239,62 @@ If you start, you finish:
 
 All evaluators use PydanticAI for type-safe LLM responses.
 
+### 7. Pydantic v2 Best Practices
+
+All Pydantic models follow strict validation patterns:
+
+**ConfigDict (Required for ALL models)**:
+```python
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+class MyModel(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",              # Reject unknown fields (no backward compatibility)
+        str_strip_whitespace=True,   # Auto-strip whitespace from strings
+        validate_assignment=True,    # Validate on attribute changes
+    )
+```
+
+**Computed Fields** (for serializable properties):
+```python
+from pydantic import computed_field
+
+@computed_field  # type: ignore[prop-decorator]
+@property
+def total_tokens(self) -> int:
+    """Total tokens across input and output."""
+    return self.input_tokens + self.output_tokens
+```
+
+**Field Validators** (validate individual fields):
+```python
+@field_validator("explanation")
+@classmethod
+def validate_explanation_quality(cls, v: str) -> str:
+    """Ensure explanation is meaningful and not empty."""
+    if len(v.strip()) < 1:
+        raise ValueError("Explanation cannot be empty")
+    return v.strip()
+```
+
+**Model Validators** (cross-field validation):
+```python
+@model_validator(mode="after")
+def validate_high_confidence_scores(self) -> "MyModel":
+    """Ensure high-confidence scores have supporting details."""
+    if self.confidence > 0.9:
+        if not self.supporting_details:
+            raise ValueError(
+                "High confidence scores (>0.9) require supporting details"
+            )
+    return self
+```
+
+**Testing with Validators**:
+- Update test data to pass validators, never relax validators to pass tests
+- Use realistic test data (non-empty explanations, supporting details for confident scores)
+- When validators fail, fix the test data not the validator
+
 ---
 
 ## Common Mistakes & How to Avoid Them
@@ -284,6 +340,13 @@ All evaluators use PydanticAI for type-safe LLM responses.
 **Prevention**: Write tests as you code
 **Fix**: Add unit tests until coverage >80%
 **Why It Matters**: Untested evaluators will break
+
+### Mistake 8: Relaxing Validators to Pass Tests
+**Detection**: ValidationError in tests, changing `extra="forbid"` to `extra="ignore"` or removing validators
+**Prevention**: Write realistic test data that would pass production validation
+**Fix**: Update test fixtures with valid data (non-empty explanations, supporting details for high confidence)
+**Why It Matters**: Validators enforce data quality - weakening them hides bugs
+**Rule**: Fix test data, never fix validators
 
 ---
 

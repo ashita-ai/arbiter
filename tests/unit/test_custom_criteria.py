@@ -253,7 +253,7 @@ class TestCustomCriteriaEvaluator:
             score=0.8,
             confidence=0.85,
             explanation="Test explanation",
-            criteria_met=[],
+            criteria_met=["Accuracy"],  # Need criteria for non-extreme scores with confidence > 0.7
             criteria_not_met=[],
         )
 

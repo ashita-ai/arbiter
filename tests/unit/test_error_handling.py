@@ -374,7 +374,7 @@ class TestMultiEvaluatorErrorHandling:
             score=0.9,
             confidence=0.95,
             explanation="Excellent",
-            key_similarities=[],
+            key_similarities=["Same meaning"],  # Need supporting details for high confidence
             key_differences=[],
         )
 
