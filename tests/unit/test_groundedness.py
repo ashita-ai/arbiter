@@ -417,21 +417,23 @@ class TestGroundednessResponse:
         """Test GroundednessResponse default values."""
         response = GroundednessResponse(
             score=0.8,
-            explanation="Test",
+            explanation="Test explanation for groundedness assessment",
+            grounded_statements=["Statement supported by sources"],  # Need statements for non-extreme scores
         )
 
         assert response.score == 0.8
         assert response.confidence == 0.85  # Default
-        assert response.grounded_statements == []
+        assert len(response.grounded_statements) == 1
         assert response.ungrounded_statements == []
         assert response.citations == {}
 
     def test_response_score_validation(self):
         """Test that score must be between 0 and 1."""
-        # Valid scores
-        GroundednessResponse(score=0.0, explanation="test")
-        GroundednessResponse(score=1.0, explanation="test")
-        GroundednessResponse(score=0.5, explanation="test")
+        # Valid scores (extremes don't need statements)
+        GroundednessResponse(score=0.0, explanation="All statements ungrounded")
+        GroundednessResponse(score=1.0, explanation="All statements grounded")
+        # Non-extreme scores need statements
+        GroundednessResponse(score=0.5, explanation="Mixed grounding", grounded_statements=["Grounded statement"])
 
         # Invalid scores
         with pytest.raises(Exception):  # Pydantic validation error
@@ -442,10 +444,11 @@ class TestGroundednessResponse:
 
     def test_response_confidence_validation(self):
         """Test that confidence must be between 0 and 1."""
-        # Valid confidence
-        GroundednessResponse(score=0.8, confidence=0.0, explanation="test")
-        GroundednessResponse(score=0.8, confidence=1.0, explanation="test")
-        GroundednessResponse(score=0.8, confidence=0.75, explanation="test")
+        # Valid confidence (low confidence doesn't need statements)
+        GroundednessResponse(score=0.8, confidence=0.0, explanation="Low confidence assessment")
+        # High confidence needs statements for non-extreme scores
+        GroundednessResponse(score=1.0, confidence=1.0, explanation="Fully grounded")
+        GroundednessResponse(score=0.8, confidence=0.75, explanation="Mostly grounded", grounded_statements=["Grounded"])
 
         # Invalid confidence
         with pytest.raises(Exception):  # Pydantic validation error

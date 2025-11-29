@@ -336,8 +336,8 @@ class TestRedisStorageGetResult:
         storage = RedisStorage(redis_url="redis://localhost:6379")
         storage.client = mock_redis_client
 
-        # Mock stored data
-        result_data = mock_eval_result.model_dump(mode="json")
+        # Mock stored data (exclude computed fields like storage does)
+        result_data = mock_eval_result.model_dump(mode="json", exclude={"interactions": {"__all__": {"total_tokens"}}})
         stored_data = json.dumps({"result": result_data, "metadata": None})
         mock_redis_client.get = AsyncMock(return_value=stored_data)
 
@@ -391,8 +391,8 @@ class TestRedisStorageGetBatchResult:
         storage = RedisStorage(redis_url="redis://localhost:6379")
         storage.client = mock_redis_client
 
-        # Mock stored data
-        result_data = mock_batch_result.model_dump(mode="json")
+        # Mock stored data (exclude computed fields like storage does)
+        result_data = mock_batch_result.model_dump(mode="json", exclude={"results": {"__all__": {"interactions": {"__all__": {"total_tokens"}}}}})
         stored_data = json.dumps({"result": result_data, "metadata": None})
         mock_redis_client.get = AsyncMock(return_value=stored_data)
 

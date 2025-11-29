@@ -388,21 +388,23 @@ class TestFactualityResponse:
         """Test FactualityResponse default values."""
         response = FactualityResponse(
             score=0.8,
-            explanation="Test",
+            explanation="Test explanation of factuality assessment",
+            factual_claims=["Paris is the capital of France"],  # Need claims for non-extreme scores
         )
 
         assert response.score == 0.8
         assert response.confidence == 0.85  # Default
-        assert response.factual_claims == []
+        assert len(response.factual_claims) == 1
         assert response.non_factual_claims == []
         assert response.uncertain_claims == []
 
     def test_response_score_validation(self):
         """Test that score must be between 0 and 1."""
-        # Valid scores
-        FactualityResponse(score=0.0, explanation="test")
-        FactualityResponse(score=1.0, explanation="test")
-        FactualityResponse(score=0.5, explanation="test")
+        # Valid scores (extremes don't need claims)
+        FactualityResponse(score=0.0, explanation="All claims false")
+        FactualityResponse(score=1.0, explanation="All claims true")
+        # Non-extreme scores need claims
+        FactualityResponse(score=0.5, explanation="Mixed claims", factual_claims=["True claim"])
 
         # Invalid scores
         with pytest.raises(Exception):  # Pydantic validation error

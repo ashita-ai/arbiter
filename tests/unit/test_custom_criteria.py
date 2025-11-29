@@ -322,17 +322,21 @@ class TestCustomCriteriaResponse:
         """Test response with defaults."""
         response = CustomCriteriaResponse(
             score=0.8,
-            explanation="Test",
+            explanation="Test explanation for custom criteria assessment",
+            criteria_met=["Criterion was met"],  # Need criteria for non-extreme scores
         )
 
         assert response.confidence == 0.85  # Default
-        assert response.criteria_met == []  # Default
+        assert len(response.criteria_met) == 1
         assert response.criteria_not_met == []  # Default
 
     def test_response_score_validation(self):
         """Test that score must be between 0 and 1."""
-        # Valid score
-        response = CustomCriteriaResponse(score=0.5, explanation="Test")
+        # Valid scores (extremes don't need criteria)
+        response = CustomCriteriaResponse(score=1.0, explanation="All criteria met")
+        assert response.score == 1.0
+        # Non-extreme scores need criteria
+        response = CustomCriteriaResponse(score=0.5, explanation="Some criteria met", criteria_met=["Criterion 1"])
         assert response.score == 0.5
 
         # Invalid scores should raise validation error
