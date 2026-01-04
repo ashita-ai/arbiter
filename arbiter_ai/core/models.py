@@ -80,8 +80,10 @@ class Score(BaseModel):
         validate_assignment=True,
     )
 
-    name: str = Field(..., description="Name of the metric (e.g., 'factuality')")
-    value: float = Field(..., ge=0.0, le=1.0, description="Score value between 0 and 1")
+    name: str = Field(...,
+                      description="Name of the metric (e.g., 'factuality')")
+    value: float = Field(..., ge=0.0, le=1.0,
+                         description="Score value between 0 and 1")
     confidence: Optional[float] = Field(
         None, ge=0.0, le=1.0, description="Confidence in this score"
     )
@@ -129,8 +131,10 @@ class LLMInteraction(BaseModel):
     model: str = Field(..., description="Model used for this call")
 
     # Token tracking (new detailed fields)
-    input_tokens: int = Field(default=0, ge=0, description="Input tokens consumed")
-    output_tokens: int = Field(default=0, ge=0, description="Output tokens generated")
+    input_tokens: int = Field(
+        default=0, ge=0, description="Input tokens consumed")
+    output_tokens: int = Field(
+        default=0, ge=0, description="Output tokens generated")
     cached_tokens: int = Field(
         default=0,
         ge=0,
@@ -147,7 +151,8 @@ class LLMInteraction(BaseModel):
         None, ge=0, description="Actual cost in USD (calculated using LiteLLM pricing)"
     )
 
-    latency: float = Field(..., ge=0, description="Time taken for this call (seconds)")
+    latency: float = Field(..., ge=0,
+                           description="Time taken for this call (seconds)")
     timestamp: datetime = Field(
         default_factory=_utc_now, description="When this call was made"
     )
@@ -188,10 +193,14 @@ class Metric(BaseModel):
     )
 
     name: str = Field(..., description="Name of the metric")
-    evaluator: str = Field(..., description="Name of the evaluator that computed it")
-    model: Optional[str] = Field(None, description="LLM model used (if applicable)")
-    processing_time: float = Field(..., description="Time taken to compute (seconds)")
-    tokens_used: int = Field(default=0, description="Tokens consumed (if applicable)")
+    evaluator: str = Field(...,
+                           description="Name of the evaluator that computed it")
+    model: Optional[str] = Field(
+        None, description="LLM model used (if applicable)")
+    processing_time: float = Field(...,
+                                   description="Time taken to compute (seconds)")
+    tokens_used: int = Field(
+        default=0, description="Tokens consumed (if applicable)")
     metadata: Dict[str, Any] = Field(
         default_factory=dict, description="Additional metadata"
     )
@@ -258,7 +267,8 @@ class EvaluationResult(BaseModel):
         "Failed evaluators are excluded from the calculation. If partial=True, this represents "
         "the average of only the successful evaluations, not all requested evaluators.",
     )
-    passed: bool = Field(..., description="Whether evaluation passed quality threshold")
+    passed: bool = Field(...,
+                         description="Whether evaluation passed quality threshold")
 
     # Error handling
     errors: Dict[str, str] = Field(
@@ -278,7 +288,8 @@ class EvaluationResult(BaseModel):
         default_factory=list, description="Names of evaluators used"
     )
     total_tokens: int = Field(default=0, description="Total tokens used")
-    processing_time: float = Field(..., description="Total processing time in seconds")
+    processing_time: float = Field(...,
+                                   description="Total processing time in seconds")
     timestamp: datetime = Field(
         default_factory=_utc_now, description="When evaluation completed"
     )
@@ -444,6 +455,88 @@ class EvaluationResult(BaseModel):
             },
         }
 
+    def pretty_print(self, file: Optional[Any] = None, verbose: bool = False) -> None:
+        """Print human-readable evaluation summary to terminal.
+
+        Args:
+            file: Output stream (default: sys.stdout). Accepts any object with a write() method.
+            verbose: If True, include detailed information like token breakdown and interactions
+
+        Example:
+            >>> result = await evaluate(output="Paris", reference="Paris is the capital")
+            >>> result.pretty_print()
+            Evaluation Results
+            ==================
+            Overall Score: 0.87 ✓ PASSED
+
+            Scores:
+              • semantic:   0.92 (confidence: 0.88)
+              • factuality: 0.82 (confidence: 0.85)
+
+            Time: 1.23s
+            LLM Calls: 2
+
+            >>> # Redirect to file
+            >>> with open("results.txt", "w") as f:
+            ...     result.pretty_print(file=f)
+        """
+        import sys
+
+        out = file or sys.stdout
+
+        # Header
+        status = "✓ PASSED" if self.passed else "✗ FAILED"
+        print("\nEvaluation Results", file=out)
+        print("==================", file=out)
+        print(f"Overall Score: {self.overall_score:.2f} {status}", file=out)
+
+        # Partial result warning
+        if self.partial:
+            print(f"⚠ PARTIAL RESULT (some evaluators failed)", file=out)
+
+        # Individual scores
+        if self.scores:
+            print(f"\nScores:", file=out)
+            for score in self.scores:
+                conf = (
+                    f" (confidence: {score.confidence:.2f})"
+                    if score.confidence is not None
+                    else ""
+                )
+                print(f"  • {score.name:12s} {score.value:.2f}{conf}", file=out)
+
+        # Errors
+        if self.errors:
+            print(f"\nErrors:", file=out)
+            for evaluator, error in self.errors.items():
+                print(f"  • {evaluator}: {error}", file=out)
+
+        # Basic stats
+        print(f"\nTime: {self.processing_time:.2f}s", file=out)
+        print(f"LLM Calls: {len(self.interactions)}", file=out)
+
+        # Verbose output
+        if verbose:
+            print(f"\nToken Usage:", file=out)
+            total_input = sum(i.input_tokens for i in self.interactions)
+            total_output = sum(i.output_tokens for i in self.interactions)
+            total_cached = sum(i.cached_tokens for i in self.interactions)
+            print(f"  Input:  {total_input:,}", file=out)
+            print(f"  Output: {total_output:,}", file=out)
+            if total_cached > 0:
+                print(f"  Cached: {total_cached:,}", file=out)
+            print(f"  Total:  {total_input + total_output:,}", file=out)
+
+            if self.interactions:
+                print(f"\nInteractions:", file=out)
+                for i, interaction in enumerate(self.interactions, 1):
+                    print(
+                        f"  {i}. {interaction.purpose} ({interaction.model}): "
+                        f"{interaction.input_tokens}→{interaction.output_tokens} tokens, "
+                        f"{interaction.latency:.2f}s",
+                        file=out,
+                    )
+
 
 class ComparisonResult(BaseModel):
     """Result of comparing two LLM outputs.
@@ -506,7 +599,8 @@ class ComparisonResult(BaseModel):
 
     # Metadata
     total_tokens: int = Field(default=0, description="Total tokens used")
-    processing_time: float = Field(..., description="Total processing time in seconds")
+    processing_time: float = Field(...,
+                                   description="Total processing time in seconds")
     timestamp: datetime = Field(
         default_factory=_utc_now, description="When comparison completed"
     )
@@ -576,6 +670,78 @@ class ComparisonResult(BaseModel):
 
         return total
 
+    def pretty_print(self, file: Optional[Any] = None, verbose: bool = False) -> None:
+        """Print human-readable comparison summary to terminal.
+
+        Args:
+            file: Output stream (default: sys.stdout). Accepts any object with a write() method.
+            verbose: If True, include detailed aspect scores and reasoning
+
+        Example:
+            >>> result = await compare(output_a="Response A", output_b="Response B")
+            >>> result.pretty_print()
+            Comparison Results
+            ==================
+            Winner: output_a ✓
+            Confidence: 0.85
+
+            Reasoning:
+            Output A is more accurate and provides better context.
+
+            Time: 1.45s
+            LLM Calls: 1
+
+            >>> # With verbose output
+            >>> result.pretty_print(verbose=True)
+        """
+        import sys
+
+        out = file or sys.stdout
+
+        # Header
+        winner_symbol = "✓" if self.winner != "tie" else "="
+        winner_display = (
+            self.winner.replace("_", " ").title()
+            if self.winner != "tie"
+            else "Tie"
+        )
+        print("\nComparison Results", file=out)
+        print("==================", file=out)
+        print(f"Winner: {winner_display} {winner_symbol}", file=out)
+        print(f"Confidence: {self.confidence:.2f}", file=out)
+
+        # Reasoning (always shown, but truncated if not verbose)
+        print(f"\nReasoning:", file=out)
+        if verbose or len(self.reasoning) <= 200:
+            print(self.reasoning, file=out)
+        else:
+            # Truncate long reasoning in non-verbose mode
+            print(f"{self.reasoning[:200]}...", file=out)
+
+        # Aspect scores
+        if self.aspect_scores and verbose:
+            print(f"\nAspect Scores:", file=out)
+            for aspect, scores in self.aspect_scores.items():
+                a_score = scores.get("output_a", 0.0)
+                b_score = scores.get("output_b", 0.0)
+                print(
+                    f"  • {aspect:12s} A: {a_score:.2f}  B: {b_score:.2f}",
+                    file=out,
+                )
+
+        # Basic stats
+        print(f"\nTime: {self.processing_time:.2f}s", file=out)
+        print(f"LLM Calls: {len(self.interactions)}", file=out)
+
+        # Verbose token breakdown
+        if verbose and self.interactions:
+            print(f"\nToken Usage:", file=out)
+            total_input = sum(i.input_tokens for i in self.interactions)
+            total_output = sum(i.output_tokens for i in self.interactions)
+            print(f"  Input:  {total_input:,}", file=out)
+            print(f"  Output: {total_output:,}", file=out)
+            print(f"  Total:  {total_input + total_output:,}", file=out)
+
 
 class BatchEvaluationResult(BaseModel):
     """Result of batch evaluation operation.
@@ -624,11 +790,13 @@ class BatchEvaluationResult(BaseModel):
 
     # Statistics
     total_items: int = Field(..., description="Total number of items in batch")
-    successful_items: int = Field(..., description="Number of successful evaluations")
+    successful_items: int = Field(...,
+                                  description="Number of successful evaluations")
     failed_items: int = Field(..., description="Number of failed evaluations")
 
     # Timing and tokens
-    processing_time: float = Field(..., description="Total processing time in seconds")
+    processing_time: float = Field(...,
+                                   description="Total processing time in seconds")
     total_tokens: int = Field(
         default=0, description="Total tokens across all evaluations"
     )
@@ -754,14 +922,16 @@ class BatchEvaluationResult(BaseModel):
         for breakdown in breakdowns:
             total += breakdown["total"]
             for evaluator, cost in breakdown["by_evaluator"].items():
-                by_evaluator[evaluator] = by_evaluator.get(evaluator, 0.0) + cost
+                by_evaluator[evaluator] = by_evaluator.get(
+                    evaluator, 0.0) + cost
             for model, cost in breakdown["by_model"].items():
                 by_model[model] = by_model.get(model, 0.0) + cost
 
         return {
             "total": round(total, 6),
             "per_item_average": (
-                round(total / self.total_items, 6) if self.total_items > 0 else 0.0
+                round(total / self.total_items,
+                      6) if self.total_items > 0 else 0.0
             ),
             "by_evaluator": {k: round(v, 6) for k, v in by_evaluator.items()},
             "by_model": {k: round(v, 6) for k, v in by_model.items()},
@@ -771,3 +941,124 @@ class BatchEvaluationResult(BaseModel):
                 else 0.0
             ),
         }
+
+    def pretty_print(self, file: Optional[Any] = None, verbose: bool = False) -> None:
+        """Print human-readable batch evaluation summary to terminal.
+
+        Args:
+            file: Output stream (default: sys.stdout). Accepts any object with a write() method.
+            verbose: If True, include per-item results and detailed statistics
+
+        Example:
+            >>> result = await batch_evaluate(items=[...], evaluators=["semantic"])
+            >>> result.pretty_print()
+            Batch Evaluation Results
+            ========================
+            Success: 95/100 (95.0%)
+            Failed:  5/100
+
+            Statistics:
+              Mean:   0.85
+              Std:    0.12
+              Median: 0.87
+              Range:  0.45 - 0.98
+
+            Total Time: 45.2s
+            Total Tokens: 125,430
+
+            >>> # With verbose output showing individual results
+            >>> result.pretty_print(verbose=True)
+        """
+        import sys
+
+        out = file or sys.stdout
+
+        # Header
+        print("\nBatch Evaluation Results", file=out)
+        print("========================", file=out)
+        success_pct = (
+            (self.successful_items / self.total_items * 100)
+            if self.total_items > 0
+            else 0.0
+        )
+        print(
+            f"Success: {self.successful_items}/{self.total_items} ({success_pct:.1f}%)",
+            file=out,
+        )
+        if self.failed_items > 0:
+            print(f"Failed:  {self.failed_items}/{self.total_items}", file=out)
+
+        # Statistics from successful results
+        successful_results = [r for r in self.results if r is not None]
+        if successful_results:
+            scores = [r.overall_score for r in successful_results]
+            mean_score = sum(scores) / len(scores)
+
+            # Calculate std dev
+            variance = sum((s - mean_score) ** 2 for s in scores) / len(scores)
+            std_dev = variance**0.5
+
+            # Calculate median
+            sorted_scores = sorted(scores)
+            n = len(sorted_scores)
+            if n % 2 == 0:
+                median = (sorted_scores[n // 2 - 1] +
+                          sorted_scores[n // 2]) / 2
+            else:
+                median = sorted_scores[n // 2]
+
+            print(f"\nStatistics:", file=out)
+            print(f"  Mean:   {mean_score:.2f}", file=out)
+            print(f"  Std:    {std_dev:.2f}", file=out)
+            print(f"  Median: {median:.2f}", file=out)
+            print(
+                f"  Range:  {min(scores):.2f} - {max(scores):.2f}",
+                file=out,
+            )
+
+            # Pass rate (assuming threshold of 0.7 if any result has passed field)
+            if successful_results and hasattr(successful_results[0], "passed"):
+                passed_count = sum(1 for r in successful_results if r.passed)
+                pass_rate = (passed_count / len(successful_results)) * 100
+                print(f"\nPass Rate: {pass_rate:.1f}%", file=out)
+
+        # Overall stats
+        print(f"\nTotal Time: {self.processing_time:.1f}s", file=out)
+        if self.total_tokens > 0:
+            print(f"Total Tokens: {self.total_tokens:,}", file=out)
+
+        # Verbose: show individual results
+        if verbose and successful_results:
+            print(f"\nIndividual Results:", file=out)
+            for i, result in enumerate(self.results):
+                if result is not None:
+                    status = "✓" if result.passed else "✗"
+                    print(
+                        f"  [{i:3d}] {status} Score: {result.overall_score:.2f} "
+                        f"({result.processing_time:.2f}s)",
+                        file=out,
+                    )
+                else:
+                    error = self.get_error(i)
+                    error_msg = (
+                        error["error"] if error else "Unknown error"
+                    )
+                    # Truncate long error messages
+                    if len(error_msg) > 50:
+                        error_msg = error_msg[:50] + "..."
+                    print(f"  [{i:3d}] ✗ Failed: {error_msg}", file=out)
+
+        # Show errors summary if not verbose
+        elif self.errors and not verbose:
+            print(f"\nErrors: (use verbose=True for details)", file=out)
+            # Group errors by type
+            error_types: Dict[str, int] = {}
+            for error in self.errors:
+                error_msg = str(error.get("error", "Unknown"))
+                # Extract first line or first 50 chars
+                error_key = error_msg.split("\n")[0][:50]
+                error_types[error_key] = error_types.get(error_key, 0) + 1
+
+            # Show top 5
+            for error_type, count in list(error_types.items())[:5]:
+                print(f"  • {error_type}: {count}x", file=out)
