@@ -4,6 +4,7 @@ Thank you for your interest in contributing to Arbiter! This document provides g
 
 ## Table of Contents
 
+- [First-Time Contributors](#first-time-contributors)
 - [Code of Conduct](#code-of-conduct)
 - [Getting Started](#getting-started)
 - [Development Setup](#development-setup)
@@ -12,6 +13,24 @@ Thank you for your interest in contributing to Arbiter! This document provides g
 - [Code Quality](#code-quality)
 - [Pull Request Process](#pull-request-process)
 - [Issue Guidelines](#issue-guidelines)
+
+## First-Time Contributors
+
+If this is your first open-source contribution — welcome! 🎉
+
+You do not need to understand the entire codebase before contributing.
+Small contributions are appreciated, including:
+- Documentation improvements
+- Fixing typos
+- Adding examples
+- Improving comments
+
+If you are unsure where to start, look for issues labeled
+`good first issue` or `documentation`.
+
+Feel free to ask questions by opening an issue — we are happy to help.
+
+
 
 ## Code of Conduct
 
