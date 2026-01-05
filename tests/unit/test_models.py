@@ -77,6 +77,68 @@ class TestScore:
         assert score.metadata == {}
         assert isinstance(score.metadata, dict)
 
+    def test_score_comparison_operators(self):
+        """Test less than, greater than, and equality operators."""
+        s1 = Score(name="metric", value=0.4)
+        s2 = Score(name="metric", value=0.7)
+        s3 = Score(name="different", value=0.4)
+
+        assert s1 < s2
+        assert s2 > s1
+        assert s1 <= s2
+        assert s1 >= s3
+        assert s1 == s3
+
+        # Testing False operations
+        assert (s1 > s2) is False
+        assert (s2 < s3) is False
+        assert (s2 == s3) is False
+
+    def test_score_hash(self):
+        """Test score hashing for use in sets/dicts."""
+        s1 = Score(name="metric", value=0.4)
+        s2 = Score(name="metric", value=0.4)
+
+        assert hash(s1) == hash(s2)
+        assert len({s1, s2}) == 1
+
+    def test_score_meets_threshold(self):
+        """Test score value meets or exceeds threshold."""
+        score = Score(name="metric", value=0.7)
+
+        assert score.meets_threshold(0.5) is True
+        assert score.meets_threshold(0.9) is False
+
+    def test_score_is_close_to(self):
+        """Test value proximity within tolerance."""
+        s1 = Score(name="test", value=0.80)
+        s2 = Score(name="test", value=0.84)
+
+        assert s1.is_close_to(s2, tolerance=0.05) is True
+        assert s1.is_close_to(s2, tolerance=0.01) is False
+
+    def test_score_confidence_levels(self):
+        """Test high/low confidence classification."""
+        high_conf = Score(name="test", value=0.5, confidence=0.9)
+        low_conf = Score(name="test", value=0.5, confidence=0.4)
+        no_conf = Score(name="test", value=0.5, confidence=None)
+        assert high_conf.is_high_confidence() is True
+        assert low_conf.is_low_confidence() is True
+        assert no_conf.is_low_confidence() is True
+        # Test is_high_confidence returns False when confidence is None
+        assert no_conf.is_high_confidence() is False
+
+    def test_score_comparison_with_non_score(self):
+        """Test comparison operators return NotImplemented for non-Score types."""
+        score = Score(name="test", value=0.5)
+
+        # These comparisons should return NotImplemented (not raise errors)
+        assert score.__lt__("not a score") is NotImplemented
+        assert score.__le__(42) is NotImplemented
+        assert score.__gt__(3.14) is NotImplemented
+        assert score.__ge__(None) is NotImplemented
+        assert score.__eq__("string") is NotImplemented
+
 
 class TestLLMInteraction:
     """Test suite for LLMInteraction model."""

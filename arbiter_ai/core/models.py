@@ -92,6 +92,60 @@ class Score(BaseModel):
         default_factory=dict, description="Additional metadata about the score"
     )
 
+    def __lt__(self, other: object) -> bool:
+        """Less than comparison by value."""
+        if not isinstance(other, Score):
+            return NotImplemented
+        return self.value < other.value
+
+    def __le__(self, other: object) -> bool:
+        """Less than or equal comparison by value."""
+        if not isinstance(other, Score):
+            return NotImplemented
+        return self.value <= other.value
+
+    def __gt__(self, other: object) -> bool:
+        """Greater than comparison by value."""
+        if not isinstance(other, Score):
+            return NotImplemented
+        return self.value > other.value
+
+    def __ge__(self, other: object) -> bool:
+        """Greater than or equal comparison by value."""
+        if not isinstance(other, Score):
+            return NotImplemented
+        return self.value >= other.value
+
+    def __eq__(self, other: object) -> bool:
+        """Equality comparison by value (ignores name)."""
+        if not isinstance(other, Score):
+            return NotImplemented
+        return self.value == other.value
+
+    def __hash__(self) -> int:
+        """Hash by name and value for use in sets/dicts."""
+        return hash((self.name, self.value))
+
+    def meets_threshold(self, threshold: float) -> bool:
+        """Check if score meets or exceeds threshold."""
+        return self.value >= threshold
+
+    def is_close_to(self, other: "Score", tolerance: float = 0.05) -> bool:
+        """Check if score is within tolerance of another score."""
+        return abs(self.value - other.value) <= tolerance
+
+    def is_high_confidence(self, threshold: float = 0.8) -> bool:
+        """Check if confidence exceeds threshold."""
+        if self.confidence is None:
+            return False
+        return self.confidence >= threshold
+
+    def is_low_confidence(self, threshold: float = 0.5) -> bool:
+        """Check if confidence is below threshold."""
+        if self.confidence is None:
+            return True  # No confidence = low confidence
+        return self.confidence < threshold
+
 
 class LLMInteraction(BaseModel):
     """Record of a single LLM API call during evaluation.
