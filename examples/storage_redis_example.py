@@ -59,7 +59,7 @@ async def main() -> None:
         print("\n2. Caching result in Redis...")
         result_id = await storage.save_result(result)
         print(f"   Cached with ID: {result_id}")
-        print(f"   TTL: 1 hour")
+        print("   TTL: 1 hour")
         print(f"   Redis key: arbiter:result:{result_id}")
 
         # 3. Retrieve from cache (fast!)
@@ -67,7 +67,7 @@ async def main() -> None:
         cached = await storage.get_result(result_id)
 
         if cached:
-            print(f"   ✓ Cache hit!")
+            print("   ✓ Cache hit!")
             print(f"   Score: {cached.overall_score:.2f}")
             print(f"   Match: {cached.overall_score == result.overall_score}")
         else:
@@ -79,14 +79,14 @@ async def main() -> None:
 
         async with short_ttl_storage:
             temp_id = await short_ttl_storage.save_result(result)
-            print(f"   Cached with 2-second TTL")
+            print("   Cached with 2-second TTL")
 
             # Immediately retrieve (should work)
             immediate = await short_ttl_storage.get_result(temp_id)
             print(f"   Immediate retrieval: {'✓ Hit' if immediate else '✗ Miss'}")
 
             # Wait 3 seconds
-            print(f"   Waiting 3 seconds...")
+            print("   Waiting 3 seconds...")
             await asyncio.sleep(3)
 
             # Try to retrieve (should be expired)
@@ -100,8 +100,14 @@ async def main() -> None:
         from arbiter_ai import batch_evaluate
 
         items = [
-            {"output": "Tokyo is Japan's capital", "reference": "Capital of Japan is Tokyo"},
-            {"output": "Berlin is Germany's capital", "reference": "Capital of Germany is Berlin"},
+            {
+                "output": "Tokyo is Japan's capital",
+                "reference": "Capital of Japan is Tokyo",
+            },
+            {
+                "output": "Berlin is Germany's capital",
+                "reference": "Capital of Germany is Berlin",
+            },
         ]
 
         batch_result = await batch_evaluate(
@@ -114,9 +120,11 @@ async def main() -> None:
         # Retrieve batch
         cached_batch = await storage.get_batch_result(batch_id)
         if cached_batch:
-            print(f"   ✓ Batch cache hit")
+            print("   ✓ Batch cache hit")
             print(f"   Items: {cached_batch.total_items}")
-            print(f"   Success rate: {cached_batch.successful_items}/{cached_batch.total_items}")
+            print(
+                f"   Success rate: {cached_batch.successful_items}/{cached_batch.total_items}"
+            )
 
     print("\n" + "=" * 60)
     print("Redis Caching Example Complete!")

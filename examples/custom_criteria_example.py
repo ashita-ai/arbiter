@@ -16,12 +16,12 @@ Run with:
     python examples/custom_criteria_example.py
 """
 
-from dotenv import load_dotenv
-
 import asyncio
 import os
 
-from arbiter_ai import evaluate, CustomCriteriaEvaluator
+from dotenv import load_dotenv
+
+from arbiter_ai import CustomCriteriaEvaluator, evaluate
 from arbiter_ai.core import LLMManager
 
 
@@ -65,13 +65,15 @@ their healthcare providers to develop a personalized treatment plan.""",
         if score.metadata.get("criteria_met"):
             print(f"    ✅ Criteria Met: {', '.join(score.metadata['criteria_met'])}")
         if score.metadata.get("criteria_not_met"):
-            print(f"    ❌ Criteria Not Met: {', '.join(score.metadata['criteria_not_met'])}")
+            print(
+                f"    ❌ Criteria Not Met: {', '.join(score.metadata['criteria_not_met'])}"
+            )
         if score.explanation:
             print(f"    Explanation: {score.explanation[:150]}...")
 
     # Cost tracking
     breakdown1 = await result1.cost_breakdown()
-    print(f"\n💰 Cost Analysis:")
+    print("\n💰 Cost Analysis:")
     print(f"  Total Cost: ${breakdown1['total']:.6f}")
     print(f"  Tokens: {breakdown1['token_breakdown']['total_tokens']:,}")
 
@@ -101,7 +103,9 @@ The system supports SAML 2.0 and OAuth 2.0 for single sign-on capabilities.""",
         if score.metadata.get("criteria_met"):
             print(f"    ✅ Criteria Met: {', '.join(score.metadata['criteria_met'])}")
         if score.metadata.get("criteria_not_met"):
-            print(f"    ❌ Criteria Not Met: {', '.join(score.metadata['criteria_not_met'])}")
+            print(
+                f"    ❌ Criteria Not Met: {', '.join(score.metadata['criteria_not_met'])}"
+            )
         if score.explanation:
             print(f"    Explanation: {score.explanation[:150]}...")
 
@@ -172,11 +176,13 @@ It's like, the best thing ever and everyone loves it. Get yours now!!!""",
     # Calculate total session cost
     cost2 = await result2.total_llm_cost()
     cost3 = await result3.total_llm_cost()
-    total_cost = breakdown1['total'] + cost2 + cost3
-    total_tokens_all = result1.total_tokens + result2.total_tokens + result3.total_tokens
+    total_cost = breakdown1["total"] + cost2 + cost3
+    total_tokens_all = (
+        result1.total_tokens + result2.total_tokens + result3.total_tokens
+    )
 
-    print(f"\n💰 Total Session Cost:")
-    print(f"  Total Evaluations: 4")
+    print("\n💰 Total Session Cost:")
+    print("  Total Evaluations: 4")
     print(f"  Total Cost: ${total_cost:.6f}")
     print(f"  Total Tokens: {total_tokens_all:,}")
     print(f"  Average per Evaluation: ${total_cost / 4:.6f}")

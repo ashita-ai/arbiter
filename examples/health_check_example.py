@@ -28,7 +28,6 @@ from typing import Optional
 from dotenv import load_dotenv
 
 from arbiter_ai import evaluate
-from arbiter_ai.core import LLMManager
 from arbiter_ai.core.exceptions import ArbiterError, ModelProviderError
 
 
@@ -223,7 +222,7 @@ async def main() -> None:
         )
 
         cost = await result.total_llm_cost()
-        print(f"\n✅ Evaluation complete:")
+        print("\n✅ Evaluation complete:")
         print(f"   Model: {fastest.model}")
         print(f"   Score: {result.overall_score:.2f}")
         print(f"   Cost: ${cost:.6f}")

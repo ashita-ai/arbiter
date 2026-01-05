@@ -17,14 +17,14 @@ Run with:
     python examples/middleware_usage.py
 """
 
-from dotenv import load_dotenv
-
 import asyncio
 import logging
 import os
 
+from dotenv import load_dotenv
+
 from arbiter_ai import evaluate
-from arbiter_ai.core import LLMManager, MiddlewarePipeline
+from arbiter_ai.core import MiddlewarePipeline
 from arbiter_ai.core.middleware import (
     CachingMiddleware,
     LoggingMiddleware,
@@ -72,7 +72,7 @@ async def main():
 
     # Cost tracking
     breakdown1 = await result1.cost_breakdown()
-    print(f"\n💰 Cost Analysis:")
+    print("\n💰 Cost Analysis:")
     print(f"  Total Cost: ${breakdown1['total']:.6f}")
     print(f"  Tokens: {breakdown1['token_breakdown']['total_tokens']:,}")
 
@@ -85,8 +85,8 @@ async def main():
     # Run multiple evaluations to accumulate metrics
     for i in range(3):
         await evaluate(
-            output=f"Test output {i+1}",
-            reference=f"Test reference {i+1}",
+            output=f"Test output {i + 1}",
+            reference=f"Test reference {i + 1}",
             evaluators=["semantic"],
             middleware=metrics_pipeline,
             model="gpt-4o-mini",
@@ -143,7 +143,7 @@ async def main():
     print(f"  Time: {time2:.3f}s")
 
     if time2 < time1 * 0.5:  # Cache should be much faster
-        print(f"\n  ✅ Cache hit! {time1/time2:.1f}x faster")
+        print(f"\n  ✅ Cache hit! {time1 / time2:.1f}x faster")
     else:
         print(f"\n  ⚠️ Cache may not have worked (times: {time1:.3f}s vs {time2:.3f}s)")
 
@@ -169,7 +169,7 @@ async def main():
         model="gpt-4o-mini",
     )
 
-    print(f"\n📊 Results:")
+    print("\n📊 Results:")
     print(f"  Score: {result3.overall_score:.3f}")
     print(f"  Passed: {'✅' if result3.passed else '❌'}")
 
@@ -177,7 +177,7 @@ async def main():
     metrics_mw = production_pipeline.get_middleware(MetricsMiddleware)
     if metrics_mw:
         metrics = metrics_mw.get_metrics()
-        print(f"\n  Metrics:")
+        print("\n  Metrics:")
         print(f"    Total Requests: {metrics.get('total_requests', 0)}")
         print(f"    Cache Hits: {metrics.get('cache_hits', 0)}")
         print(f"    Cache Misses: {metrics.get('cache_misses', 0)}")
@@ -230,18 +230,24 @@ async def main():
     cost3 = await result2b.total_llm_cost()
     cost4 = await result3.total_llm_cost()
     cost5 = await result4.total_llm_cost()
-    total_cost = breakdown1['total'] + cost2 + cost3 + cost4 + cost5
-    total_tokens = result1.total_tokens + result2a.total_tokens + result2b.total_tokens + result3.total_tokens + result4.total_tokens
+    total_cost = breakdown1["total"] + cost2 + cost3 + cost4 + cost5
+    total_tokens = (
+        result1.total_tokens
+        + result2a.total_tokens
+        + result2b.total_tokens
+        + result3.total_tokens
+        + result4.total_tokens
+    )
 
     # Summary
     print("\n\n" + "=" * 60)
     print("✅ Examples Complete!")
 
-    print(f"\n💰 Total Session Cost:")
-    print(f"  Total Evaluations: 5")
+    print("\n💰 Total Session Cost:")
+    print("  Total Evaluations: 5")
     print(f"  Total Cost: ${total_cost:.6f}")
     print(f"  Total Tokens: {total_tokens:,}")
-    print(f"  Average per Evaluation: ${total_cost/5:.6f}")
+    print(f"  Average per Evaluation: ${total_cost / 5:.6f}")
 
     print("\n📚 Key Features Demonstrated:")
     print("  • LoggingMiddleware - Log all evaluation operations")
@@ -264,4 +270,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-

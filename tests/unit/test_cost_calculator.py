@@ -504,9 +504,9 @@ class TestLiteLLMIntegration:
         common_models = ["gpt-4o-mini", "gpt-4o", "claude-sonnet-4-5-20250929"]
 
         for model in common_models:
-            assert (
-                model in litellm.model_cost
-            ), f"Expected {model} in litellm.model_cost"
+            assert model in litellm.model_cost, (
+                f"Expected {model} in litellm.model_cost"
+            )
             assert litellm.model_cost[model].get("input_cost_per_token") is not None
 
     def test_real_calculator_loads_many_models(self):

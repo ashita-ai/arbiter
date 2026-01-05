@@ -46,14 +46,14 @@ async def example_1_detect_hallucination():
     print(f"Reference: {reference}")
     print(f"\nFactuality Score: {result.overall_score:.2f}")
     print(f"Passed: {result.passed}")
-    print(f"\nScore Details:")
+    print("\nScore Details:")
     score = result.scores[0]
     print(f"  Confidence: {score.confidence:.2f}")
     print(f"  Factual Claims: {score.metadata.get('factual_count', 0)}")
     print(f"  Non-Factual Claims: {score.metadata.get('non_factual_count', 0)}")
 
     if score.metadata.get("non_factual_claims"):
-        print(f"\n  Hallucinated/Incorrect:")
+        print("\n  Hallucinated/Incorrect:")
         for claim in score.metadata["non_factual_claims"]:
             print(f"    - {claim}")
 
@@ -65,7 +65,9 @@ async def example_2_standalone_factchecking():
     print("=" * 60)
 
     # Scientific claim to verify using general knowledge
-    output = "Water boils at 100°C (212°F) at sea level under standard atmospheric pressure"
+    output = (
+        "Water boils at 100°C (212°F) at sea level under standard atmospheric pressure"
+    )
 
     result = await evaluate(
         output=output,
@@ -75,13 +77,13 @@ async def example_2_standalone_factchecking():
 
     print(f"\nOutput: {output}")
     print(f"\nFactuality Score: {result.overall_score:.2f}")
-    print(f"\nScore Details:")
+    print("\nScore Details:")
     score = result.scores[0]
     print(f"  Confidence: {score.confidence:.2f}")
     print(f"  Factual Claims: {score.metadata.get('factual_count', 0)}")
 
     if score.metadata.get("factual_claims"):
-        print(f"\n  Verified Claims:")
+        print("\n  Verified Claims:")
         for claim in score.metadata["factual_claims"]:
             print(f"    - {claim}")
 
@@ -116,7 +118,7 @@ Python 3.0, a major revision, was released on December 3, 2008."""
     print(f"Grounded in Source: {result.passed}")
 
     score = result.scores[0]
-    print(f"\nScore Details:")
+    print("\nScore Details:")
     print(f"  Factual (Grounded): {score.metadata.get('factual_count', 0)}")
     print(f"  Non-Factual (Hallucinated): {score.metadata.get('non_factual_count', 0)}")
     print(f"  Uncertain: {score.metadata.get('uncertain_count', 0)}")
@@ -146,16 +148,16 @@ async def example_4_specific_criteria():
     print(f"\nFactuality Score: {result.overall_score:.2f}")
 
     score = result.scores[0]
-    print(f"\nScore Details:")
+    print("\nScore Details:")
     print(f"  Confidence: {score.confidence:.2f}")
 
     if score.metadata.get("factual_claims"):
-        print(f"\n  Verified Medical Facts:")
+        print("\n  Verified Medical Facts:")
         for claim in score.metadata["factual_claims"]:
             print(f"    ✓ {claim}")
 
     if score.metadata.get("non_factual_claims"):
-        print(f"\n  Questionable/Incorrect:")
+        print("\n  Questionable/Incorrect:")
         for claim in score.metadata["non_factual_claims"]:
             print(f"    ✗ {claim}")
 
@@ -188,7 +190,7 @@ Contrary to popular belief, it is not visible from the Moon with the naked eye."
     print(f"\nFactuality Score: {result.overall_score:.2f}")
 
     score = result.scores[0]
-    print(f"\nDetected Issues:")
+    print("\nDetected Issues:")
 
     if score.metadata.get("non_factual_claims"):
         print(f"  Hallucinations Found: {score.metadata['non_factual_count']}")
@@ -203,7 +205,9 @@ async def example_6_cost_tracking():
     print("=" * 60)
 
     output = "Claude AI was created by Anthropic and released in 2023"
-    reference = "Claude is an AI assistant created by Anthropic, first released in March 2023"
+    reference = (
+        "Claude is an AI assistant created by Anthropic, first released in March 2023"
+    )
 
     result = await evaluate(
         output=output,
@@ -213,14 +217,14 @@ async def example_6_cost_tracking():
     )
 
     print(f"\nFactuality Score: {result.overall_score:.2f}")
-    print(f"\nLLM Interaction Details:")
+    print("\nLLM Interaction Details:")
     print(f"  Total Tokens: {result.total_tokens:,}")
     print(f"  Processing Time: {result.processing_time:.2f}s")
     print(f"  LLM Calls Made: {len(result.interactions)}")
 
     if result.interactions:
         interaction = result.interactions[0]
-        print(f"\nFirst Interaction:")
+        print("\nFirst Interaction:")
         print(f"  Model: {interaction.model}")
         print(f"  Tokens: {interaction.tokens_used}")
         print(f"  Latency: {interaction.latency:.2f}s")

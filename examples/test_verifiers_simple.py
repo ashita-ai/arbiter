@@ -18,7 +18,7 @@ async def test_citation_verifier():
         claim="Paris is the capital of France",
         context="Paris is the capital of France and its largest city",
     )
-    print(f"\nTest 1 - Direct Match:")
+    print("\nTest 1 - Direct Match:")
     print(f"  Verified: {result.is_verified}")
     print(f"  Confidence: {result.confidence:.2f}")
     print(f"  Explanation: {result.explanation[:80]}...")
@@ -28,7 +28,7 @@ async def test_citation_verifier():
         claim="The Eiffel Tower is in Paris",
         context="Paris has the famous Eiffel Tower landmark",
     )
-    print(f"\nTest 2 - Semantic Match:")
+    print("\nTest 2 - Semantic Match:")
     print(f"  Verified: {result.is_verified}")
     print(f"  Confidence: {result.confidence:.2f}")
     print(f"  Explanation: {result.explanation[:80]}...")
@@ -38,7 +38,7 @@ async def test_citation_verifier():
         claim="The moon is made of cheese",
         context="The Earth has a rocky surface with water and continents",
     )
-    print(f"\nTest 3 - No Match:")
+    print("\nTest 3 - No Match:")
     print(f"  Verified: {result.is_verified}")
     print(f"  Confidence: {result.confidence:.2f}")
     print(f"  Explanation: {result.explanation[:80]}...")
@@ -54,7 +54,7 @@ async def test_knowledge_base_verifier():
 
     # Test 1: Well-known fact
     result = await verifier.verify(claim="Paris is the capital of France")
-    print(f"\nTest 1 - Well-known Fact:")
+    print("\nTest 1 - Well-known Fact:")
     print(f"  Verified: {result.is_verified}")
     print(f"  Confidence: {result.confidence:.2f}")
     print(f"  Source: {result.source}")
@@ -62,10 +62,8 @@ async def test_knowledge_base_verifier():
         print(f"  Evidence snippet: {result.evidence[0][:100]}...")
 
     # Test 2: Historical fact
-    result = await verifier.verify(
-        claim="World War II ended in 1945"
-    )
-    print(f"\nTest 2 - Historical Fact:")
+    result = await verifier.verify(claim="World War II ended in 1945")
+    print("\nTest 2 - Historical Fact:")
     print(f"  Verified: {result.is_verified}")
     print(f"  Confidence: {result.confidence:.2f}")
     print(f"  Source: {result.source}")

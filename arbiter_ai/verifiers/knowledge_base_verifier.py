@@ -110,7 +110,7 @@ class KnowledgeBaseVerifier(FactualityVerifier):
             if avg_similarity >= 0.7:
                 confidence = 0.9
                 is_verified = True
-                explanation = f"Claim strongly supported by Wikipedia articles: {', '.join(search_results[:self.max_results])}"
+                explanation = f"Claim strongly supported by Wikipedia articles: {', '.join(search_results[: self.max_results])}"
             elif avg_similarity >= 0.5:
                 confidence = 0.7
                 is_verified = True

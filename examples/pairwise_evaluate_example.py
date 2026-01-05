@@ -56,13 +56,13 @@ async def main():
         criteria="completeness, accuracy, clarity",
     )
 
-    print(f"Output: Paris is the capital of France. [detailed version]")
-    print(f"Reference: Paris is the capital of France. [basic version]")
-    print(f"\n📊 Evaluation Results:")
+    print("Output: Paris is the capital of France. [detailed version]")
+    print("Reference: Paris is the capital of France. [basic version]")
+    print("\n📊 Evaluation Results:")
     print(f"  Score: {score1.value:.3f} (high = output better)")
     print(f"  Confidence: {score1.confidence:.3f}")
     print(f"  Winner: {score1.metadata.get('winner')}")
-    print(f"\n  Explanation:")
+    print("\n  Explanation:")
     explanation_lines = score1.explanation.split("\n")
     for line in explanation_lines[:3]:  # Show first 3 lines
         print(f"    {line}")
@@ -77,9 +77,9 @@ async def main():
         criteria="completeness, specificity, informativeness",
     )
 
-    print(f"Output: France has a capital. [vague]")
-    print(f"Reference: Paris is the capital... [detailed]")
-    print(f"\n📊 Evaluation Results:")
+    print("Output: France has a capital. [vague]")
+    print("Reference: Paris is the capital... [detailed]")
+    print("\n📊 Evaluation Results:")
     print(f"  Score: {score2.value:.3f} (low = reference better)")
     print(f"  Confidence: {score2.confidence:.3f}")
     print(f"  Winner: {score2.metadata.get('winner')}")
@@ -94,9 +94,9 @@ async def main():
         criteria="accuracy, clarity",
     )
 
-    print(f"Output: The capital of France is Paris.")
-    print(f"Reference: Paris is the capital of France.")
-    print(f"\n📊 Evaluation Results:")
+    print("Output: The capital of France is Paris.")
+    print("Reference: Paris is the capital of France.")
+    print("\n📊 Evaluation Results:")
     print(f"  Score: {score3.value:.3f} (medium = equivalent quality)")
     print(f"  Confidence: {score3.confidence:.3f}")
     print(f"  Winner: {score3.metadata.get('winner')}")
@@ -110,9 +110,9 @@ async def main():
         reference="ML is part of AI.",
     )
 
-    print(f"Output: Machine learning is a subset... [detailed explanation]")
-    print(f"Reference: ML is part of AI. [brief]")
-    print(f"\n📊 Evaluation Results:")
+    print("Output: Machine learning is a subset... [detailed explanation]")
+    print("Reference: ML is part of AI. [brief]")
+    print("\n📊 Evaluation Results:")
     print(f"  Score: {score4.value:.3f}")
     print(f"  Confidence: {score4.confidence:.3f}")
     print(f"  Winner: {score4.metadata.get('winner')}")
@@ -140,7 +140,9 @@ async def main():
 
     print(f"\nOutput: {test_output[:50]}...")
     print(f"Reference: {test_reference[:50]}...")
-    print(f"\n  Pairwise Score: {pairwise_score.value:.3f} (winner: {pairwise_score.metadata.get('winner')})")
+    print(
+        f"\n  Pairwise Score: {pairwise_score.value:.3f} (winner: {pairwise_score.metadata.get('winner')})"
+    )
     print(f"  Semantic Score: {semantic_score.value:.3f}")
 
     # Calculate cost and interactions

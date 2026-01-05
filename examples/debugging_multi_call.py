@@ -30,122 +30,197 @@ async def run_multi_stage_agent(user_query: str) -> Dict:
     # Stage 1: Intent Classification (3 calls)
     print("Stage 1/5: Intent Classification")
 
-    results.append(("routing", await evaluate(
-        output="technical_support",
-        reference="billing, technical_support, general_inquiry",
-        evaluators=["semantic"],
-        model="gpt-4o-mini",
-    )))
+    results.append(
+        (
+            "routing",
+            await evaluate(
+                output="technical_support",
+                reference="billing, technical_support, general_inquiry",
+                evaluators=["semantic"],
+                model="gpt-4o-mini",
+            ),
+        )
+    )
 
-    results.append(("sentiment", await evaluate(
-        output="frustrated but professional",
-        reference="positive, neutral, negative, frustrated",
-        evaluators=["semantic"],
-        model="gpt-4o-mini",
-    )))
+    results.append(
+        (
+            "sentiment",
+            await evaluate(
+                output="frustrated but professional",
+                reference="positive, neutral, negative, frustrated",
+                evaluators=["semantic"],
+                model="gpt-4o-mini",
+            ),
+        )
+    )
 
-    results.append(("priority", await evaluate(
-        output="high priority - blocking issue",
-        reference="low, medium, high, critical",
-        evaluators=["semantic"],
-        model="gpt-4o-mini",
-    )))
+    results.append(
+        (
+            "priority",
+            await evaluate(
+                output="high priority - blocking issue",
+                reference="low, medium, high, critical",
+                evaluators=["semantic"],
+                model="gpt-4o-mini",
+            ),
+        )
+    )
 
     # Stage 2: Knowledge Retrieval (4 calls)
     print("Stage 2/5: Knowledge Retrieval")
 
-    results.append(("query_expansion", await evaluate(
-        output="login error authentication failure password reset",
-        reference=user_query,
-        evaluators=["semantic"],
-        model="gpt-4o-mini",
-    )))
+    results.append(
+        (
+            "query_expansion",
+            await evaluate(
+                output="login error authentication failure password reset",
+                reference=user_query,
+                evaluators=["semantic"],
+                model="gpt-4o-mini",
+            ),
+        )
+    )
 
-    results.append(("semantic_search", await evaluate(
-        output="Found 5 relevant knowledge base articles",
-        criteria="relevance to authentication issues",
-        evaluators=["custom_criteria"],
-        model="gpt-4o-mini",
-    )))
+    results.append(
+        (
+            "semantic_search",
+            await evaluate(
+                output="Found 5 relevant knowledge base articles",
+                criteria="relevance to authentication issues",
+                evaluators=["custom_criteria"],
+                model="gpt-4o-mini",
+            ),
+        )
+    )
 
-    results.append(("reranking", await evaluate(
-        output="Article 3 is most relevant (authentication troubleshooting)",
-        criteria="ranking accuracy for user issue",
-        evaluators=["custom_criteria"],
-        model="gpt-4o-mini",
-    )))
+    results.append(
+        (
+            "reranking",
+            await evaluate(
+                output="Article 3 is most relevant (authentication troubleshooting)",
+                criteria="ranking accuracy for user issue",
+                evaluators=["custom_criteria"],
+                model="gpt-4o-mini",
+            ),
+        )
+    )
 
-    results.append(("context_assembly", await evaluate(
-        output="Compiled context from top 3 articles about auth issues",
-        criteria="completeness and coherence",
-        evaluators=["custom_criteria"],
-        model="gpt-4o-mini",
-    )))
+    results.append(
+        (
+            "context_assembly",
+            await evaluate(
+                output="Compiled context from top 3 articles about auth issues",
+                criteria="completeness and coherence",
+                evaluators=["custom_criteria"],
+                model="gpt-4o-mini",
+            ),
+        )
+    )
 
     # Stage 3: Response Generation (3 calls)
     print("Stage 3/5: Response Generation")
 
-    results.append(("draft_response", await evaluate(
-        output="Try clearing browser cache and resetting password via email link",
-        reference="Professional technical support response with clear steps",
-        evaluators=["semantic"],
-        model="gpt-4o-mini",
-    )))
+    results.append(
+        (
+            "draft_response",
+            await evaluate(
+                output="Try clearing browser cache and resetting password via email link",
+                reference="Professional technical support response with clear steps",
+                evaluators=["semantic"],
+                model="gpt-4o-mini",
+            ),
+        )
+    )
 
-    results.append(("fact_check", await evaluate(
-        output="Instructions verified against knowledge base",
-        criteria="factual accuracy of troubleshooting steps",
-        evaluators=["custom_criteria"],
-        model="gpt-4o-mini",
-    )))
+    results.append(
+        (
+            "fact_check",
+            await evaluate(
+                output="Instructions verified against knowledge base",
+                criteria="factual accuracy of troubleshooting steps",
+                evaluators=["custom_criteria"],
+                model="gpt-4o-mini",
+            ),
+        )
+    )
 
-    results.append(("tone_adjustment", await evaluate(
-        output="Empathetic opening + clear steps + reassurance",
-        criteria="professional, empathetic, helpful tone",
-        evaluators=["custom_criteria"],
-        model="gpt-4o-mini",
-    )))
+    results.append(
+        (
+            "tone_adjustment",
+            await evaluate(
+                output="Empathetic opening + clear steps + reassurance",
+                criteria="professional, empathetic, helpful tone",
+                evaluators=["custom_criteria"],
+                model="gpt-4o-mini",
+            ),
+        )
+    )
 
     # Stage 4: Quality Checks (2 calls)
     print("Stage 4/5: Quality Checks")
 
-    results.append(("accuracy_check", await evaluate(
-        output="All steps verified, no misleading information",
-        criteria="technical accuracy, no false promises",
-        evaluators=["custom_criteria"],
-        model="gpt-4o-mini",
-    )))
+    results.append(
+        (
+            "accuracy_check",
+            await evaluate(
+                output="All steps verified, no misleading information",
+                criteria="technical accuracy, no false promises",
+                evaluators=["custom_criteria"],
+                model="gpt-4o-mini",
+            ),
+        )
+    )
 
-    results.append(("policy_compliance", await evaluate(
-        output="Response follows company guidelines and privacy policy",
-        criteria="compliance with support policies",
-        evaluators=["custom_criteria"],
-        model="gpt-4o-mini",
-    )))
+    results.append(
+        (
+            "policy_compliance",
+            await evaluate(
+                output="Response follows company guidelines and privacy policy",
+                criteria="compliance with support policies",
+                evaluators=["custom_criteria"],
+                model="gpt-4o-mini",
+            ),
+        )
+    )
 
     # Stage 5: Final Review (3 calls)
     print("Stage 5/5: Final Review")
 
-    results.append(("grammar_check", await evaluate(
-        output="No grammatical errors, clear and professional",
-        criteria="grammar, spelling, clarity",
-        evaluators=["custom_criteria"],
-        model="gpt-4o-mini",
-    )))
+    results.append(
+        (
+            "grammar_check",
+            await evaluate(
+                output="No grammatical errors, clear and professional",
+                criteria="grammar, spelling, clarity",
+                evaluators=["custom_criteria"],
+                model="gpt-4o-mini",
+            ),
+        )
+    )
 
-    results.append(("tone_match", await evaluate(
-        output="Tone matches user sentiment (empathetic to frustration)",
-        criteria="appropriate emotional response to user state",
-        evaluators=["custom_criteria"],
-        model="gpt-4o-mini",
-    )))
+    results.append(
+        (
+            "tone_match",
+            await evaluate(
+                output="Tone matches user sentiment (empathetic to frustration)",
+                criteria="appropriate emotional response to user state",
+                evaluators=["custom_criteria"],
+                model="gpt-4o-mini",
+            ),
+        )
+    )
 
-    results.append(("final_approval", await evaluate(
-        output="Response approved for sending",
-        criteria="ready to send, meets all quality standards",
-        evaluators=["custom_criteria"],
-        model="gpt-4o-mini",
-    )))
+    results.append(
+        (
+            "final_approval",
+            await evaluate(
+                output="Response approved for sending",
+                criteria="ready to send, meets all quality standards",
+                evaluators=["custom_criteria"],
+                model="gpt-4o-mini",
+            ),
+        )
+    )
 
     print("Done.\n")
     return {"results": results}
@@ -176,7 +251,9 @@ def print_interaction_breakdown(results: List[tuple[str, EvaluationResult]]):
 
         if result.interactions:
             interaction = result.interactions[0]
-            print(f"  {name:20s} {interaction.tokens_used:4d} tokens  {interaction.latency:.2f}s")
+            print(
+                f"  {name:20s} {interaction.tokens_used:4d} tokens  {interaction.latency:.2f}s"
+            )
 
 
 async def print_cost_analysis(results: List[tuple[str, EvaluationResult]]):
@@ -218,10 +295,12 @@ def print_performance_analysis(results: List[tuple[str, EvaluationResult]]):
     print(f"Average per call: {total_time / len(results):.2f}s")
 
     slowest = sorted(
-        [(name, r.interactions[0].latency if r.interactions else 0)
-         for name, r in results],
+        [
+            (name, r.interactions[0].latency if r.interactions else 0)
+            for name, r in results
+        ],
         key=lambda x: x[1],
-        reverse=True
+        reverse=True,
     )[:3]
 
     print("\nSlowest calls:")
@@ -244,13 +323,13 @@ def print_debug_example(results: List[tuple[str, EvaluationResult]]):
         print(f"Tokens: {interaction.tokens_used:,}")
         print(f"Latency: {interaction.latency:.2f}s")
 
-        print(f"\n--- Full Prompt ---")
+        print("\n--- Full Prompt ---")
         print(interaction.prompt)
 
-        print(f"\n--- Full Response ---")
+        print("\n--- Full Response ---")
         print(interaction.response)
 
-        print(f"\n--- Score Details ---")
+        print("\n--- Score Details ---")
         for score in fact_check.scores:
             print(f"Score: {score.value:.2f}")
             print(f"Confidence: {score.confidence:.2f}")
@@ -317,6 +396,7 @@ async def main():
     except Exception as e:
         print(f"\nError: {e}")
         import traceback
+
         traceback.print_exc()
 
 

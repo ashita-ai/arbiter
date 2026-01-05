@@ -49,13 +49,13 @@ It was constructed from 1887 to 1889 as the entrance arch for the 1889 World's F
     print(f"Fully Grounded: {result.passed}")
 
     score = result.scores[0]
-    print(f"\nScore Details:")
+    print("\nScore Details:")
     print(f"  Confidence: {score.confidence:.2f}")
     print(f"  Grounded Statements: {score.metadata.get('grounded_count', 0)}")
     print(f"  Ungrounded Statements: {score.metadata.get('ungrounded_count', 0)}")
 
     if score.metadata.get("citations"):
-        print(f"\n  Citation Mapping:")
+        print("\n  Citation Mapping:")
         for stmt, source in score.metadata["citations"].items():
             print(f"    '{stmt}' → '{source[:50]}...'")
 
@@ -84,17 +84,17 @@ async def example_2_detect_hallucination():
     print(f"\nGroundedness Score: {result.overall_score:.2f}")
 
     score = result.scores[0]
-    print(f"\nScore Details:")
+    print("\nScore Details:")
     print(f"  Grounded: {score.metadata.get('grounded_count', 0)}")
     print(f"  Ungrounded: {score.metadata.get('ungrounded_count', 0)}")
 
     if score.metadata.get("grounded_statements"):
-        print(f"\n  Grounded Statements:")
+        print("\n  Grounded Statements:")
         for stmt in score.metadata["grounded_statements"]:
             print(f"    ✓ {stmt}")
 
     if score.metadata.get("ungrounded_statements"):
-        print(f"\n  Ungrounded/Hallucinated:")
+        print("\n  Ungrounded/Hallucinated:")
         for stmt in score.metadata["ungrounded_statements"]:
             print(f"    ✗ {stmt}")
 
@@ -134,13 +134,13 @@ that was not completely backward-compatible with earlier versions.
     print(f"\nGroundedness Score: {result.overall_score:.2f}")
 
     score = result.scores[0]
-    print(f"\nScore Details:")
+    print("\nScore Details:")
     print(f"  Total Statements: {score.metadata.get('total_statements', 0)}")
     print(f"  Grounded: {score.metadata.get('grounded_count', 0)}")
     print(f"  Ungrounded: {score.metadata.get('ungrounded_count', 0)}")
 
     if score.metadata.get("citations"):
-        print(f"\n  Statement → Source Attribution:")
+        print("\n  Statement → Source Attribution:")
         for stmt, source in score.metadata["citations"].items():
             print(f"    • {stmt}")
             print(f"      ↳ {source[:80]}...")
@@ -176,17 +176,17 @@ via the circulatory system."""
     print(f"Fully Grounded: {result.passed}")
 
     score = result.scores[0]
-    print(f"\nScore Details:")
+    print("\nScore Details:")
     print(f"  Grounded: {score.metadata.get('grounded_count', 0)}")
     print(f"  Ungrounded: {score.metadata.get('ungrounded_count', 0)}")
 
     if score.metadata.get("grounded_statements"):
-        print(f"\n  Grounded (Supported by Source):")
+        print("\n  Grounded (Supported by Source):")
         for stmt in score.metadata["grounded_statements"]:
             print(f"    ✓ {stmt}")
 
     if score.metadata.get("ungrounded_statements"):
-        print(f"\n  Ungrounded (Not in Source):")
+        print("\n  Ungrounded (Not in Source):")
         for stmt in score.metadata["ungrounded_statements"]:
             print(f"    ? {stmt}")
 
@@ -223,7 +223,7 @@ Authentication uses OAuth 2.0 bearer tokens."""
     print(f"\nGroundedness Score: {result.overall_score:.2f}")
 
     score = result.scores[0]
-    print(f"\nScore Details:")
+    print("\nScore Details:")
     print(f"  Confidence: {score.confidence:.2f}")
     print(f"  Grounded: {score.metadata.get('grounded_count', 0)}")
     print(f"  Ungrounded: {score.metadata.get('ungrounded_count', 0)}")
@@ -236,7 +236,9 @@ async def example_6_observability():
     print("=" * 60)
 
     output = "Paris is the capital of France with a population of 2.2 million"
-    reference = "Paris, the capital city of France, has a population of 2.16 million residents"
+    reference = (
+        "Paris, the capital city of France, has a population of 2.16 million residents"
+    )
 
     result = await evaluate(
         output=output,
@@ -246,7 +248,7 @@ async def example_6_observability():
     )
 
     print(f"\nGroundedness Score: {result.overall_score:.2f}")
-    print(f"\nObservability Metrics:")
+    print("\nObservability Metrics:")
     print(f"  Total Tokens: {result.total_tokens:,}")
     print(f"  Processing Time: {result.processing_time:.2f}s")
     print(f"  LLM Interactions: {len(result.interactions)}")

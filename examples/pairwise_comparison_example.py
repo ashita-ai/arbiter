@@ -16,12 +16,12 @@ Run with:
     python examples/pairwise_comparison_example.py
 """
 
-from dotenv import load_dotenv
-
 import asyncio
 import os
 
-from arbiter_ai import compare, PairwiseComparisonEvaluator
+from dotenv import load_dotenv
+
+from arbiter_ai import PairwiseComparisonEvaluator, compare
 from arbiter_ai.core import LLMManager
 
 
@@ -149,7 +149,9 @@ For more details, see the documentation.""",
         for aspect, scores in comparison4.aspect_scores.items():
             a_score = scores["output_a"]
             b_score = scores["output_b"]
-            winner_aspect = "A" if a_score > b_score else "B" if b_score > a_score else "Tie"
+            winner_aspect = (
+                "A" if a_score > b_score else "B" if b_score > a_score else "Tie"
+            )
             print(f"    {aspect}:")
             print(f"      A: {a_score:.3f} | B: {b_score:.3f} → {winner_aspect}")
 

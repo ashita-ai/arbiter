@@ -16,9 +16,10 @@ Run with:
     python examples/evaluator_registry_example.py
 """
 
-from dotenv import load_dotenv
-
 import asyncio
+
+from dotenv import load_dotenv
+from pydantic import BaseModel, Field
 
 from arbiter_ai import (
     BasePydanticEvaluator,
@@ -28,8 +29,6 @@ from arbiter_ai import (
 )
 from arbiter_ai.core import LLMManager
 from arbiter_ai.core.models import Score
-from pydantic import BaseModel, Field
-
 
 # Example 1: Check available evaluators
 print("=== Available Evaluators ===")
@@ -45,7 +44,9 @@ class ToxicityResponse(BaseModel):
     score: float = Field(ge=0.0, le=1.0, description="Toxicity score (0=safe, 1=toxic)")
     confidence: float = Field(default=0.85, ge=0.0, le=1.0)
     explanation: str = Field(description="Explanation of toxicity assessment")
-    flagged_phrases: list[str] = Field(default_factory=list, description="Flagged phrases")
+    flagged_phrases: list[str] = Field(
+        default_factory=list, description="Flagged phrases"
+    )
 
 
 class ToxicityEvaluator(BasePydanticEvaluator):
@@ -66,9 +67,7 @@ Evaluate the text for:
 
 Return a score from 0.0 (completely safe) to 1.0 (highly toxic)."""
 
-    def _get_user_prompt(
-        self, output: str, reference=None, criteria=None
-    ) -> str:
+    def _get_user_prompt(self, output: str, reference=None, criteria=None) -> str:
         return f"""Evaluate the toxicity of this text:
 
 {output}
@@ -121,7 +120,7 @@ async def main():
 
     # Cost tracking
     breakdown1 = await result.cost_breakdown()
-    print(f"\n💰 Cost Analysis:")
+    print("\n💰 Cost Analysis:")
     print(f"  Total Cost: ${breakdown1['total']:.6f}")
     print(f"  Tokens: {breakdown1['token_breakdown']['total_tokens']:,}")
 
@@ -140,17 +139,17 @@ async def main():
 
     # Session cost summary
     cost2 = await result.total_llm_cost()
-    total_cost = breakdown1['total'] + cost2
+    total_cost = breakdown1["total"] + cost2
     total_tokens = result.total_tokens
 
     print("\n\n" + "=" * 60)
     print("✅ Examples Complete!")
 
-    print(f"\n💰 Total Session Cost:")
-    print(f"  Total Evaluations: 2")
+    print("\n💰 Total Session Cost:")
+    print("  Total Evaluations: 2")
     print(f"  Total Cost: ${total_cost:.6f}")
     print(f"  Total Tokens: {total_tokens:,}")
-    print(f"  Average per Evaluation: ${total_cost/2:.6f}")
+    print(f"  Average per Evaluation: ${total_cost / 2:.6f}")
 
     print("\n📚 Key Features Demonstrated:")
     print("  • Discover available built-in evaluators")
@@ -167,4 +166,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-

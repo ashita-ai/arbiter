@@ -5,9 +5,8 @@ to get nicely formatted, human-readable output in the terminal.
 """
 
 import asyncio
-from datetime import datetime, timezone
 
-from arbiter_ai import evaluate, batch_evaluate, compare
+from arbiter_ai import batch_evaluate, compare, evaluate
 
 
 async def demo_evaluation_result_pretty_print():
@@ -181,7 +180,7 @@ async def demo_cost_information():
 
     # Get cost breakdown
     breakdown = await result.cost_breakdown()
-    print(f"\nCost Breakdown:")
+    print("\nCost Breakdown:")
     print(f"  By Evaluator: {breakdown['by_evaluator']}")
     print(f"  By Model: {breakdown['by_model']}")
     print(f"  Token Breakdown: {breakdown['token_breakdown']}")

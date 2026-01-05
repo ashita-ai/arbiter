@@ -16,13 +16,12 @@ Run with:
     python examples/error_handling_example.py
 """
 
-from dotenv import load_dotenv
-
 import asyncio
 import os
 
+from dotenv import load_dotenv
+
 from arbiter_ai import evaluate
-from arbiter_ai.core import LLMManager
 from arbiter_ai.core.exceptions import EvaluatorError
 
 
@@ -52,12 +51,14 @@ async def main():
     )
 
     print(f"Output: {result1.output}")
-    print(f"\n📊 Results:")
+    print("\n📊 Results:")
     print(f"  Overall Score: {result1.overall_score:.3f}")
     print(f"  Passed: {'✅' if result1.passed else '❌'}")
     print(f"  Partial: {'⚠️ Yes' if result1.partial else '✅ No'}")
     print(f"  Errors: {len(result1.errors)}")
-    print(f"  Successful Evaluators: {result1.metadata.get('successful_evaluators', 0)}")
+    print(
+        f"  Successful Evaluators: {result1.metadata.get('successful_evaluators', 0)}"
+    )
     print(f"  Failed Evaluators: {result1.metadata.get('failed_evaluators', 0)}")
 
     if result1.errors:
@@ -67,7 +68,7 @@ async def main():
 
     # Cost tracking
     breakdown1 = await result1.cost_breakdown()
-    print(f"\n💰 Cost Analysis:")
+    print("\n💰 Cost Analysis:")
     print(f"  Total Cost: ${breakdown1['total']:.6f}")
     print(f"  Tokens: {breakdown1['token_breakdown']['total_tokens']:,}")
 
@@ -104,8 +105,10 @@ Example scenario:
     )
 
     print(f"Output: {result2.output[:60]}...")
-    print(f"\n📊 Results:")
-    print(f"  Partial: {'⚠️ Yes - Some evaluators failed' if result2.partial else '✅ No - All succeeded'}")
+    print("\n📊 Results:")
+    print(
+        f"  Partial: {'⚠️ Yes - Some evaluators failed' if result2.partial else '✅ No - All succeeded'}"
+    )
 
     # Check for errors
     if result2.partial:
@@ -169,8 +172,12 @@ Best Practices:
         # Check if we got a partial result
         if result3.partial:
             print("⚠️ Warning: Partial result received")
-            print(f"   Successful evaluators: {result3.metadata.get('successful_evaluators', 0)}")
-            print(f"   Failed evaluators: {result3.metadata.get('failed_evaluators', 0)}")
+            print(
+                f"   Successful evaluators: {result3.metadata.get('successful_evaluators', 0)}"
+            )
+            print(
+                f"   Failed evaluators: {result3.metadata.get('failed_evaluators', 0)}"
+            )
 
             # Log errors
             for evaluator, error_msg in result3.errors.items():
@@ -178,7 +185,9 @@ Best Practices:
 
             # Decide if we can use the result
             if result3.scores:
-                print(f"\n✅ Using partial result with score: {result3.overall_score:.3f}")
+                print(
+                    f"\n✅ Using partial result with score: {result3.overall_score:.3f}"
+                )
                 print("   Note: Some evaluators failed, but we have usable scores")
             else:
                 print("\n❌ No usable scores - all evaluators failed")
@@ -199,10 +208,10 @@ Best Practices:
 
     # Session cost summary
     cost2 = await result2.total_llm_cost()
-    total_cost = breakdown1['total'] + cost2
+    total_cost = breakdown1["total"] + cost2
     total_tokens = result1.total_tokens + result2.total_tokens
 
-    print(f"\n💰 Total Session Cost:")
+    print("\n💰 Total Session Cost:")
     print(f"  Total Cost: ${total_cost:.6f}")
     print(f"  Total Tokens: {total_tokens:,}")
 
@@ -221,4 +230,3 @@ Best Practices:
 
 if __name__ == "__main__":
     asyncio.run(main())
-

@@ -17,11 +17,11 @@ Run with:
     python examples/rag_evaluation.py
 """
 
-from dotenv import load_dotenv
-
 import asyncio
 import os
 from typing import List, Optional
+
+from dotenv import load_dotenv
 
 from arbiter_ai import evaluate
 
@@ -48,7 +48,9 @@ async def evaluate_rag_response(
     results = {}
 
     # Combine retrieved context for evaluation
-    context_text = "\n\n".join([f"[Source {i+1}]: {chunk}" for i, chunk in enumerate(retrieved_context)])
+    context_text = "\n\n".join(
+        [f"[Source {i + 1}]: {chunk}" for i, chunk in enumerate(retrieved_context)]
+    )
 
     # Evaluation 1: Semantic Similarity (if expected answer provided)
     if expected_answer:
@@ -81,8 +83,12 @@ async def evaluate_rag_response(
     results["answer_quality"] = {
         "score": answer_quality_result.overall_score,
         "passed": answer_quality_result.passed,
-        "criteria_met": answer_quality_result.scores[0].metadata.get("criteria_met", []),
-        "criteria_not_met": answer_quality_result.scores[0].metadata.get("criteria_not_met", []),
+        "criteria_met": answer_quality_result.scores[0].metadata.get(
+            "criteria_met", []
+        ),
+        "criteria_not_met": answer_quality_result.scores[0].metadata.get(
+            "criteria_not_met", []
+        ),
     }
 
     # Evaluation 3: Source Attribution (Custom Criteria)
@@ -107,7 +113,9 @@ async def evaluate_rag_response(
         "score": attribution_result.overall_score,
         "passed": attribution_result.passed,
         "criteria_met": attribution_result.scores[0].metadata.get("criteria_met", []),
-        "criteria_not_met": attribution_result.scores[0].metadata.get("criteria_not_met", []),
+        "criteria_not_met": attribution_result.scores[0].metadata.get(
+            "criteria_not_met", []
+        ),
     }
 
     # Evaluation 4: Query-Answer Relevance (Custom Criteria)
@@ -143,7 +151,8 @@ async def evaluate_rag_response(
 
     results["overall_score"] = sum(all_scores) / len(all_scores)
     results["all_passed"] = all(
-        r["passed"] for r in [
+        r["passed"]
+        for r in [
             results["answer_quality"],
             results["source_attribution"],
             results["relevance"],
@@ -152,9 +161,9 @@ async def evaluate_rag_response(
 
     # Cost tracking
     total_tokens = (
-        answer_quality_result.total_tokens +
-        attribution_result.total_tokens +
-        relevance_result.total_tokens
+        answer_quality_result.total_tokens
+        + attribution_result.total_tokens
+        + relevance_result.total_tokens
     )
     if expected_answer:
         total_tokens += semantic_result.total_tokens
@@ -165,7 +174,7 @@ async def evaluate_rag_response(
     costs = await asyncio.gather(
         answer_quality_result.total_llm_cost(),
         attribution_result.total_llm_cost(),
-        relevance_result.total_llm_cost()
+        relevance_result.total_llm_cost(),
     )
     results["total_cost"] = sum(costs)
     if expected_answer:
@@ -215,21 +224,33 @@ async def main():
         expected_answer=expected1,
     )
 
-    print(f"\n📊 Evaluation Results:")
+    print("\n📊 Evaluation Results:")
     print(f"   Overall Score: {results1['overall_score']:.3f}")
     print(f"   All Criteria Passed: {'✅' if results1['all_passed'] else '❌'}")
-    print(f"\n   Individual Scores:")
+    print("\n   Individual Scores:")
     if "semantic_similarity" in results1:
-        print(f"     Semantic Similarity: {results1['semantic_similarity']['score']:.3f} {'✅' if results1['semantic_similarity']['passed'] else '❌'}")
-    print(f"     Answer Quality: {results1['answer_quality']['score']:.3f} {'✅' if results1['answer_quality']['passed'] else '❌'}")
-    print(f"     Source Attribution: {results1['source_attribution']['score']:.3f} {'✅' if results1['source_attribution']['passed'] else '❌'}")
-    print(f"     Relevance: {results1['relevance']['score']:.3f} {'✅' if results1['relevance']['passed'] else '❌'}")
+        print(
+            f"     Semantic Similarity: {results1['semantic_similarity']['score']:.3f} {'✅' if results1['semantic_similarity']['passed'] else '❌'}"
+        )
+    print(
+        f"     Answer Quality: {results1['answer_quality']['score']:.3f} {'✅' if results1['answer_quality']['passed'] else '❌'}"
+    )
+    print(
+        f"     Source Attribution: {results1['source_attribution']['score']:.3f} {'✅' if results1['source_attribution']['passed'] else '❌'}"
+    )
+    print(
+        f"     Relevance: {results1['relevance']['score']:.3f} {'✅' if results1['relevance']['passed'] else '❌'}"
+    )
 
-    print(f"\n   Answer Quality Details:")
-    print(f"     Criteria Met: {', '.join(results1['answer_quality']['criteria_met']) if results1['answer_quality']['criteria_met'] else 'None'}")
-    print(f"     Criteria Not Met: {', '.join(results1['answer_quality']['criteria_not_met']) if results1['answer_quality']['criteria_not_met'] else 'None'}")
+    print("\n   Answer Quality Details:")
+    print(
+        f"     Criteria Met: {', '.join(results1['answer_quality']['criteria_met']) if results1['answer_quality']['criteria_met'] else 'None'}"
+    )
+    print(
+        f"     Criteria Not Met: {', '.join(results1['answer_quality']['criteria_not_met']) if results1['answer_quality']['criteria_not_met'] else 'None'}"
+    )
 
-    print(f"\n   Cost Analysis:")
+    print("\n   Cost Analysis:")
     print(f"     Total Tokens: {results1['total_tokens']:,}")
     print(f"     Total Cost: ${results1['total_cost']:.6f}")
 
@@ -248,7 +269,7 @@ async def main():
     print(f"\nQuery: {query2}")
     print(f"Answer: {answer2}")
     print(f"Retrieved Context: {len(context2)} chunks")
-    print(f"⚠️  Note: Answer contains information not in context (hallucination)")
+    print("⚠️  Note: Answer contains information not in context (hallucination)")
 
     results2 = await evaluate_rag_response(
         query=query2,
@@ -257,20 +278,32 @@ async def main():
         expected_answer=expected1,
     )
 
-    print(f"\n📊 Evaluation Results:")
+    print("\n📊 Evaluation Results:")
     print(f"   Overall Score: {results2['overall_score']:.3f}")
     print(f"   All Criteria Passed: {'✅' if results2['all_passed'] else '❌'}")
-    print(f"\n   Individual Scores:")
+    print("\n   Individual Scores:")
     if "semantic_similarity" in results2:
-        print(f"     Semantic Similarity: {results2['semantic_similarity']['score']:.3f} {'✅' if results2['semantic_similarity']['passed'] else '❌'}")
-    print(f"     Answer Quality: {results2['answer_quality']['score']:.3f} {'✅' if results2['answer_quality']['passed'] else '❌'}")
-    print(f"     Source Attribution: {results2['source_attribution']['score']:.3f} {'✅' if results2['source_attribution']['passed'] else '❌'}")
-    print(f"     Relevance: {results2['relevance']['score']:.3f} {'✅' if results2['relevance']['passed'] else '❌'}")
+        print(
+            f"     Semantic Similarity: {results2['semantic_similarity']['score']:.3f} {'✅' if results2['semantic_similarity']['passed'] else '❌'}"
+        )
+    print(
+        f"     Answer Quality: {results2['answer_quality']['score']:.3f} {'✅' if results2['answer_quality']['passed'] else '❌'}"
+    )
+    print(
+        f"     Source Attribution: {results2['source_attribution']['score']:.3f} {'✅' if results2['source_attribution']['passed'] else '❌'}"
+    )
+    print(
+        f"     Relevance: {results2['relevance']['score']:.3f} {'✅' if results2['relevance']['passed'] else '❌'}"
+    )
 
-    print(f"\n   Source Attribution Details:")
-    print(f"     Criteria Met: {', '.join(results2['source_attribution']['criteria_met']) if results2['source_attribution']['criteria_met'] else 'None'}")
-    print(f"     Criteria Not Met: {', '.join(results2['source_attribution']['criteria_not_met']) if results2['source_attribution']['criteria_not_met'] else 'None'}")
-    print(f"     ⚠️  Hallucination detected - answer contains unsupported claims")
+    print("\n   Source Attribution Details:")
+    print(
+        f"     Criteria Met: {', '.join(results2['source_attribution']['criteria_met']) if results2['source_attribution']['criteria_met'] else 'None'}"
+    )
+    print(
+        f"     Criteria Not Met: {', '.join(results2['source_attribution']['criteria_not_met']) if results2['source_attribution']['criteria_not_met'] else 'None'}"
+    )
+    print("     ⚠️  Hallucination detected - answer contains unsupported claims")
 
     # Example 3: RAG Response with Poor Retrieval
     print("\n\n📊 Example 3: RAG Response with Poor Retrieval")
@@ -287,7 +320,7 @@ async def main():
     print(f"\nQuery: {query3}")
     print(f"Answer: {answer3}")
     print(f"Retrieved Context: {len(context3)} chunks")
-    print(f"⚠️  Note: Retrieved context is irrelevant to the query")
+    print("⚠️  Note: Retrieved context is irrelevant to the query")
 
     results3 = await evaluate_rag_response(
         query=query3,
@@ -296,16 +329,24 @@ async def main():
         expected_answer=expected1,
     )
 
-    print(f"\n📊 Evaluation Results:")
+    print("\n📊 Evaluation Results:")
     print(f"   Overall Score: {results3['overall_score']:.3f}")
     print(f"   All Criteria Passed: {'✅' if results3['all_passed'] else '❌'}")
-    print(f"\n   Individual Scores:")
+    print("\n   Individual Scores:")
     if "semantic_similarity" in results3:
-        print(f"     Semantic Similarity: {results3['semantic_similarity']['score']:.3f} {'✅' if results3['semantic_similarity']['passed'] else '❌'}")
-    print(f"     Answer Quality: {results3['answer_quality']['score']:.3f} {'✅' if results3['answer_quality']['passed'] else '❌'}")
-    print(f"     Source Attribution: {results3['source_attribution']['score']:.3f} {'✅' if results3['source_attribution']['passed'] else '❌'}")
-    print(f"     Relevance: {results3['relevance']['score']:.3f} {'✅' if results3['relevance']['passed'] else '❌'}")
-    print(f"     ⚠️  Poor retrieval quality - context doesn't match query")
+        print(
+            f"     Semantic Similarity: {results3['semantic_similarity']['score']:.3f} {'✅' if results3['semantic_similarity']['passed'] else '❌'}"
+        )
+    print(
+        f"     Answer Quality: {results3['answer_quality']['score']:.3f} {'✅' if results3['answer_quality']['passed'] else '❌'}"
+    )
+    print(
+        f"     Source Attribution: {results3['source_attribution']['score']:.3f} {'✅' if results3['source_attribution']['passed'] else '❌'}"
+    )
+    print(
+        f"     Relevance: {results3['relevance']['score']:.3f} {'✅' if results3['relevance']['passed'] else '❌'}"
+    )
+    print("     ⚠️  Poor retrieval quality - context doesn't match query")
 
     # Example 4: Multi-Evaluator RAG Evaluation
     print("\n\n📊 Example 4: Multi-Evaluator RAG Evaluation")
@@ -336,11 +377,11 @@ async def main():
         model="gpt-4o-mini",
     )
 
-    print(f"\n📊 Multi-Evaluator Results:")
+    print("\n📊 Multi-Evaluator Results:")
     print(f"   Overall Score: {multi_result.overall_score:.3f}")
     print(f"   Passed: {'✅' if multi_result.passed else '❌'}")
     print(f"   Evaluators Used: {', '.join(multi_result.evaluator_names)}")
-    print(f"\n   Individual Scores:")
+    print("\n   Individual Scores:")
     for score in multi_result.scores:
         print(f"     {score.name}: {score.value:.3f}")
         if score.confidence:
@@ -352,8 +393,12 @@ async def main():
     print("=" * 70)
 
     print("\n🎯 Key Takeaways:")
-    print("   • RAG evaluation requires multiple aspects (answer quality, source attribution, relevance)")
-    print("   • Custom criteria evaluator is perfect for domain-specific RAG requirements")
+    print(
+        "   • RAG evaluation requires multiple aspects (answer quality, source attribution, relevance)"
+    )
+    print(
+        "   • Custom criteria evaluator is perfect for domain-specific RAG requirements"
+    )
     print("   • Semantic similarity helps compare against expected answers")
     print("   • Source attribution evaluation detects hallucinations")
     print("   • Multi-evaluator approach provides comprehensive assessment")
@@ -374,6 +419,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-
-

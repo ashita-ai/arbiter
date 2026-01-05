@@ -27,6 +27,7 @@ Run with:
 
 import asyncio
 import time
+
 from dotenv import load_dotenv
 
 from arbiter_ai import LLMManager
@@ -89,16 +90,14 @@ async def main():
             )
             elapsed = time.time() - start
 
-            print(f"\n📊 FAISS Result:")
+            print("\n📊 FAISS Result:")
             print(f"  Score:      {score.value:.3f}")
             print(f"  Confidence: {score.confidence:.3f}")
-            print(f"  Latency:    {elapsed*1000:.1f}ms")
-            print(f"  Cost:       $0.00 (free!)")
+            print(f"  Latency:    {elapsed * 1000:.1f}ms")
+            print("  Cost:       $0.00 (free!)")
             print(f"  Backend:    {score.metadata.get('backend', 'unknown')}")
             print(f"  Model:      {score.metadata.get('model', 'unknown')}")
-            print(
-                f"  Embed Dim:  {score.metadata.get('embedding_dim', 'unknown')}"
-            )
+            print(f"  Embed Dim:  {score.metadata.get('embedding_dim', 'unknown')}")
 
     except ImportError as e:
         print("\n⚠️  FAISS backend not available:")
@@ -125,11 +124,11 @@ async def main():
     )
     elapsed_llm = time.time() - start
 
-    print(f"\n📊 LLM Result:")
+    print("\n📊 LLM Result:")
     print(f"  Score:       {score_llm.value:.3f}")
     print(f"  Confidence:  {score_llm.confidence:.3f}")
-    print(f"  Latency:     {elapsed_llm*1000:.1f}ms")
-    print(f"  Cost:        ~$0.001")
+    print(f"  Latency:     {elapsed_llm * 1000:.1f}ms")
+    print("  Cost:        ~$0.001")
     print(f"  Explanation: {score_llm.explanation[:200]}...")
 
     # ========================================
@@ -142,44 +141,38 @@ async def main():
     print(f"Evaluating {batch_size} comparisons...\n")
 
     # Generate test data
-    outputs = [
-        f"This is test sentence number {i}" for i in range(batch_size)
-    ]
-    references = [
-        f"Test sentence {i} for comparison" for i in range(batch_size)
-    ]
+    outputs = [f"This is test sentence number {i}" for i in range(batch_size)]
+    references = [f"Test sentence {i} for comparison" for i in range(batch_size)]
 
     # Batch evaluation with FAISS
     start = time.time()
     faiss_scores = []
     for output, reference in zip(outputs, references):
-        score = await evaluator_faiss.evaluate(
-            output=output, reference=reference
-        )
+        score = await evaluator_faiss.evaluate(output=output, reference=reference)
         faiss_scores.append(score.value)
     faiss_elapsed = time.time() - start
 
-    print(f"📦 FAISS Batch Results:")
+    print("📦 FAISS Batch Results:")
     print(f"  Comparisons:  {batch_size}")
     print(f"  Total Time:   {faiss_elapsed:.2f}s")
-    print(f"  Avg Latency:  {faiss_elapsed/batch_size*1000:.1f}ms per comparison")
-    print(f"  Total Cost:   $0.00")
-    print(f"  Avg Score:    {sum(faiss_scores)/len(faiss_scores):.3f}")
+    print(f"  Avg Latency:  {faiss_elapsed / batch_size * 1000:.1f}ms per comparison")
+    print("  Total Cost:   $0.00")
+    print(f"  Avg Score:    {sum(faiss_scores) / len(faiss_scores):.3f}")
 
     # Estimate LLM costs
     llm_estimated_time = batch_size * 2.0  # 2s per comparison
     llm_estimated_cost = batch_size * 0.001  # $0.001 per comparison
 
-    print(f"\n💬 LLM Estimated (for comparison):")
+    print("\n💬 LLM Estimated (for comparison):")
     print(f"  Comparisons:  {batch_size}")
     print(f"  Total Time:   ~{llm_estimated_time:.2f}s")
     print(
-        f"  Avg Latency:  ~{llm_estimated_time/batch_size*1000:.1f}ms per comparison"
+        f"  Avg Latency:  ~{llm_estimated_time / batch_size * 1000:.1f}ms per comparison"
     )
     print(f"  Total Cost:   ~${llm_estimated_cost:.3f}")
 
-    print(f"\n🚀 Performance Gains:")
-    print(f"  Speed:  {llm_estimated_time/faiss_elapsed:.1f}x faster")
+    print("\n🚀 Performance Gains:")
+    print(f"  Speed:  {llm_estimated_time / faiss_elapsed:.1f}x faster")
     print(f"  Cost:   100% reduction (${llm_estimated_cost:.3f} → $0.00)")
 
     # ========================================

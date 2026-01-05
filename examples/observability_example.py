@@ -81,12 +81,12 @@ async def example1_basic_tracking():
         model="gpt-4o-mini",
     )
 
-    print(f"\n✅ Evaluation Complete!")
+    print("\n✅ Evaluation Complete!")
     print(f"   Score: {result.overall_score:.3f}")
     print(f"   Processing Time: {result.processing_time:.3f}s")
 
     # Interaction tracking (automatic - no instrumentation)
-    print(f"\n🔍 Interaction Tracking:")
+    print("\n🔍 Interaction Tracking:")
     print(f"   Total LLM Calls: {len(result.interactions)}")
 
     for i, interaction in enumerate(result.interactions, 1):
@@ -99,7 +99,7 @@ async def example1_basic_tracking():
 
     # Cost analysis
     total_cost = await result.total_llm_cost()
-    print(f"\n💰 Cost Analysis:")
+    print("\n💰 Cost Analysis:")
     print(f"   Total Tokens: {result.total_tokens:,}")
     print(f"   Estimated Cost: ${total_cost:.6f}")
 
@@ -117,34 +117,36 @@ async def example2_multi_evaluator_transparency():
         model="gpt-4o-mini",
     )
 
-    print(f"\n✅ Evaluation Complete!")
+    print("\n✅ Evaluation Complete!")
     print(f"   Score: {result.overall_score:.3f}")
     print(f"   Evaluators: {', '.join(result.evaluator_names)}")
 
     # Analyze interactions
     analysis = analyze_interactions(result.interactions)
 
-    print(f"\n📊 Interaction Analysis:")
+    print("\n📊 Interaction Analysis:")
     print(f"   Total LLM Calls: {analysis['total_interactions']}")
     print(f"   Total Tokens: {analysis['total_tokens']:,}")
     print(f"   Total Latency: {analysis['total_latency']:.3f}s")
     print(f"   Average Latency: {analysis['avg_latency']:.3f}s")
 
     # Show by-purpose breakdown
-    print(f"\n📋 By Purpose:")
-    for purpose, interactions in analysis['by_purpose'].items():
+    print("\n📋 By Purpose:")
+    for purpose, interactions in analysis["by_purpose"].items():
         tokens = sum(i.tokens_used for i in interactions)
         latency = sum(i.latency for i in interactions)
         print(f"   • {purpose}:")
-        print(f"     Calls: {len(interactions)}, Tokens: {tokens:,}, Latency: {latency:.3f}s")
+        print(
+            f"     Calls: {len(interactions)}, Tokens: {tokens:,}, Latency: {latency:.3f}s"
+        )
 
     # Cost breakdown
     breakdown = await result.cost_breakdown()
-    print(f"\n💰 Cost Breakdown:")
+    print("\n💰 Cost Breakdown:")
     print(f"   Total: ${breakdown['total']:.6f}")
 
     if breakdown.get("by_evaluator"):
-        print(f"   By Evaluator:")
+        print("   By Evaluator:")
         for evaluator, cost in breakdown["by_evaluator"].items():
             print(f"     • {evaluator}: ${cost:.6f}")
 
@@ -167,21 +169,21 @@ async def example3_debugging():
     if result.interactions:
         interaction = result.interactions[0]
 
-        print(f"\n🔍 Full Interaction Details:")
-        print(f"\n   📝 Complete Prompt:")
+        print("\n🔍 Full Interaction Details:")
+        print("\n   📝 Complete Prompt:")
         print(f"   {'-' * 66}")
         print(f"   {interaction.prompt}")
         print(f"   {'-' * 66}")
 
-        print(f"\n   📤 Complete Response:")
+        print("\n   📤 Complete Response:")
         print(f"   {'-' * 66}")
         print(f"   {interaction.response}")
         print(f"   {'-' * 66}")
 
-        print(f"\n   💡 Use Case:")
-        print(f"      • See exactly what was sent to the LLM")
-        print(f"      • Understand how the score was computed")
-        print(f"      • Debug unexpected results")
+        print("\n   💡 Use Case:")
+        print("      • See exactly what was sent to the LLM")
+        print("      • Understand how the score was computed")
+        print("      • Debug unexpected results")
 
 
 async def example4_performance_monitoring():
@@ -192,7 +194,7 @@ async def example4_performance_monitoring():
 
     result = await evaluate(
         output="Machine learning is a subset of artificial intelligence that enables "
-               "systems to learn and improve from experience without being explicitly programmed.",
+        "systems to learn and improve from experience without being explicitly programmed.",
         reference="ML is part of AI and allows systems to learn from data.",
         evaluators=["semantic"],
         model="gpt-4o-mini",
@@ -200,25 +202,29 @@ async def example4_performance_monitoring():
 
     if result.interactions:
         interaction = result.interactions[0]
-        tokens_per_second = interaction.tokens_used / interaction.latency if interaction.latency > 0 else 0
+        tokens_per_second = (
+            interaction.tokens_used / interaction.latency
+            if interaction.latency > 0
+            else 0
+        )
 
-        print(f"\n⚡ Performance Metrics:")
+        print("\n⚡ Performance Metrics:")
         print(f"   Latency: {interaction.latency:.3f}s")
         print(f"   Tokens: {interaction.tokens_used:,}")
         print(f"   Throughput: {tokens_per_second:.1f} tokens/second")
         print(f"   Model: {interaction.model}")
 
         # Performance insights
-        print(f"\n   💡 Performance Insights:")
+        print("\n   💡 Performance Insights:")
         if interaction.latency > 2.0:
             print(f"      ⚠️  High latency ({interaction.latency:.3f}s)")
-            print(f"         Consider: Faster model or prompt optimization")
+            print("         Consider: Faster model or prompt optimization")
         elif interaction.latency < 0.5:
-            print(f"      ✅ Excellent latency!")
+            print("      ✅ Excellent latency!")
 
         if interaction.tokens_used > 1000:
             print(f"      ⚠️  High token usage ({interaction.tokens_used:,})")
-            print(f"         Consider: Shorter prompts or response caching")
+            print("         Consider: Shorter prompts or response caching")
 
 
 async def example5_audit_trail():
@@ -234,7 +240,7 @@ async def example5_audit_trail():
         model="gpt-4o-mini",
     )
 
-    print(f"\n📋 Complete Audit Trail:")
+    print("\n📋 Complete Audit Trail:")
     print(f"   Evaluation ID: {id(result)}")
     print(f"   Timestamp: {format_timestamp(result.timestamp)}")
     print(f"   Score: {result.overall_score:.3f}")
@@ -242,7 +248,7 @@ async def example5_audit_trail():
     print(f"   Processing Time: {result.processing_time:.3f}s")
     print(f"   Total Tokens: {result.total_tokens:,}")
 
-    print(f"\n   🔍 All LLM Interactions:")
+    print("\n   🔍 All LLM Interactions:")
     for i, interaction in enumerate(result.interactions, 1):
         print(f"   {i}. {interaction.purpose}")
         print(f"      Model: {interaction.model}")
@@ -250,10 +256,10 @@ async def example5_audit_trail():
         print(f"      Latency: {interaction.latency:.3f}s")
         print(f"      Timestamp: {format_timestamp(interaction.timestamp)}")
 
-    print(f"\n   💡 Use Case:")
-    print(f"      • Complete audit trail for regulatory compliance")
-    print(f"      • Timestamped records of all LLM usage")
-    print(f"      • Full transparency for audits")
+    print("\n   💡 Use Case:")
+    print("      • Complete audit trail for regulatory compliance")
+    print("      • Timestamped records of all LLM usage")
+    print("      • Full transparency for audits")
 
 
 async def example6_cost_calculator():
@@ -267,13 +273,13 @@ async def example6_cost_calculator():
     await calc.ensure_loaded()
 
     if calc.is_loaded:
-        print(f"\n✅ Pricing data loaded successfully")
+        print("\n✅ Pricing data loaded successfully")
         print(f"   Models available: {calc.model_count}")
 
         # Show pricing for common models
         models = ["gpt-4o-mini", "gpt-4o", "claude-3-5-sonnet"]
 
-        print(f"\n💵 Sample Pricing (per 1M tokens):")
+        print("\n💵 Sample Pricing (per 1M tokens):")
         for model_id in models:
             pricing = calc.get_pricing(model_id)
             if pricing:
@@ -284,13 +290,15 @@ async def example6_cost_calculator():
                     print(f"     Cached: ${pricing.input_cached:.2f}")
 
         # Calculate example costs
-        print(f"\n🧮 Example Cost (10K input + 2K output tokens):")
+        print("\n🧮 Example Cost (10K input + 2K output tokens):")
         for model_id in models:
-            cost = calc.calculate_cost(model=model_id, input_tokens=10000, output_tokens=2000)
+            cost = calc.calculate_cost(
+                model=model_id, input_tokens=10000, output_tokens=2000
+            )
             print(f"   {model_id}: ${cost:.4f}")
 
     else:
-        print(f"\n⚠️  Using fallback cost estimates")
+        print("\n⚠️  Using fallback cost estimates")
 
 
 async def example7_batch_cost_analysis():
@@ -300,9 +308,18 @@ async def example7_batch_cost_analysis():
     print("=" * 70)
 
     test_cases = [
-        {"output": "Water freezes at 0°C", "reference": "Water freezes at 0 degrees Celsius"},
-        {"output": "Earth orbits the Sun", "reference": "Earth's orbital period is one year"},
-        {"output": "DNA stores genetic data", "reference": "DNA contains genetic information"},
+        {
+            "output": "Water freezes at 0°C",
+            "reference": "Water freezes at 0 degrees Celsius",
+        },
+        {
+            "output": "Earth orbits the Sun",
+            "reference": "Earth's orbital period is one year",
+        },
+        {
+            "output": "DNA stores genetic data",
+            "reference": "DNA contains genetic information",
+        },
     ]
 
     print(f"\nEvaluating {len(test_cases)} test cases...")
@@ -323,7 +340,7 @@ async def example7_batch_cost_analysis():
     total_tokens = sum([r.total_tokens for r in results])
     avg_score = sum([r.overall_score for r in results]) / len(results)
 
-    print(f"\n💰 Batch Cost Summary:")
+    print("\n💰 Batch Cost Summary:")
     print(f"   Total evaluations: {len(results)}")
     print(f"   Total cost: ${total_cost:.6f}")
     print(f"   Average per evaluation: ${total_cost / len(results):.6f}")
@@ -373,6 +390,7 @@ async def main():
     except Exception as e:
         print(f"\n❌ Error: {e}")
         import traceback
+
         traceback.print_exc()
 
 

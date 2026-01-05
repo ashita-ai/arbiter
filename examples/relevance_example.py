@@ -46,13 +46,13 @@ async def example_1_basic_query_relevance():
     print(f"Fully Relevant: {result.passed}")
 
     score = result.scores[0]
-    print(f"\nScore Details:")
+    print("\nScore Details:")
     print(f"  Confidence: {score.confidence:.2f}")
     print(f"  Addressed Points: {score.metadata.get('addressed_count', 0)}")
     print(f"  Missing Points: {score.metadata.get('missing_count', 0)}")
 
     if score.metadata.get("addressed_points"):
-        print(f"\n  What Was Addressed:")
+        print("\n  What Was Addressed:")
         for point in score.metadata["addressed_points"]:
             print(f"    ✓ {point}")
 
@@ -79,17 +79,17 @@ async def example_2_incomplete_answer():
     print(f"\nRelevance Score: {result.overall_score:.2f}")
 
     score = result.scores[0]
-    print(f"\nScore Details:")
+    print("\nScore Details:")
     print(f"  Addressed: {score.metadata.get('addressed_count', 0)}")
     print(f"  Missing: {score.metadata.get('missing_count', 0)}")
 
     if score.metadata.get("addressed_points"):
-        print(f"\n  Addressed Points:")
+        print("\n  Addressed Points:")
         for point in score.metadata["addressed_points"]:
             print(f"    ✓ {point}")
 
     if score.metadata.get("missing_points"):
-        print(f"\n  Missing Points:")
+        print("\n  Missing Points:")
         for point in score.metadata["missing_points"]:
             print(f"    ✗ {point}")
 
@@ -117,17 +117,17 @@ the Eiffel Tower attracts millions of tourists annually, and the weather in spri
     print(f"\nRelevance Score: {result.overall_score:.2f}")
 
     score = result.scores[0]
-    print(f"\nScore Details:")
+    print("\nScore Details:")
     print(f"  Relevant Points: {score.metadata.get('addressed_count', 0)}")
     print(f"  Irrelevant Items: {score.metadata.get('irrelevant_count', 0)}")
 
     if score.metadata.get("addressed_points"):
-        print(f"\n  Relevant Content:")
+        print("\n  Relevant Content:")
         for point in score.metadata["addressed_points"]:
             print(f"    ✓ {point}")
 
     if score.metadata.get("irrelevant_content"):
-        print(f"\n  Irrelevant/Off-Topic:")
+        print("\n  Irrelevant/Off-Topic:")
         for content in score.metadata["irrelevant_content"]:
             print(f"    ⚠ {content}")
 
@@ -155,18 +155,18 @@ It emphasizes code readability and uses indentation for code blocks."""
     print(f"\nRelevance Score: {result.overall_score:.2f}")
 
     score = result.scores[0]
-    print(f"\nScore Details:")
+    print("\nScore Details:")
     print(f"  Total Query Aspects: {score.metadata.get('total_points', 0)}")
     print(f"  Addressed: {score.metadata.get('addressed_count', 0)}")
     print(f"  Missing: {score.metadata.get('missing_count', 0)}")
 
     if score.metadata.get("addressed_points"):
-        print(f"\n  Addressed Aspects:")
+        print("\n  Addressed Aspects:")
         for point in score.metadata["addressed_points"]:
             print(f"    ✓ {point}")
 
     if score.metadata.get("missing_points"):
-        print(f"\n  Missing Aspects:")
+        print("\n  Missing Aspects:")
         for point in score.metadata["missing_points"]:
             print(f"    ? {point}")
 
@@ -195,7 +195,7 @@ async def example_5_completely_off_topic():
 
     score = result.scores[0]
     if score.metadata.get("missing_points"):
-        print(f"\n  What Should Have Been Addressed:")
+        print("\n  What Should Have Been Addressed:")
         for point in score.metadata["missing_points"]:
             print(f"    ✗ {point}")
 
@@ -225,7 +225,7 @@ async def example_6_criteria_based_relevance():
     print(f"\nRelevance Score: {result.overall_score:.2f}")
 
     score = result.scores[0]
-    print(f"\nScore Details:")
+    print("\nScore Details:")
     print(f"  Confidence: {score.confidence:.2f}")
     print(f"  Addressed: {score.metadata.get('addressed_count', 0)}")
     print(f"  Missing: {score.metadata.get('missing_count', 0)}")
@@ -256,7 +256,7 @@ and an English army under the Anglo-Saxon King Harold Godwinson."""
     print(f"Quality Check: {'PASS' if result.passed else 'FAIL'}")
 
     score = result.scores[0]
-    print(f"\nScore Details:")
+    print("\nScore Details:")
     print(f"  Addressed Points: {score.metadata.get('addressed_count', 0)}")
     print(f"  Missing Points: {score.metadata.get('missing_count', 0)}")
 
@@ -278,7 +278,7 @@ async def example_8_observability():
     )
 
     print(f"\nRelevance Score: {result.overall_score:.2f}")
-    print(f"\nObservability Metrics:")
+    print("\nObservability Metrics:")
     print(f"  Total Tokens: {result.total_tokens:,}")
     print(f"  Processing Time: {result.processing_time:.2f}s")
     print(f"  LLM Interactions: {len(result.interactions)}")

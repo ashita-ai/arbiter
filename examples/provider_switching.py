@@ -17,10 +17,10 @@ Run with:
     python examples/provider_switching.py
 """
 
-from dotenv import load_dotenv
-
 import asyncio
 import os
+
+from dotenv import load_dotenv
 
 from arbiter_ai import evaluate
 from arbiter_ai.core import LLMManager, Provider
@@ -63,8 +63,10 @@ async def main():
             model="gpt-4o-mini",
         )
 
-        print(f"Provider: OpenAI")
-        print(f"Model: {result1.interactions[0].model if result1.interactions else 'N/A'}")
+        print("Provider: OpenAI")
+        print(
+            f"Model: {result1.interactions[0].model if result1.interactions else 'N/A'}"
+        )
         print(f"Score: {result1.overall_score:.3f}")
         print(f"Tokens: {result1.total_tokens:,}")
         print(f"Processing Time: {result1.processing_time:.3f}s")
@@ -83,8 +85,10 @@ async def main():
                 model="claude-3-opus-20240229",
             )
 
-            print(f"Provider: Anthropic")
-            print(f"Model: {result2.interactions[0].model if result2.interactions else 'N/A'}")
+            print("Provider: Anthropic")
+            print(
+                f"Model: {result2.interactions[0].model if result2.interactions else 'N/A'}"
+            )
             print(f"Score: {result2.overall_score:.3f}")
             print(f"Tokens: {result2.total_tokens:,}")
             print(f"Processing Time: {result2.processing_time:.3f}s")
@@ -106,8 +110,10 @@ async def main():
                 model="gemini-1.5-pro",
             )
 
-            print(f"Provider: Google")
-            print(f"Model: {result3.interactions[0].model if result3.interactions else 'N/A'}")
+            print("Provider: Google")
+            print(
+                f"Model: {result3.interactions[0].model if result3.interactions else 'N/A'}"
+            )
             print(f"Score: {result3.overall_score:.3f}")
             print(f"Tokens: {result3.total_tokens:,}")
             print(f"Processing Time: {result3.processing_time:.3f}s")
@@ -130,8 +136,8 @@ async def main():
             model="gpt-4o-mini",  # Provider auto-detected as OPENAI
         )
 
-        print(f"Model: gpt-4o-mini")
-        print(f"Auto-detected Provider: OpenAI")
+        print("Model: gpt-4o-mini")
+        print("Auto-detected Provider: OpenAI")
         print(f"Score: {result4.overall_score:.3f}")
 
     # Example 5: Using LLMManager directly for more control
@@ -146,7 +152,7 @@ async def main():
             temperature=0.0,
         )
 
-        print(f"Created LLM client:")
+        print("Created LLM client:")
         print(f"  Provider: {client.provider}")
         print(f"  Model: {client.model}")
         print(f"  Temperature: {client.temperature}")
@@ -160,7 +166,7 @@ async def main():
             reference=reference,
         )
 
-        print(f"\nEvaluation Result:")
+        print("\nEvaluation Result:")
         print(f"  Score: {score.value:.3f}")
         print(f"  Confidence: {score.confidence:.3f}")
 
@@ -216,4 +222,3 @@ This allows you to:
 
 if __name__ == "__main__":
     asyncio.run(main())
-

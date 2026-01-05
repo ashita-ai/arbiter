@@ -35,7 +35,6 @@ from typing import AsyncIterator, Optional
 from dotenv import load_dotenv
 
 from arbiter_ai import batch_evaluate, evaluate
-from arbiter_ai.core import LLMManager
 from arbiter_ai.core.circuit_breaker import CircuitBreaker
 from arbiter_ai.core.exceptions import (
     ArbiterError,
@@ -250,9 +249,7 @@ class ProductionEvaluator:
                     self.config.max_daily_cost
                     and self._daily_cost > self.config.max_daily_cost
                 ):
-                    logger.error(
-                        f"Daily cost budget exceeded: ${self._daily_cost:.2f}"
-                    )
+                    logger.error(f"Daily cost budget exceeded: ${self._daily_cost:.2f}")
 
                 # Persist result if storage available
                 result_id = None

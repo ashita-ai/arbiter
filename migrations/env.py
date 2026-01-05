@@ -1,10 +1,9 @@
 import os
 from logging.config import fileConfig
 
+from alembic import context
 from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
-
-from alembic import context
 
 # Load environment variables from .env
 load_dotenv()
@@ -19,7 +18,9 @@ database_url = os.getenv("DATABASE_URL")
 if database_url:
     # Remove pgbouncer parameter (not supported by psycopg2 for Alembic)
     # Asyncpg in the actual storage backend supports it fine
-    database_url = database_url.replace("?pgbouncer=true", "").replace("&pgbouncer=true", "")
+    database_url = database_url.replace("?pgbouncer=true", "").replace(
+        "&pgbouncer=true", ""
+    )
     # Replace % with %% for ConfigParser compatibility
     escaped_url = database_url.replace("%", "%%")
     config.set_main_option("sqlalchemy.url", escaped_url)

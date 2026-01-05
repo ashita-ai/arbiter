@@ -17,10 +17,10 @@ Run with:
     python examples/basic_evaluation.py
 """
 
-from dotenv import load_dotenv
-
 import asyncio
 import os
+
+from dotenv import load_dotenv
 
 from arbiter_ai import evaluate
 from arbiter_ai.core import LLMManager
@@ -53,7 +53,7 @@ async def main():
 
     print(f"Output: {result1.output}")
     print(f"Reference: {result1.reference}")
-    print(f"\n📊 Results:")
+    print("\n📊 Results:")
     print(f"  Overall Score: {result1.overall_score:.3f}")
     print(f"  Passed: {'✅' if result1.passed else '❌'}")
     print(f"  Processing Time: {result1.processing_time:.2f}s")
@@ -68,7 +68,7 @@ async def main():
             print(f"    Explanation: {score.explanation[:100]}...")
 
     # Show LLM interaction tracking
-    print(f"\n🔬 LLM Interaction Tracking:")
+    print("\n🔬 LLM Interaction Tracking:")
     print(f"  Total LLM Calls: {len(result1.interactions)}")
 
     for i, interaction in enumerate(result1.interactions, 1):
@@ -82,10 +82,10 @@ async def main():
         print(f"    Timestamp: {interaction.timestamp.strftime('%H:%M:%S')}")
 
     # Cost breakdown
-    print(f"\n💰 Cost Analysis:")
+    print("\n💰 Cost Analysis:")
     breakdown1 = await result1.cost_breakdown()
     print(f"  Total Cost: ${breakdown1['total']:.6f}")
-    print(f"  Token Breakdown:")
+    print("  Token Breakdown:")
     print(f"    • Input tokens: {breakdown1['token_breakdown']['input_tokens']:,}")
     print(f"    • Output tokens: {breakdown1['token_breakdown']['output_tokens']:,}")
     print(f"    • Total tokens: {breakdown1['token_breakdown']['total_tokens']:,}")
@@ -103,7 +103,7 @@ async def main():
 
     print(f"Output: {result2.output}")
     print(f"Reference: {result2.reference}")
-    print(f"\n📊 Results:")
+    print("\n📊 Results:")
     print(f"  Overall Score: {result2.overall_score:.3f}")
     print(f"  Passed: {'✅' if result2.passed else '❌'}")
 
@@ -132,11 +132,11 @@ async def main():
 
     print(f"Semantic Score: {score.value:.3f}")
     print(f"Confidence: {score.confidence:.3f}")
-    print(f"\nExplanation:")
+    print("\nExplanation:")
     print(f"  {score.explanation}")
 
     # Access interactions directly from evaluator
-    print(f"\n🔬 Evaluator Interactions:")
+    print("\n🔬 Evaluator Interactions:")
     interactions = evaluator.get_interactions()
     total_tokens = sum(i.tokens_used for i in interactions)
     print(f"  Total Calls: {len(interactions)}")
@@ -148,10 +148,10 @@ async def main():
     print("✅ Examples Complete!")
 
     # Calculate total session cost
-    total_cost = breakdown1['total'] + cost2
+    total_cost = breakdown1["total"] + cost2
     total_tokens_all = result1.total_tokens + result2.total_tokens
-    print(f"\n💰 Total Session Cost:")
-    print(f"  Total Evaluations: 3")
+    print("\n💰 Total Session Cost:")
+    print("  Total Evaluations: 3")
     print(f"  Total Cost: ${total_cost:.6f}")
     print(f"  Total Tokens: {total_tokens_all:,}")
     print(f"  Average per Evaluation: ${total_cost / 3:.6f}")

@@ -141,7 +141,7 @@ async def main():
 
     print("\n✅ Batch Complete!")
     print(
-        f"   Success Rate: {result2.successful_items}/{result2.total_items} ({(result2.successful_items/result2.total_items)*100:.0f}%)"
+        f"   Success Rate: {result2.successful_items}/{result2.total_items} ({(result2.successful_items / result2.total_items) * 100:.0f}%)"
     )
 
     # Example 3: Score variation across different quality
@@ -178,7 +178,13 @@ async def main():
     for i in range(result3.total_items):
         eval_result = result3.get_result(i)
         if eval_result:
-            quality = "✅ High" if eval_result.overall_score > 0.8 else "⚠️  Medium" if eval_result.overall_score > 0.4 else "❌ Low"
+            quality = (
+                "✅ High"
+                if eval_result.overall_score > 0.8
+                else "⚠️  Medium"
+                if eval_result.overall_score > 0.4
+                else "❌ Low"
+            )
             print(f"  Item {i}: {quality} - Score = {eval_result.overall_score:.2f}")
 
     # Example 4: Multiple evaluators in batch

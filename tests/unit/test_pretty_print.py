@@ -108,8 +108,7 @@ class TestEvaluationResultPrettyPrint:
             overall_score=0.85,
             passed=True,
             partial=True,
-            errors={"factuality": "API timeout",
-                    "groundedness": "Rate limit exceeded"},
+            errors={"factuality": "API timeout", "groundedness": "Rate limit exceeded"},
             processing_time=2.5,
             interactions=[
                 LLMInteraction(

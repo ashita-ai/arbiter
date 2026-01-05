@@ -1,18 +1,17 @@
 """Create arbiter schema and tables
 
 Revision ID: 94176ccd39d2
-Revises: 
+Revises:
 Create Date: 2025-11-23 18:38:57.245854
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
-import sqlalchemy as sa
-
 
 # revision identifiers, used by Alembic.
-revision: str = '94176ccd39d2'
+revision: str = "94176ccd39d2"
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None

@@ -18,16 +18,14 @@ Run with:
     python examples/advanced_config.py
 """
 
-from dotenv import load_dotenv
-
 import asyncio
 import os
-from typing import Optional
+
+from dotenv import load_dotenv
 
 from arbiter_ai import evaluate
 from arbiter_ai.core import LLMManager, Provider
 from arbiter_ai.core.llm_client import LLMClient
-from arbiter_ai.core.retry import RetryConfig, RETRY_STANDARD, RETRY_PERSISTENT
 
 
 async def main():
@@ -57,7 +55,7 @@ async def main():
     test_reference = "The capital of France is Paris"
 
     temperatures = [0.0, 0.3, 0.7, 1.0]
-    print(f"\nEvaluating with different temperatures:")
+    print("\nEvaluating with different temperatures:")
     print(f"Output: {test_output}")
     print(f"Reference: {test_reference}\n")
 
@@ -86,9 +84,9 @@ async def main():
     print("-" * 70)
 
     models = [
-        ("gpt-4o-mini", "Fast & Cheap", 0.15/1000),
-        ("gpt-4o", "Balanced", 2.50/1000),
-        ("gpt-4", "Most Accurate", 30.00/1000),
+        ("gpt-4o-mini", "Fast & Cheap", 0.15 / 1000),
+        ("gpt-4o", "Balanced", 2.50 / 1000),
+        ("gpt-4", "Most Accurate", 30.00 / 1000),
     ]
 
     print("\nComparing models for the same evaluation:")
@@ -137,7 +135,7 @@ async def main():
         llm_client=consistent_client,
     )
 
-    print(f"  Consistent Client (temp=0.1):")
+    print("  Consistent Client (temp=0.1):")
     print(f"    Score: {result1.overall_score:.3f}")
     print(f"    Tokens: {result1.total_tokens:,}")
 
@@ -155,7 +153,7 @@ async def main():
         llm_client=creative_client,
     )
 
-    print(f"  Creative Client (temp=0.9):")
+    print("  Creative Client (temp=0.9):")
     print(f"    Score: {result2.overall_score:.3f}")
     print(f"    Tokens: {result2.total_tokens:,}")
 
@@ -171,7 +169,9 @@ async def main():
 
     # Add Anthropic if key is available
     if os.getenv("ANTHROPIC_API_KEY"):
-        providers_to_test.append((Provider.ANTHROPIC, "Anthropic", "claude-3-opus-20240229"))
+        providers_to_test.append(
+            (Provider.ANTHROPIC, "Anthropic", "claude-3-opus-20240229")
+        )
 
     # Add Google if key is available
     if os.getenv("GOOGLE_API_KEY"):
@@ -229,7 +229,9 @@ async def main():
             evaluators=["semantic"],
             llm_client=reusable_client,  # Reuse same client
         )
-        print(f"  {i}. Score: {result.overall_score:.3f} ({result.total_tokens:,} tokens)")
+        print(
+            f"  {i}. Score: {result.overall_score:.3f} ({result.total_tokens:,} tokens)"
+        )
 
     print("\n💡 Tip: Reusing clients avoids connection overhead")
     print("         Better for batch operations")
@@ -291,4 +293,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-

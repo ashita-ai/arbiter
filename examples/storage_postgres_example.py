@@ -98,7 +98,9 @@ async def main() -> None:
             items=items, evaluators=["semantic"], model="gpt-4o-mini"
         )
 
-        print(f"   Successful: {batch_result.successful_items}/{batch_result.total_items}")
+        print(
+            f"   Successful: {batch_result.successful_items}/{batch_result.total_items}"
+        )
         print(f"   Total cost: ${await batch_result.total_llm_cost():.6f}")
 
         # Save batch result

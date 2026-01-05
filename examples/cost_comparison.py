@@ -16,6 +16,7 @@ What makes this unique:
 """
 
 import asyncio
+
 from arbiter_ai import evaluate
 from arbiter_ai.core import Provider
 
@@ -30,7 +31,7 @@ async def example1_basic_cost_tracking():
         output="Paris is the capital of France",
         reference="The capital of France is Paris",
         evaluators=["semantic"],
-        model="gpt-4o-mini"
+        model="gpt-4o-mini",
     )
 
     # Cost tracking is automatic - just ask for it
@@ -51,24 +52,20 @@ async def example2_model_comparison():
     print("=" * 80)
 
     output = "The Eiffel Tower stands 330 meters tall in Paris, France."
-    reference = "The Eiffel Tower is a 330-meter tall iron lattice tower located in Paris."
+    reference = (
+        "The Eiffel Tower is a 330-meter tall iron lattice tower located in Paris."
+    )
 
     # Test with GPT-4o (expensive but high quality)
     print("\nTesting GPT-4o...")
     result_gpt4 = await evaluate(
-        output=output,
-        reference=reference,
-        evaluators=["semantic"],
-        model="gpt-4o"
+        output=output, reference=reference, evaluators=["semantic"], model="gpt-4o"
     )
 
     # Test with GPT-4o-mini (cheaper, often similar quality)
     print("Testing GPT-4o-mini...")
     result_mini = await evaluate(
-        output=output,
-        reference=reference,
-        evaluators=["semantic"],
-        model="gpt-4o-mini"
+        output=output, reference=reference, evaluators=["semantic"], model="gpt-4o-mini"
     )
 
     # Compare costs and quality
@@ -78,23 +75,25 @@ async def example2_model_comparison():
     print("\n" + "-" * 80)
     print("COMPARISON RESULTS")
     print("-" * 80)
-    print(f"\nGPT-4o:")
+    print("\nGPT-4o:")
     print(f"  Cost: ${cost_gpt4:.6f}")
     print(f"  Score: {result_gpt4.overall_score:.3f}")
     print(f"  Time: {result_gpt4.processing_time:.2f}s")
 
-    print(f"\nGPT-4o-mini:")
+    print("\nGPT-4o-mini:")
     print(f"  Cost: ${cost_mini:.6f}")
     print(f"  Score: {result_mini.overall_score:.3f}")
     print(f"  Time: {result_mini.processing_time:.2f}s")
 
-    savings_pct = ((cost_gpt4 - cost_mini) / cost_gpt4 * 100)
+    savings_pct = (cost_gpt4 - cost_mini) / cost_gpt4 * 100
     score_diff = abs(result_gpt4.overall_score - result_mini.overall_score)
 
-    print(f"\n💡 INSIGHTS:")
+    print("\n💡 INSIGHTS:")
     print(f"   Cost savings: {savings_pct:.1f}%")
     print(f"   Score difference: {score_diff:.3f}")
-    print(f"   {'→ Use GPT-4o-mini!' if score_diff < 0.05 else '→ Quality difference may justify GPT-4o cost'}")
+    print(
+        f"   {'→ Use GPT-4o-mini!' if score_diff < 0.05 else '→ Quality difference may justify GPT-4o cost'}"
+    )
 
 
 async def example3_detailed_cost_breakdown():
@@ -109,25 +108,25 @@ async def example3_detailed_cost_breakdown():
         reference="Machine learning allows systems to automatically learn and improve from experience.",
         criteria="Technical accuracy, clarity for non-experts, conciseness",
         evaluators=["semantic", "custom_criteria"],
-        model="gpt-4o-mini"
+        model="gpt-4o-mini",
     )
 
     # Get detailed breakdown
     breakdown = await result.cost_breakdown()
 
-    print(f"\n💰 COST BREAKDOWN")
+    print("\n💰 COST BREAKDOWN")
     print("-" * 80)
     print(f"Total cost: ${breakdown['total']:.6f}")
-    print(f"\nBy evaluator:")
-    for evaluator, cost in breakdown['by_evaluator'].items():
+    print("\nBy evaluator:")
+    for evaluator, cost in breakdown["by_evaluator"].items():
         print(f"  {evaluator}: ${cost:.6f}")
 
-    print(f"\nBy model:")
-    for model, cost in breakdown['by_model'].items():
+    print("\nBy model:")
+    for model, cost in breakdown["by_model"].items():
         print(f"  {model}: ${cost:.6f}")
 
-    print(f"\nToken usage:")
-    tokens = breakdown['token_breakdown']
+    print("\nToken usage:")
+    tokens = breakdown["token_breakdown"]
     print(f"  Input: {tokens['input_tokens']:,}")
     print(f"  Output: {tokens['output_tokens']:,}")
     print(f"  Total: {tokens['total_tokens']:,}")
@@ -160,16 +159,18 @@ async def example4_provider_cost_comparison():
                 reference=reference,
                 evaluators=["semantic"],
                 provider=provider,
-                model=model
+                model=model,
             )
             cost = await result.total_llm_cost()
-            results.append({
-                'provider': provider.value,
-                'model': model,
-                'cost': cost,
-                'score': result.overall_score,
-                'time': result.processing_time
-            })
+            results.append(
+                {
+                    "provider": provider.value,
+                    "model": model,
+                    "cost": cost,
+                    "score": result.overall_score,
+                    "time": result.processing_time,
+                }
+            )
         except Exception as e:
             print(f"  Skipped (API key not configured or error): {e}")
 
@@ -177,14 +178,16 @@ async def example4_provider_cost_comparison():
         print("\n" + "-" * 80)
         print("PROVIDER COMPARISON")
         print("-" * 80)
-        for r in sorted(results, key=lambda x: x['cost']):
+        for r in sorted(results, key=lambda x: x["cost"]):
             print(f"\n{r['provider']}/{r['model']}:")
             print(f"  Cost: ${r['cost']:.6f}")
             print(f"  Score: {r['score']:.3f}")
             print(f"  Time: {r['time']:.2f}s")
 
-        cheapest = min(results, key=lambda x: x['cost'])
-        print(f"\n💡 Cheapest option: {cheapest['provider']}/{cheapest['model']} (${cheapest['cost']:.6f})")
+        cheapest = min(results, key=lambda x: x["cost"])
+        print(
+            f"\n💡 Cheapest option: {cheapest['provider']}/{cheapest['model']} (${cheapest['cost']:.6f})"
+        )
 
 
 async def example5_batch_cost_analysis():
@@ -199,33 +202,30 @@ async def example5_batch_cost_analysis():
     items = [
         {
             "output": "Paris is the capital of France",
-            "reference": "The capital of France is Paris"
+            "reference": "The capital of France is Paris",
         },
         {
             "output": "Tokyo is the capital of Japan",
-            "reference": "Japan's capital city is Tokyo"
+            "reference": "Japan's capital city is Tokyo",
         },
         {
             "output": "Berlin is the capital of Germany",
-            "reference": "The capital of Germany is Berlin"
+            "reference": "The capital of Germany is Berlin",
         },
     ]
 
     print(f"\nEvaluating {len(items)} items in parallel...")
 
     result = await batch_evaluate(
-        items=items,
-        evaluators=["semantic"],
-        model="gpt-4o-mini",
-        max_concurrency=3
+        items=items, evaluators=["semantic"], model="gpt-4o-mini", max_concurrency=3
     )
 
     # Get batch cost breakdown
     breakdown = await result.cost_breakdown()
-    total_cost = breakdown['total']
-    per_item_cost = breakdown['per_item_average']
+    total_cost = breakdown["total"]
+    per_item_cost = breakdown["per_item_average"]
 
-    print(f"\n💰 BATCH COST ANALYSIS")
+    print("\n💰 BATCH COST ANALYSIS")
     print("-" * 80)
     print(f"Total items: {result.total_items}")
     print(f"Successful: {result.successful_items}")
@@ -234,12 +234,12 @@ async def example5_batch_cost_analysis():
     print(f"Per-item average: ${per_item_cost:.6f}")
     print(f"Success rate: {breakdown['success_rate']:.1%}")
 
-    print(f"\nBy evaluator:")
-    for evaluator, cost in breakdown['by_evaluator'].items():
+    print("\nBy evaluator:")
+    for evaluator, cost in breakdown["by_evaluator"].items():
         print(f"  {evaluator}: ${cost:.6f}")
 
     # Extrapolate costs
-    print(f"\n📊 COST PROJECTIONS")
+    print("\n📊 COST PROJECTIONS")
     print("-" * 80)
     scales = [100, 1000, 10000]
     for scale in scales:

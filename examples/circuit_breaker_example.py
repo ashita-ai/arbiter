@@ -19,12 +19,13 @@ Run with:
 
 import asyncio
 import os
+
 from dotenv import load_dotenv
 
 from arbiter_ai import evaluate
 from arbiter_ai.core.circuit_breaker import CircuitBreaker
 from arbiter_ai.core.exceptions import CircuitBreakerOpenError, ModelProviderError
-from arbiter_ai.core.llm_client import LLMClient, LLMManager
+from arbiter_ai.core.llm_client import LLMClient
 from arbiter_ai.core.types import Provider
 
 
@@ -58,7 +59,7 @@ async def main():
 
         # Cost tracking
         breakdown = await result.cost_breakdown()
-        print(f"\n💰 Cost Analysis:")
+        print("\n💰 Cost Analysis:")
         print(f"  Total Cost: ${breakdown['total']:.6f}")
         print(f"  Tokens: {breakdown['token_breakdown']['total_tokens']:,}")
     except Exception as e:
@@ -83,10 +84,10 @@ async def main():
         circuit_breaker=custom_breaker,
     )
 
-    print(f"Circuit breaker configured:")
-    print(f"  - Failure threshold: 3")
-    print(f"  - Timeout: 30 seconds")
-    print(f"  - Half-open test calls: 2")
+    print("Circuit breaker configured:")
+    print("  - Failure threshold: 3")
+    print("  - Timeout: 30 seconds")
+    print("  - Half-open test calls: 2")
 
     # Get initial stats
     stats = custom_breaker.get_stats()
@@ -116,7 +117,7 @@ async def main():
         try:
             await test_breaker.call(simulated_llm_call, should_fail=True)
         except ModelProviderError:
-            print(f"  Failure {i+1}: API call failed")
+            print(f"  Failure {i + 1}: API call failed")
 
     stats = test_breaker.get_stats()
     print(f"\n✋ Circuit opened after {stats['failure_count']} failures")
@@ -130,7 +131,9 @@ async def main():
         print(f"  ⛔ Blocked: {e}")
 
     # Wait for timeout
-    print(f"\n⏳ Waiting {test_breaker.timeout} seconds for circuit to enter half-open state...")
+    print(
+        f"\n⏳ Waiting {test_breaker.timeout} seconds for circuit to enter half-open state..."
+    )
     await asyncio.sleep(test_breaker.timeout + 0.1)
 
     # Test recovery
@@ -142,7 +145,7 @@ async def main():
         print(f"  ❌ Recovery failed: {e}")
 
     stats = test_breaker.get_stats()
-    print(f"\n🔄 Circuit recovered")
+    print("\n🔄 Circuit recovered")
     print(f"   State: {stats['state']}")
     print(f"   Success count: {stats['success_count']}")
 

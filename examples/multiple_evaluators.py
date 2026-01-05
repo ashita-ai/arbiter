@@ -16,13 +16,12 @@ Run with:
     python examples/multiple_evaluators.py
 """
 
-from dotenv import load_dotenv
-
 import asyncio
 import os
 
+from dotenv import load_dotenv
+
 from arbiter_ai import evaluate
-from arbiter_ai.core import LLMManager
 
 
 async def main():
@@ -56,7 +55,7 @@ async def main():
     )
 
     print(f"Output: {result1.output[:80]}...")
-    print(f"\n📊 Results:")
+    print("\n📊 Results:")
     print(f"  Overall Score: {result1.overall_score:.3f}")
     print(f"  Passed: {'✅' if result1.passed else '❌'}")
     print(f"  Partial: {'⚠️ Yes' if result1.partial else '✅ No'}")
@@ -78,7 +77,7 @@ async def main():
 
     # Cost tracking
     breakdown1 = await result1.cost_breakdown()
-    print(f"\n💰 Cost Analysis:")
+    print("\n💰 Cost Analysis:")
     print(f"  Total Cost: ${breakdown1['total']:.6f}")
     print(f"  Tokens: {breakdown1['token_breakdown']['total_tokens']:,}")
 
@@ -123,25 +122,33 @@ stomach upset.""",
     )
 
     print(f"Output: {result2.output[:80]}...")
-    print(f"\n📊 Multi-Evaluator Analysis:")
+    print("\n📊 Multi-Evaluator Analysis:")
 
     # Analyze each score
-    semantic_score = next((s for s in result2.scores if s.name == "semantic_similarity"), None)
-    custom_score = next((s for s in result2.scores if s.name == "custom_criteria"), None)
+    semantic_score = next(
+        (s for s in result2.scores if s.name == "semantic_similarity"), None
+    )
+    custom_score = next(
+        (s for s in result2.scores if s.name == "custom_criteria"), None
+    )
 
     if semantic_score:
         print(f"\n  Semantic Similarity: {semantic_score.value:.3f}")
-        print(f"    → Measures how well output matches reference meaning")
+        print("    → Measures how well output matches reference meaning")
 
     if custom_score:
         print(f"\n  Custom Criteria: {custom_score.value:.3f}")
         if custom_score.metadata.get("criteria_met"):
             print(f"    ✅ Met: {', '.join(custom_score.metadata['criteria_met'])}")
         if custom_score.metadata.get("criteria_not_met"):
-            print(f"    ❌ Not Met: {', '.join(custom_score.metadata['criteria_not_met'])}")
+            print(
+                f"    ❌ Not Met: {', '.join(custom_score.metadata['criteria_not_met'])}"
+            )
 
     print(f"\n  Overall Score: {result2.overall_score:.3f}")
-    print(f"    → Average of successful evaluators: {', '.join(result2.evaluator_names)}")
+    print(
+        f"    → Average of successful evaluators: {', '.join(result2.evaluator_names)}"
+    )
 
     # Decision logic
     if result2.overall_score >= 0.8:
@@ -189,14 +196,16 @@ Order now and get 50% off!""",
     )
 
     print(f"Output: {result3.output[:80]}...")
-    print(f"\n📊 Quality Assessment:")
+    print("\n📊 Quality Assessment:")
 
     for score in result3.scores:
         print(f"\n  {score.name}: {score.value:.3f}")
         if score.metadata.get("criteria_met"):
             print(f"    ✅ Strengths: {', '.join(score.metadata['criteria_met'])}")
         if score.metadata.get("criteria_not_met"):
-            print(f"    ⚠️ Areas for Improvement: {', '.join(score.metadata['criteria_not_met'])}")
+            print(
+                f"    ⚠️ Areas for Improvement: {', '.join(score.metadata['criteria_not_met'])}"
+            )
 
     print(f"\n  Overall Quality: {result3.overall_score:.3f}")
     if result3.overall_score >= 0.8:
@@ -213,11 +222,11 @@ Order now and get 50% off!""",
     # Session cost summary
     cost2 = await result2.total_llm_cost()
     cost3 = await result3.total_llm_cost()
-    total_cost = breakdown1['total'] + cost2 + cost3
+    total_cost = breakdown1["total"] + cost2 + cost3
     total_tokens = result1.total_tokens + result2.total_tokens + result3.total_tokens
 
-    print(f"\n💰 Total Session Cost:")
-    print(f"  Total Evaluations: 5")
+    print("\n💰 Total Session Cost:")
+    print("  Total Evaluations: 5")
     print(f"  Total Cost: ${total_cost:.6f}")
     print(f"  Total Tokens: {total_tokens:,}")
     print(f"  Average per Evaluation: ${total_cost / 5:.6f}")
@@ -238,4 +247,3 @@ Order now and get 50% off!""",
 
 if __name__ == "__main__":
     asyncio.run(main())
-

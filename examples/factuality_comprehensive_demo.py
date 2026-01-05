@@ -66,9 +66,7 @@ async def demo_wikipedia_verifier():
 
     client = await LLMManager.get_client(model="gpt-4o-mini")
     wikipedia_verifier = KnowledgeBaseVerifier(max_results=3)
-    evaluator = FactualityEvaluator(
-        llm_client=client, verifiers=[wikipedia_verifier]
-    )
+    evaluator = FactualityEvaluator(llm_client=client, verifiers=[wikipedia_verifier])
 
     output = "Paris is the capital of France and is located on the Seine River."
 
@@ -105,10 +103,8 @@ async def demo_tavily_search():
         print(f"\nFactuality Score: {score.value:.2f}")
         print(f"  - LLM Score: {score.metadata.get('llm_score', 0):.2f}")
         print(f"  - Combined with Tavily: {score.value:.2f}")
-        print(f"\nVerification Details:")
-        print(
-            f"  - Checks performed: {score.metadata.get('verification_count', 0)}"
-        )
+        print("\nVerification Details:")
+        print(f"  - Checks performed: {score.metadata.get('verification_count', 0)}")
         print(f"  - Sources: {score.metadata.get('verification_sources', [])}")
 
     except ImportError:
@@ -125,7 +121,9 @@ async def demo_citation_checker():
     evaluator = FactualityEvaluator(llm_client=client, verifiers=[citation_verifier])
 
     # Simulated RAG output
-    rag_output = "The Eiffel Tower was designed by Gustave Eiffel and completed in 1889."
+    rag_output = (
+        "The Eiffel Tower was designed by Gustave Eiffel and completed in 1889."
+    )
 
     source_documents = """The Eiffel Tower is a wrought-iron lattice tower on the
     Champ de Mars in Paris, France. It was designed by engineer Gustave Eiffel
@@ -174,13 +172,9 @@ async def demo_all_verifiers():
     print(f"\nFactuality Score: {score.value:.2f}")
     print(f"  - LLM-only Score: {score.metadata.get('llm_score', 0):.2f}")
     print(f"  - Final (with verifiers): {score.value:.2f}")
-    print(f"\nVerification Summary:")
-    print(
-        f"  - Verifiers used: {len(score.metadata.get('verification_sources', []))}"
-    )
-    print(
-        f"  - Verification checks: {score.metadata.get('verification_count', 0)}"
-    )
+    print("\nVerification Summary:")
+    print(f"  - Verifiers used: {len(score.metadata.get('verification_sources', []))}")
+    print(f"  - Verification checks: {score.metadata.get('verification_count', 0)}")
     print(f"  - Sources: {score.metadata.get('verification_sources', [])}")
 
     print("\n💡 Multi-verifier approach:")
@@ -217,12 +211,12 @@ async def demo_cost_tracking():
     score_verified = await evaluator_verified.evaluate(output=test_claim)
     interactions_verified = evaluator_verified.get_interactions()
 
-    print(f"\n1. LLM-Only Approach:")
+    print("\n1. LLM-Only Approach:")
     print(f"   Score: {score_llm.value:.2f}")
     print(f"   LLM Calls: {len(interactions_llm)}")
     print(f"   Tokens: {interactions_llm[0].total_tokens if interactions_llm else 0}")
 
-    print(f"\n2. With Verification (Citation + Wikipedia):")
+    print("\n2. With Verification (Citation + Wikipedia):")
     print(f"   Score: {score_verified.value:.2f}")
     print(f"   LLM Calls: {len(interactions_verified)}")
     print(

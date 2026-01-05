@@ -55,12 +55,12 @@ async def example_factuality_with_citation_verifier():
     # Create evaluator with CitationVerifier
     client = await LLMManager.get_client(model="gpt-4o-mini")
     citation_verifier = CitationVerifier()
-    evaluator = FactualityEvaluator(
-        llm_client=client, verifiers=[citation_verifier]
-    )
+    evaluator = FactualityEvaluator(llm_client=client, verifiers=[citation_verifier])
 
     # RAG system output example
-    output = "The Eiffel Tower is located in Paris and is approximately 300 meters tall."
+    output = (
+        "The Eiffel Tower is located in Paris and is approximately 300 meters tall."
+    )
     source_documents = """The Eiffel Tower is a wrought-iron lattice tower on the
     Champ de Mars in Paris, France. It was constructed from 1887 to 1889 and stands
     approximately 300 meters (984 feet) tall."""
@@ -73,9 +73,7 @@ async def example_factuality_with_citation_verifier():
     print(f"Verification Used: {score.metadata.get('verification_used', False)}")
 
     if score.metadata.get("verification_used"):
-        print(
-            f"Verification Sources: {score.metadata.get('verification_sources', [])}"
-        )
+        print(f"Verification Sources: {score.metadata.get('verification_sources', [])}")
 
 
 async def example_factuality_with_wikipedia():
@@ -87,9 +85,7 @@ async def example_factuality_with_wikipedia():
     # Create evaluator with WikipediaVerifier
     client = await LLMManager.get_client(model="gpt-4o-mini")
     wikipedia_verifier = KnowledgeBaseVerifier()
-    evaluator = FactualityEvaluator(
-        llm_client=client, verifiers=[wikipedia_verifier]
-    )
+    evaluator = FactualityEvaluator(llm_client=client, verifiers=[wikipedia_verifier])
 
     # Test with general knowledge claims
     output = "Paris is the capital of France."
@@ -116,9 +112,7 @@ async def example_factuality_with_search(tavily_api_key: str):
         # Create evaluator with SearchVerifier
         client = await LLMManager.get_client(model="gpt-4o-mini")
         search_verifier = SearchVerifier(api_key=tavily_api_key)
-        evaluator = FactualityEvaluator(
-            llm_client=client, verifiers=[search_verifier]
-        )
+        evaluator = FactualityEvaluator(llm_client=client, verifiers=[search_verifier])
 
         # Test with verifiable claims
         output = "Water boils at 100 degrees Celsius at sea level under standard atmospheric pressure."
@@ -182,14 +176,12 @@ async def example_factuality_with_multiple_verifiers(tavily_api_key: str):
     print(f"\nFactuality Score: {score.value:.2f}")
     print(f"LLM Score: {score.metadata.get('llm_score', 'N/A'):.2f}")
     print(f"Confidence: {score.confidence:.2f}")
-    print(f"\nVerification Details:")
+    print("\nVerification Details:")
     print(f"  - Verification Used: {score.metadata.get('verification_used', False)}")
     print(
         f"  - Verification Count: {score.metadata.get('verification_count', 0)} checks"
     )
-    print(
-        f"  - Verification Sources: {score.metadata.get('verification_sources', [])}"
-    )
+    print(f"  - Verification Sources: {score.metadata.get('verification_sources', [])}")
 
     # Show LLM interaction tracking
     interactions = evaluator.get_interactions()

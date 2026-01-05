@@ -80,10 +80,8 @@ class Score(BaseModel):
         validate_assignment=True,
     )
 
-    name: str = Field(...,
-                      description="Name of the metric (e.g., 'factuality')")
-    value: float = Field(..., ge=0.0, le=1.0,
-                         description="Score value between 0 and 1")
+    name: str = Field(..., description="Name of the metric (e.g., 'factuality')")
+    value: float = Field(..., ge=0.0, le=1.0, description="Score value between 0 and 1")
     confidence: Optional[float] = Field(
         None, ge=0.0, le=1.0, description="Confidence in this score"
     )
@@ -131,10 +129,8 @@ class LLMInteraction(BaseModel):
     model: str = Field(..., description="Model used for this call")
 
     # Token tracking (new detailed fields)
-    input_tokens: int = Field(
-        default=0, ge=0, description="Input tokens consumed")
-    output_tokens: int = Field(
-        default=0, ge=0, description="Output tokens generated")
+    input_tokens: int = Field(default=0, ge=0, description="Input tokens consumed")
+    output_tokens: int = Field(default=0, ge=0, description="Output tokens generated")
     cached_tokens: int = Field(
         default=0,
         ge=0,
@@ -151,8 +147,7 @@ class LLMInteraction(BaseModel):
         None, ge=0, description="Actual cost in USD (calculated using LiteLLM pricing)"
     )
 
-    latency: float = Field(..., ge=0,
-                           description="Time taken for this call (seconds)")
+    latency: float = Field(..., ge=0, description="Time taken for this call (seconds)")
     timestamp: datetime = Field(
         default_factory=_utc_now, description="When this call was made"
     )
@@ -193,14 +188,10 @@ class Metric(BaseModel):
     )
 
     name: str = Field(..., description="Name of the metric")
-    evaluator: str = Field(...,
-                           description="Name of the evaluator that computed it")
-    model: Optional[str] = Field(
-        None, description="LLM model used (if applicable)")
-    processing_time: float = Field(...,
-                                   description="Time taken to compute (seconds)")
-    tokens_used: int = Field(
-        default=0, description="Tokens consumed (if applicable)")
+    evaluator: str = Field(..., description="Name of the evaluator that computed it")
+    model: Optional[str] = Field(None, description="LLM model used (if applicable)")
+    processing_time: float = Field(..., description="Time taken to compute (seconds)")
+    tokens_used: int = Field(default=0, description="Tokens consumed (if applicable)")
     metadata: Dict[str, Any] = Field(
         default_factory=dict, description="Additional metadata"
     )
@@ -267,8 +258,7 @@ class EvaluationResult(BaseModel):
         "Failed evaluators are excluded from the calculation. If partial=True, this represents "
         "the average of only the successful evaluations, not all requested evaluators.",
     )
-    passed: bool = Field(...,
-                         description="Whether evaluation passed quality threshold")
+    passed: bool = Field(..., description="Whether evaluation passed quality threshold")
 
     # Error handling
     errors: Dict[str, str] = Field(
@@ -288,8 +278,7 @@ class EvaluationResult(BaseModel):
         default_factory=list, description="Names of evaluators used"
     )
     total_tokens: int = Field(default=0, description="Total tokens used")
-    processing_time: float = Field(...,
-                                   description="Total processing time in seconds")
+    processing_time: float = Field(..., description="Total processing time in seconds")
     timestamp: datetime = Field(
         default_factory=_utc_now, description="When evaluation completed"
     )
@@ -455,7 +444,9 @@ class EvaluationResult(BaseModel):
             },
         }
 
-    def pretty_print(self, file: Optional[TextIO] = None, verbose: bool = False) -> None:
+    def pretty_print(
+        self, file: Optional[TextIO] = None, verbose: bool = False
+    ) -> None:
         """Print human-readable evaluation summary to terminal.
 
         Args:
@@ -599,8 +590,7 @@ class ComparisonResult(BaseModel):
 
     # Metadata
     total_tokens: int = Field(default=0, description="Total tokens used")
-    processing_time: float = Field(...,
-                                   description="Total processing time in seconds")
+    processing_time: float = Field(..., description="Total processing time in seconds")
     timestamp: datetime = Field(
         default_factory=_utc_now, description="When comparison completed"
     )
@@ -670,7 +660,9 @@ class ComparisonResult(BaseModel):
 
         return total
 
-    def pretty_print(self, file: Optional[TextIO] = None, verbose: bool = False) -> None:
+    def pretty_print(
+        self, file: Optional[TextIO] = None, verbose: bool = False
+    ) -> None:
         """Print human-readable comparison summary to terminal.
 
         Args:
@@ -701,9 +693,7 @@ class ComparisonResult(BaseModel):
         # Header
         winner_symbol = "✓" if self.winner != "tie" else "="
         winner_display = (
-            self.winner.replace("_", " ").title()
-            if self.winner != "tie"
-            else "Tie"
+            self.winner.replace("_", " ").title() if self.winner != "tie" else "Tie"
         )
         print("\nComparison Results", file=out)
         print("==================", file=out)
@@ -790,13 +780,11 @@ class BatchEvaluationResult(BaseModel):
 
     # Statistics
     total_items: int = Field(..., description="Total number of items in batch")
-    successful_items: int = Field(...,
-                                  description="Number of successful evaluations")
+    successful_items: int = Field(..., description="Number of successful evaluations")
     failed_items: int = Field(..., description="Number of failed evaluations")
 
     # Timing and tokens
-    processing_time: float = Field(...,
-                                   description="Total processing time in seconds")
+    processing_time: float = Field(..., description="Total processing time in seconds")
     total_tokens: int = Field(
         default=0, description="Total tokens across all evaluations"
     )
@@ -922,16 +910,14 @@ class BatchEvaluationResult(BaseModel):
         for breakdown in breakdowns:
             total += breakdown["total"]
             for evaluator, cost in breakdown["by_evaluator"].items():
-                by_evaluator[evaluator] = by_evaluator.get(
-                    evaluator, 0.0) + cost
+                by_evaluator[evaluator] = by_evaluator.get(evaluator, 0.0) + cost
             for model, cost in breakdown["by_model"].items():
                 by_model[model] = by_model.get(model, 0.0) + cost
 
         return {
             "total": round(total, 6),
             "per_item_average": (
-                round(total / self.total_items,
-                      6) if self.total_items > 0 else 0.0
+                round(total / self.total_items, 6) if self.total_items > 0 else 0.0
             ),
             "by_evaluator": {k: round(v, 6) for k, v in by_evaluator.items()},
             "by_model": {k: round(v, 6) for k, v in by_model.items()},
@@ -942,7 +928,9 @@ class BatchEvaluationResult(BaseModel):
             ),
         }
 
-    def pretty_print(self, file: Optional[TextIO] = None, verbose: bool = False) -> None:
+    def pretty_print(
+        self, file: Optional[TextIO] = None, verbose: bool = False
+    ) -> None:
         """Print human-readable batch evaluation summary to terminal.
 
         Args:
@@ -1002,8 +990,7 @@ class BatchEvaluationResult(BaseModel):
             sorted_scores = sorted(scores)
             n = len(sorted_scores)
             if n % 2 == 0:
-                median = (sorted_scores[n // 2 - 1] +
-                          sorted_scores[n // 2]) / 2
+                median = (sorted_scores[n // 2 - 1] + sorted_scores[n // 2]) / 2
             else:
                 median = sorted_scores[n // 2]
 
@@ -1040,9 +1027,7 @@ class BatchEvaluationResult(BaseModel):
                     )
                 else:
                     error = self.get_error(i)
-                    error_msg = (
-                        error["error"] if error else "Unknown error"
-                    )
+                    error_msg = error["error"] if error else "Unknown error"
                     # Truncate long error messages
                     if len(error_msg) > 50:
                         error_msg = error_msg[:50] + "..."
