@@ -386,12 +386,12 @@ class TestBatchEvaluationResultPrettyPrint:
 
     def test_basic_output(self):
         """Test basic batch evaluation output."""
-        # Create successful results
+        # Create successful results with scores from 0.55 to 1.00
         results = [
             EvaluationResult(
                 output=f"output_{i}",
-                scores=[Score(name="semantic", value=0.70 + i * 0.05)],
-                overall_score=0.70 + i * 0.05,
+                scores=[Score(name="semantic", value=0.55 + i * 0.05)],
+                overall_score=0.55 + i * 0.05,
                 passed=True,
                 processing_time=0.5,
                 interactions=[],
@@ -558,16 +558,16 @@ class TestBatchEvaluationResultPrettyPrint:
         results = [
             EvaluationResult(
                 output=f"output_{i}",
-                scores=[Score(name="semantic", value=0.60 + i * 0.05)],
-                overall_score=0.60 + i * 0.05,
-                passed=(0.60 + i * 0.05) >= 0.7,
+                scores=[Score(name="semantic", value=0.50 + i * 0.05)],
+                overall_score=0.50 + i * 0.05,
+                passed=(0.50 + i * 0.05) >= 0.7,
                 processing_time=0.5,
                 interactions=[],
             )
             for i in range(10)
         ]
 
-        # 0.60, 0.65, 0.70, 0.75, ... 0.95
+        # 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95
         # Passed: 0.70, 0.75, 0.80, 0.85, 0.90, 0.95 = 6/10 = 60%
 
         batch_result = BatchEvaluationResult(
@@ -584,8 +584,8 @@ class TestBatchEvaluationResultPrettyPrint:
         batch_result.pretty_print(file=output)
         text = output.getvalue()
 
-        # 8 results are >= 0.70 (indices 2-9)
-        assert "Pass Rate: 80.0%" in text
+        # 6 results are >= 0.70 (indices 4-9)
+        assert "Pass Rate: 60.0%" in text
 
     def test_statistics_calculations(self):
         """Test that statistics are calculated correctly."""
