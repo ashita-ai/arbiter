@@ -125,6 +125,19 @@ class TestScore:
         assert high_conf.is_high_confidence() is True
         assert low_conf.is_low_confidence() is True
         assert no_conf.is_low_confidence() is True
+        # Test is_high_confidence returns False when confidence is None
+        assert no_conf.is_high_confidence() is False
+
+    def test_score_comparison_with_non_score(self):
+        """Test comparison operators return NotImplemented for non-Score types."""
+        score = Score(name="test", value=0.5)
+
+        # These comparisons should return NotImplemented (not raise errors)
+        assert score.__lt__("not a score") is NotImplemented
+        assert score.__le__(42) is NotImplemented
+        assert score.__gt__(3.14) is NotImplemented
+        assert score.__ge__(None) is NotImplemented
+        assert score.__eq__("string") is NotImplemented
 
 
 class TestLLMInteraction:
