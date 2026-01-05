@@ -102,7 +102,6 @@ class TestScore:
         assert hash(s1) == hash(s2)
         assert len({s1, s2}) == 1
 
-    
     def test_score_meets_threshold(self):
         """Test score value meets or exceeds threshold."""
         score = Score(name="metric", value=0.7)
@@ -114,7 +113,7 @@ class TestScore:
         """Test value proximity within tolerance."""
         s1 = Score(name="test", value=0.80)
         s2 = Score(name="test", value=0.84)
-        
+
         assert s1.is_close_to(s2, tolerance=0.05) is True
         assert s1.is_close_to(s2, tolerance=0.01) is False
 
@@ -126,7 +125,7 @@ class TestScore:
         assert high_conf.is_high_confidence() is True
         assert low_conf.is_low_confidence() is True
         assert no_conf.is_low_confidence() is True
-    
+
 
 class TestLLMInteraction:
     """Test suite for LLMInteraction model."""
