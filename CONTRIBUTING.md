@@ -34,6 +34,9 @@ cd arbiter
 # Install with development dependencies
 uv sync --all-extras
 
+# IMPORTANT: Install pre-commit hooks (prevents CI failures)
+uv run pre-commit install
+
 # Set up environment variables
 cp .env.example .env
 # Edit .env with your API keys
@@ -41,6 +44,8 @@ cp .env.example .env
 # Verify installation
 uv run pytest tests/unit/test_semantic.py -v
 ```
+
+**Why pre-commit hooks matter:** Pre-commit hooks automatically format and lint your code before each commit. This ensures your PR passes CI on the first try, saving you from having to push formatting fixes after review.
 
 ## Making Changes
 
@@ -109,9 +114,19 @@ uv run pytest --cov=arbiter --cov-report=term-missing
 
 ## Code Quality
 
-### Pre-Commit Checklist
+### Pre-Commit Hooks (Recommended)
 
-Run these commands before every commit:
+If you ran `pre-commit install` during setup, formatting and linting happen automatically on every commit. This is the recommended workflow.
+
+To run hooks manually on all files:
+
+```bash
+uv run pre-commit run --all-files
+```
+
+### Manual Checks
+
+If you prefer manual checks, run these before every commit:
 
 ```bash
 # 1. Format code
@@ -132,10 +147,10 @@ make all
 
 ### Required Tools
 
-- **black** - Code formatting (line length 88)
-- **ruff** - Fast linting
+- **ruff** - Fast linting and formatting (replaces black + isort)
 - **mypy** - Strict type checking
 - **pytest** - Testing framework
+- **pre-commit** - Git hooks for automated checks
 
 ## Pull Request Process
 
