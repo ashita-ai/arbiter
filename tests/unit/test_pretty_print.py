@@ -6,10 +6,7 @@ Tests terminal-friendly output formatting for:
 - BatchEvaluationResult.pretty_print()
 """
 
-from datetime import datetime, timezone
 from io import StringIO
-
-import pytest
 
 from arbiter_ai.core.models import (
     BatchEvaluationResult,

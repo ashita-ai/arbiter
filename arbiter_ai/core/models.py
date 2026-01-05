@@ -492,11 +492,11 @@ class EvaluationResult(BaseModel):
 
         # Partial result warning
         if self.partial:
-            print(f"⚠ PARTIAL RESULT (some evaluators failed)", file=out)
+            print("⚠ PARTIAL RESULT (some evaluators failed)", file=out)
 
         # Individual scores
         if self.scores:
-            print(f"\nScores:", file=out)
+            print("\nScores:", file=out)
             for score in self.scores:
                 conf = (
                     f" (confidence: {score.confidence:.2f})"
@@ -507,7 +507,7 @@ class EvaluationResult(BaseModel):
 
         # Errors
         if self.errors:
-            print(f"\nErrors:", file=out)
+            print("\nErrors:", file=out)
             for evaluator, error in self.errors.items():
                 print(f"  • {evaluator}: {error}", file=out)
 
@@ -517,7 +517,7 @@ class EvaluationResult(BaseModel):
 
         # Verbose output
         if verbose:
-            print(f"\nToken Usage:", file=out)
+            print("\nToken Usage:", file=out)
             total_input = sum(i.input_tokens for i in self.interactions)
             total_output = sum(i.output_tokens for i in self.interactions)
             total_cached = sum(i.cached_tokens for i in self.interactions)
@@ -528,7 +528,7 @@ class EvaluationResult(BaseModel):
             print(f"  Total:  {total_input + total_output:,}", file=out)
 
             if self.interactions:
-                print(f"\nInteractions:", file=out)
+                print("\nInteractions:", file=out)
                 for i, interaction in enumerate(self.interactions, 1):
                     print(
                         f"  {i}. {interaction.purpose} ({interaction.model}): "
@@ -711,7 +711,7 @@ class ComparisonResult(BaseModel):
         print(f"Confidence: {self.confidence:.2f}", file=out)
 
         # Reasoning (always shown, but truncated if not verbose)
-        print(f"\nReasoning:", file=out)
+        print("\nReasoning:", file=out)
         if verbose or len(self.reasoning) <= 200:
             print(self.reasoning, file=out)
         else:
@@ -720,7 +720,7 @@ class ComparisonResult(BaseModel):
 
         # Aspect scores
         if self.aspect_scores and verbose:
-            print(f"\nAspect Scores:", file=out)
+            print("\nAspect Scores:", file=out)
             for aspect, scores in self.aspect_scores.items():
                 a_score = scores.get("output_a", 0.0)
                 b_score = scores.get("output_b", 0.0)
@@ -735,7 +735,7 @@ class ComparisonResult(BaseModel):
 
         # Verbose token breakdown
         if verbose and self.interactions:
-            print(f"\nToken Usage:", file=out)
+            print("\nToken Usage:", file=out)
             total_input = sum(i.input_tokens for i in self.interactions)
             total_output = sum(i.output_tokens for i in self.interactions)
             print(f"  Input:  {total_input:,}", file=out)
@@ -1007,7 +1007,7 @@ class BatchEvaluationResult(BaseModel):
             else:
                 median = sorted_scores[n // 2]
 
-            print(f"\nStatistics:", file=out)
+            print("\nStatistics:", file=out)
             print(f"  Mean:   {mean_score:.2f}", file=out)
             print(f"  Std:    {std_dev:.2f}", file=out)
             print(f"  Median: {median:.2f}", file=out)
@@ -1029,7 +1029,7 @@ class BatchEvaluationResult(BaseModel):
 
         # Verbose: show individual results
         if verbose and successful_results:
-            print(f"\nIndividual Results:", file=out)
+            print("\nIndividual Results:", file=out)
             for i, result in enumerate(self.results):
                 if result is not None:
                     status = "✓" if result.passed else "✗"
@@ -1050,7 +1050,7 @@ class BatchEvaluationResult(BaseModel):
 
         # Show errors summary if not verbose
         elif self.errors and not verbose:
-            print(f"\nErrors: (use verbose=True for details)", file=out)
+            print("\nErrors: (use verbose=True for details)", file=out)
             # Group errors by type
             error_types: Dict[str, int] = {}
             for error in self.errors:
