@@ -8,7 +8,7 @@ This module defines the primary data structures used throughout Arbiter:
 """
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, TextIO
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
@@ -455,11 +455,11 @@ class EvaluationResult(BaseModel):
             },
         }
 
-    def pretty_print(self, file: Optional[Any] = None, verbose: bool = False) -> None:
+    def pretty_print(self, file: Optional[TextIO] = None, verbose: bool = False) -> None:
         """Print human-readable evaluation summary to terminal.
 
         Args:
-            file: Output stream (default: sys.stdout). Accepts any object with a write() method.
+            file: Output stream (default: sys.stdout)
             verbose: If True, include detailed information like token breakdown and interactions
 
         Example:
@@ -670,11 +670,11 @@ class ComparisonResult(BaseModel):
 
         return total
 
-    def pretty_print(self, file: Optional[Any] = None, verbose: bool = False) -> None:
+    def pretty_print(self, file: Optional[TextIO] = None, verbose: bool = False) -> None:
         """Print human-readable comparison summary to terminal.
 
         Args:
-            file: Output stream (default: sys.stdout). Accepts any object with a write() method.
+            file: Output stream (default: sys.stdout)
             verbose: If True, include detailed aspect scores and reasoning
 
         Example:
@@ -942,11 +942,11 @@ class BatchEvaluationResult(BaseModel):
             ),
         }
 
-    def pretty_print(self, file: Optional[Any] = None, verbose: bool = False) -> None:
+    def pretty_print(self, file: Optional[TextIO] = None, verbose: bool = False) -> None:
         """Print human-readable batch evaluation summary to terminal.
 
         Args:
-            file: Output stream (default: sys.stdout). Accepts any object with a write() method.
+            file: Output stream (default: sys.stdout)
             verbose: If True, include per-item results and detailed statistics
 
         Example:
