@@ -495,6 +495,9 @@ cd arbiter
 # Install with development dependencies
 uv sync --all-extras
 
+# Install pre-commit hooks (auto-formats code on commit)
+uv run pre-commit install
+
 # Run tests
 uv run pytest
 
