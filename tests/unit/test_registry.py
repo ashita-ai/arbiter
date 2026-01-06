@@ -267,9 +267,9 @@ class TestRegistryIntegration:
             )
 
         error_msg = str(exc_info.value)
-        assert "Unknown evaluator" in error_msg
-        assert "unknown_evaluator" in error_msg
-        assert "Available evaluators" in error_msg
+        # New validation provides clear message with available evaluators
+        assert "Unknown evaluator 'unknown_evaluator'" in error_msg
+        assert "Available:" in error_msg
         assert "semantic" in error_msg
         assert "custom_criteria" in error_msg
 

@@ -170,10 +170,20 @@ class TestEvaluateFunction:
         from arbiter_ai.api import evaluate
 
         with pytest.raises(ValidationError, match="'reference' is required"):
-            await evaluate(output="Test", reference="", evaluators=["semantic"], llm_client=mock_llm_client)
+            await evaluate(
+                output="Test",
+                reference="",
+                evaluators=["semantic"],
+                llm_client=mock_llm_client,
+            )
 
         with pytest.raises(ValidationError, match="'reference' is required"):
-            await evaluate(output="Test", reference="   ", evaluators=["semantic"], llm_client=mock_llm_client)
+            await evaluate(
+                output="Test",
+                reference="   ",
+                evaluators=["semantic"],
+                llm_client=mock_llm_client,
+            )
 
     @pytest.mark.asyncio
     async def test_evaluate_validation_empty_criteria(self, mock_llm_client):
@@ -186,7 +196,7 @@ class TestEvaluateFunction:
                 output="Test",
                 criteria="",
                 evaluators=["custom_criteria"],
-                llm_client=mock_llm_client
+                llm_client=mock_llm_client,
             )
 
         with pytest.raises(ValidationError, match="'criteria' is required"):
@@ -194,7 +204,7 @@ class TestEvaluateFunction:
                 output="Test",
                 criteria="   ",
                 evaluators=["custom_criteria"],
-                llm_client=mock_llm_client
+                llm_client=mock_llm_client,
             )
 
     @pytest.mark.asyncio
@@ -414,7 +424,6 @@ class TestEvaluateFunction:
         self, mock_llm_client, mock_agent
     ):
         """Test defensive code path when evaluator lookup returns None."""
-        from unittest.mock import patch
 
         from arbiter_ai.api import evaluate
 

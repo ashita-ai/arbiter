@@ -188,7 +188,10 @@ class TestBatchEvaluateFunction:
         """Test that empty items list raises validation error."""
         from arbiter_ai.api import batch_evaluate
 
-        with pytest.raises(ValidationError, match="items list cannot be empty"):
+        with pytest.raises(
+            ValidationError,
+            match="'items' cannot be empty - provide at least one item",
+        ):
             await batch_evaluate(
                 items=[],
                 evaluators=["semantic"],
@@ -204,7 +207,9 @@ class TestBatchEvaluateFunction:
             {"reference": "Test reference"},  # Missing 'output'
         ]
 
-        with pytest.raises(ValidationError, match="missing required 'output' key"):
+        with pytest.raises(
+            ValidationError, match="Item at index 0 missing required field 'output'"
+        ):
             await batch_evaluate(
                 items=items,
                 evaluators=["semantic"],
@@ -262,7 +267,8 @@ class TestBatchEvaluateFunction:
 
         async def mock_run(*args, **kwargs):
             concurrent_calls.append(1)
-            await asyncio.sleep(0.01)  # Small delay to allow concurrency tracking
+            # Small delay to allow concurrency tracking
+            await asyncio.sleep(0.01)
             concurrent_calls.pop()
             return MockAgentResult(mock_response)
 
@@ -299,7 +305,8 @@ class TestBatchEvaluateFunction:
             score=0.85,
             confidence=0.9,
             explanation="Meets criteria",
-            criteria_met=["Accuracy", "Clarity"],  # Need criteria for high confidence
+            # Need criteria for high confidence
+            criteria_met=["Accuracy", "Clarity"],
         )
 
         # Alternate between semantic and criteria responses
@@ -541,7 +548,8 @@ class TestBatchEvaluateFunction:
             score=0.85,
             confidence=0.9,
             explanation="Meets criteria",
-            criteria_met=["Accuracy", "Clarity"],  # Need criteria for high confidence
+            # Need criteria for high confidence
+            criteria_met=["Accuracy", "Clarity"],
         )
 
         mock_result = MockAgentResult(mock_response)
