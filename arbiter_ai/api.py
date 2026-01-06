@@ -40,6 +40,9 @@ from .core import (
     LLMManager,
     Provider,
     get_evaluator_class,
+    validate_batch_evaluate_inputs,
+    validate_compare_inputs,
+    validate_evaluate_inputs,
     validate_evaluator_name,
 )
 from .core.exceptions import ArbiterError, EvaluatorError, ValidationError
@@ -124,15 +127,15 @@ async def evaluate(
         >>> cost = result.total_llm_cost(cost_per_1k_tokens=0.03)
         >>> print(f"Total cost: ${cost:.4f}")
     """
-    # Input validation
-    if not output or not output.strip():
-        raise ValidationError("output cannot be empty or whitespace")
-
-    if reference is not None and not reference.strip():
-        raise ValidationError("reference cannot be empty or whitespace if provided")
-
-    if criteria is not None and not criteria.strip():
-        raise ValidationError("criteria cannot be empty or whitespace if provided")
+    # Validate inputs before any processing
+    validate_evaluate_inputs(
+        output=output,
+        reference=reference,
+        criteria=criteria,
+        evaluators=evaluators,
+        threshold=threshold,
+        model=model,
+    )
 
     # If middleware is provided, use it to wrap the evaluation
     if middleware:
@@ -394,17 +397,13 @@ async def compare(
         >>> for aspect, scores in comparison.aspect_scores.items():
         ...     print(f"{aspect}: A={scores['output_a']:.2f}, B={scores['output_b']:.2f}")
     """
-    # Input validation
-    if not output_a or not output_a.strip():
-        raise ValidationError("output_a cannot be empty or whitespace")
-    if not output_b or not output_b.strip():
-        raise ValidationError("output_b cannot be empty or whitespace")
-
-    if criteria is not None and not criteria.strip():
-        raise ValidationError("criteria cannot be empty or whitespace if provided")
-
-    if reference is not None and not reference.strip():
-        raise ValidationError("reference cannot be empty or whitespace if provided")
+    # Validate inputs before any processing
+    validate_compare_inputs(
+        output_a=output_a,
+        output_b=output_b,
+        criteria=criteria,
+        model=model,
+    )
 
     # If middleware is provided, use it to wrap the comparison
     if middleware:
@@ -547,18 +546,14 @@ async def batch_evaluate(
         ...         error = results.get_error(i)
         ...         print(f"Item {i}: FAILED - {error['error']}")
     """
-    # Input validation
-    if not items:
-        raise ValidationError("items list cannot be empty")
-
-    # Validate each item structure
-    for i, item in enumerate(items):
-        if not isinstance(item, dict):
-            raise ValidationError(f"Item {i} must be a dictionary, got {type(item)}")
-        if "output" not in item:
-            raise ValidationError(f"Item {i} missing required 'output' key")
-        if not item["output"] or not str(item["output"]).strip():
-            raise ValidationError(f"Item {i} 'output' cannot be empty or whitespace")
+    # Validate inputs before any processing
+    validate_batch_evaluate_inputs(
+        items=items,
+        evaluators=evaluators,
+        threshold=threshold,
+        model=model,
+        max_concurrency=max_concurrency,
+    )
 
     # Delegate to implementation
     return await _batch_evaluate_impl(

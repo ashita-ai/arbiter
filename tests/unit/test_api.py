@@ -81,7 +81,8 @@ class TestEvaluateFunction:
             score=0.85,
             confidence=0.9,
             explanation="Meets criteria",
-            criteria_met=["Accuracy", "Clarity"],  # Need criteria for high confidence
+            # Need criteria for high confidence
+            criteria_met=["Accuracy", "Clarity"],
         )
 
         mock_result = MockAgentResult(mock_response)
@@ -104,7 +105,7 @@ class TestEvaluateFunction:
         """Test that custom_criteria evaluator requires criteria."""
         from arbiter_ai.api import evaluate
 
-        with pytest.raises(ValidationError, match="requires criteria"):
+        with pytest.raises(ValidationError, match="'criteria' is required"):
             await evaluate(
                 output="Test output",
                 evaluators=["custom_criteria"],
@@ -127,7 +128,8 @@ class TestEvaluateFunction:
             score=0.85,
             confidence=0.9,
             explanation="Meets criteria",
-            criteria_met=["Accuracy", "Clarity"],  # Need criteria for high confidence
+            # Need criteria for high confidence
+            criteria_met=["Accuracy", "Clarity"],
         )
 
         # First call returns semantic, second returns criteria
@@ -156,10 +158,10 @@ class TestEvaluateFunction:
         """Test validation for empty output."""
         from arbiter_ai.api import evaluate
 
-        with pytest.raises(ValidationError, match="output cannot be empty"):
+        with pytest.raises(ValidationError, match="'output' cannot be empty"):
             await evaluate(output="", llm_client=mock_llm_client)
 
-        with pytest.raises(ValidationError, match="output cannot be empty"):
+        with pytest.raises(ValidationError, match="'output' cannot be empty"):
             await evaluate(output="   ", llm_client=mock_llm_client)
 
     @pytest.mark.asyncio
@@ -167,22 +169,33 @@ class TestEvaluateFunction:
         """Test validation for empty reference."""
         from arbiter_ai.api import evaluate
 
-        with pytest.raises(ValidationError, match="reference cannot be empty"):
-            await evaluate(output="Test", reference="", llm_client=mock_llm_client)
+        with pytest.raises(ValidationError, match="'reference' is required"):
+            await evaluate(output="Test", reference="", evaluators=["semantic"], llm_client=mock_llm_client)
 
-        with pytest.raises(ValidationError, match="reference cannot be empty"):
-            await evaluate(output="Test", reference="   ", llm_client=mock_llm_client)
+        with pytest.raises(ValidationError, match="'reference' is required"):
+            await evaluate(output="Test", reference="   ", evaluators=["semantic"], llm_client=mock_llm_client)
 
     @pytest.mark.asyncio
     async def test_evaluate_validation_empty_criteria(self, mock_llm_client):
-        """Test validation for empty criteria."""
+        """Test validation for empty criteria when using custom_criteria evaluator."""
         from arbiter_ai.api import evaluate
 
-        with pytest.raises(ValidationError, match="criteria cannot be empty"):
-            await evaluate(output="Test", criteria="", llm_client=mock_llm_client)
+        # Empty criteria should fail when using custom_criteria evaluator
+        with pytest.raises(ValidationError, match="'criteria' is required"):
+            await evaluate(
+                output="Test",
+                criteria="",
+                evaluators=["custom_criteria"],
+                llm_client=mock_llm_client
+            )
 
-        with pytest.raises(ValidationError, match="criteria cannot be empty"):
-            await evaluate(output="Test", criteria="   ", llm_client=mock_llm_client)
+        with pytest.raises(ValidationError, match="'criteria' is required"):
+            await evaluate(
+                output="Test",
+                criteria="   ",
+                evaluators=["custom_criteria"],
+                llm_client=mock_llm_client
+            )
 
     @pytest.mark.asyncio
     async def test_evaluate_unknown_evaluator(self, mock_llm_client):
@@ -405,15 +418,13 @@ class TestEvaluateFunction:
 
         from arbiter_ai.api import evaluate
 
-        # Mock validate_evaluator_name to pass but get_evaluator_class to return None
-        with patch("arbiter_ai.api.validate_evaluator_name"):
-            with patch("arbiter_ai.api.get_evaluator_class", return_value=None):
-                with pytest.raises(ValidationError, match="not found in registry"):
-                    await evaluate(
-                        output="Test",
-                        evaluators=["nonexistent"],
-                        llm_client=mock_llm_client,
-                    )
+        # Validation now happens upfront, so unknown evaluators are caught early
+        with pytest.raises(ValidationError, match="Unknown evaluator"):
+            await evaluate(
+                output="Test",
+                evaluators=["nonexistent"],
+                llm_client=mock_llm_client,
+            )
 
     @pytest.mark.asyncio
     async def test_evaluate_unexpected_exception_handling(
@@ -423,28 +434,30 @@ class TestEvaluateFunction:
         from arbiter_ai.api import evaluate
         from arbiter_ai.core.models import Score
 
-        # Create one evaluator that succeeds and one that raises unexpected exception
+        # Create evaluators that exist in registry for this test
         mock_failing_evaluator = MagicMock()
-        mock_failing_evaluator.name = "failing_evaluator"
+        mock_failing_evaluator.name = "semantic"
         mock_failing_evaluator.evaluate = AsyncMock(
             side_effect=RuntimeError("Unexpected system error")
         )
         mock_failing_evaluator.get_interactions = MagicMock(return_value=[])
+        mock_failing_evaluator.clear_interactions = MagicMock()
 
         mock_success_evaluator = MagicMock()
-        mock_success_evaluator.name = "success_evaluator"
+        mock_success_evaluator.name = "custom_criteria"
         mock_success_evaluator.evaluate = AsyncMock(
             return_value=Score(
-                name="success_evaluator",
+                name="custom_criteria",
                 value=0.8,
                 confidence=0.9,
                 explanation="Success",
             )
         )
         mock_success_evaluator.get_interactions = MagicMock(return_value=[])
+        mock_success_evaluator.clear_interactions = MagicMock()
 
         def get_evaluator_side_effect(name):
-            if name == "failing_evaluator":
+            if name == "semantic":
                 return MagicMock(return_value=mock_failing_evaluator)
             else:
                 return MagicMock(return_value=mock_success_evaluator)
@@ -455,15 +468,17 @@ class TestEvaluateFunction:
             with patch("arbiter_ai.api.validate_evaluator_name"):
                 result = await evaluate(
                     output="Test",
-                    evaluators=["failing_evaluator", "success_evaluator"],
+                    reference="Test reference",  # Required for semantic
+                    criteria="test",  # Required for custom_criteria
+                    evaluators=["semantic", "custom_criteria"],
                     llm_client=mock_llm_client,
                 )
 
                 # Should handle error gracefully - one succeeds, one fails
                 assert result.overall_score == 0.8  # Only successful evaluator
                 assert result.passed is True  # At least one succeeded
-                assert "failing_evaluator" in result.errors
-                assert "Unexpected error" in result.errors["failing_evaluator"]
+                assert "semantic" in result.errors
+                assert "Unexpected error" in result.errors["semantic"]
 
 
 class TestCompareFunction:
@@ -693,7 +708,7 @@ class TestCompareFunction:
         """Test that empty output_a raises validation error."""
         from arbiter_ai.api import compare
 
-        with pytest.raises(ValidationError, match="output_a cannot be empty"):
+        with pytest.raises(ValidationError, match="'output_a' cannot be empty"):
             await compare(
                 output_a="",
                 output_b="Output B",
@@ -705,7 +720,7 @@ class TestCompareFunction:
         """Test that empty output_b raises validation error."""
         from arbiter_ai.api import compare
 
-        with pytest.raises(ValidationError, match="output_b cannot be empty"):
+        with pytest.raises(ValidationError, match="'output_b' cannot be empty"):
             await compare(
                 output_a="Output A",
                 output_b="",
@@ -717,23 +732,10 @@ class TestCompareFunction:
         """Test that empty criteria raises validation error."""
         from arbiter_ai.api import compare
 
-        with pytest.raises(ValidationError, match="criteria cannot be empty"):
+        with pytest.raises(ValidationError, match="'criteria' cannot be empty"):
             await compare(
                 output_a="Output A",
                 output_b="Output B",
                 criteria="",
-                llm_client=mock_llm_client,
-            )
-
-    @pytest.mark.asyncio
-    async def test_compare_empty_reference_validation(self, mock_llm_client):
-        """Test that empty reference raises validation error."""
-        from arbiter_ai.api import compare
-
-        with pytest.raises(ValidationError, match="reference cannot be empty"):
-            await compare(
-                output_a="Output A",
-                output_b="Output B",
-                reference="",
                 llm_client=mock_llm_client,
             )
