@@ -66,6 +66,11 @@ from .retry import (
 )
 from .type_defs import MiddlewareContext
 from .types import EvaluatorName, MetricType, StorageType
+from .validation import (
+    validate_batch_evaluate_inputs,
+    validate_compare_inputs,
+    validate_evaluate_inputs,
+)
 
 __all__ = [
     # Exceptions
@@ -133,4 +138,8 @@ __all__ = [
     "get_evaluator_class",
     "get_available_evaluators",
     "validate_evaluator_name",
+    # Validation
+    "validate_evaluate_inputs",
+    "validate_compare_inputs",
+    "validate_batch_evaluate_inputs",
 ]

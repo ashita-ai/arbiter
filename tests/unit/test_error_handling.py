@@ -243,22 +243,22 @@ class TestMultiEvaluatorErrorHandling:
         assert result.scores[0].name == "semantic", "Should have semantic score"
         assert "custom_criteria" in result.errors, "custom_criteria should be in errors"
         # Error message includes details formatting
-        assert "API timeout" in result.errors["custom_criteria"], (
-            "Error message should contain 'API timeout'"
-        )
+        assert (
+            "API timeout" in result.errors["custom_criteria"]
+        ), "Error message should contain 'API timeout'"
 
         # Verify overall score is calculated from successful evaluators only
-        assert result.overall_score == 0.85, (
-            "Overall score should be semantic score (0.85), not average"
-        )
+        assert (
+            result.overall_score == 0.85
+        ), "Overall score should be semantic score (0.85), not average"
         assert result.metadata["successful_evaluators"] == 1
         assert result.metadata["failed_evaluators"] == 1
 
         # Verify we can still use the result
         assert result.passed is True, "Should pass threshold (0.85 > 0.7)"
-        assert len(result.interactions) > 0, (
-            "Should have interactions from successful evaluator"
-        )
+        assert (
+            len(result.interactions) > 0
+        ), "Should have interactions from successful evaluator"
 
     @pytest.mark.asyncio
     async def test_multiple_evaluators_partial_failure(

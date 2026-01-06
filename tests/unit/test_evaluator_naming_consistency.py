@@ -72,9 +72,9 @@ async def test_semantic_evaluator_name_consistency(mock_llm_client):
     score = await evaluator.evaluate(output="Test output", reference="Test reference")
 
     # Critical check: score name must match evaluator name
-    assert score.name == evaluator_name, (
-        f"Score name '{score.name}' does not match evaluator name '{evaluator_name}'"
-    )
+    assert (
+        score.name == evaluator_name
+    ), f"Score name '{score.name}' does not match evaluator name '{evaluator_name}'"
 
 
 @pytest.mark.asyncio
@@ -89,9 +89,9 @@ async def test_custom_criteria_evaluator_name_consistency(mock_llm_client):
     score = await evaluator.evaluate(output="Test output", criteria="Test criteria")
 
     # Critical check: score name must match evaluator name
-    assert score.name == evaluator_name, (
-        f"Score name '{score.name}' does not match evaluator name '{evaluator_name}'"
-    )
+    assert (
+        score.name == evaluator_name
+    ), f"Score name '{score.name}' does not match evaluator name '{evaluator_name}'"
 
 
 def test_registry_name_matches_evaluator_name():
@@ -99,9 +99,9 @@ def test_registry_name_matches_evaluator_name():
     for registry_name, evaluator_class in AVAILABLE_EVALUATORS.items():
         # Create instance (need to handle constructor requirements)
         # For now, just check the name property exists
-        assert hasattr(evaluator_class, "name"), (
-            f"Evaluator {evaluator_class} missing name property"
-        )
+        assert hasattr(
+            evaluator_class, "name"
+        ), f"Evaluator {evaluator_class} missing name property"
 
         # Note: We can't easily instantiate without proper LLM client,
         # but we can check the property is defined
@@ -112,9 +112,9 @@ def test_all_builtin_evaluators_registered():
     expected_evaluators = ["semantic", "custom_criteria"]
 
     for evaluator_name in expected_evaluators:
-        assert evaluator_name in AVAILABLE_EVALUATORS, (
-            f"Built-in evaluator '{evaluator_name}' not registered"
-        )
+        assert (
+            evaluator_name in AVAILABLE_EVALUATORS
+        ), f"Built-in evaluator '{evaluator_name}' not registered"
 
 
 def test_registry_lookup_returns_correct_class():

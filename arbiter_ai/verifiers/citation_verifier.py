@@ -103,9 +103,7 @@ class CitationVerifier(FactualityVerifier):
 
         # Check for key terms overlap (medium confidence)
         claim_words = set(
-            word
-            for word in claim_lower.split()
-            if len(word) > 3  # Skip short words
+            word for word in claim_lower.split() if len(word) > 3  # Skip short words
         )
         context_words = set(context_lower.split())
 
