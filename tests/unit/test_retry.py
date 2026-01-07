@@ -24,14 +24,18 @@ class TestRetryConfig:
         assert config.max_attempts == 3
         assert config.delay == 1.0
         assert config.backoff == 2.0
+        assert config.jitter is True
+        assert config.max_delay == 60.0
 
     def test_initialization_custom(self):
         """Test RetryConfig with custom values."""
-        config = RetryConfig(max_attempts=5, delay=2.0, backoff=1.5)
+        config = RetryConfig(max_attempts=5, delay=2.0, backoff=1.5, jitter=False, max_delay=30.0)
 
         assert config.max_attempts == 5
         assert config.delay == 2.0
         assert config.backoff == 1.5
+        assert config.jitter is False
+        assert config.max_delay == 30.0
 
     def test_validation_max_attempts_too_low(self):
         """Test that max_attempts < 1 raises ValueError."""
@@ -56,6 +60,14 @@ class TestRetryConfig:
 
         with pytest.raises(ValueError, match="backoff must be at least 1.0"):
             RetryConfig(backoff=0.0)
+
+    def test_validation_max_delay_zero_or_negative(self):
+        """Test that max_delay <= 0 raises ValueError."""
+        with pytest.raises(ValueError, match="max_delay must be positive"):
+            RetryConfig(max_delay=0)
+
+        with pytest.raises(ValueError, match="max_delay must be positive"):
+            RetryConfig(max_delay=-1.0)
 
 
 class TestWithRetry:
@@ -246,6 +258,57 @@ class TestWithRetry:
 
         assert result == {"foo": "bar", "baz": "qux"}
 
+    @pytest.mark.asyncio
+    async def test_max_delay_caps_exponential_backoff(self):
+        """Test that max_delay caps the exponential backoff delay."""
+        # With delay=0.1, backoff=10.0, second retry would be 1.0s
+        # but max_delay=0.2 should cap it
+        config = RetryConfig(
+            max_attempts=4, delay=0.1, backoff=10.0, jitter=False, max_delay=0.2
+        )
+        delays = []
+
+        @with_retry(config)
+        async def track_delays():
+            delays.append(asyncio.get_event_loop().time())
+            if len(delays) < 4:
+                raise ModelProviderError("Error")
+            return "success"
+
+        await track_delays()
+
+        # Calculate actual delays between attempts
+        if len(delays) >= 3:
+            # Second delay should be capped at max_delay (0.2s)
+            second_delay = delays[2] - delays[1]
+            third_delay = delays[3] - delays[2]
+            # Both should be capped at ~0.2s, not 1.0s or 10.0s
+            assert second_delay < 0.3  # Should be ~0.2s, not 1.0s
+            assert third_delay < 0.3  # Should be ~0.2s, not 10.0s
+
+    @pytest.mark.asyncio
+    async def test_jitter_adds_randomness(self):
+        """Test that jitter adds randomness to delay (0-25% of base)."""
+        config = RetryConfig(
+            max_attempts=3, delay=0.1, backoff=1.0, jitter=True, max_delay=60.0
+        )
+        delays = []
+
+        @with_retry(config)
+        async def track_delays():
+            delays.append(asyncio.get_event_loop().time())
+            if len(delays) < 3:
+                raise ModelProviderError("Error")
+            return "success"
+
+        await track_delays()
+
+        # With jitter, delay should be between 0.1s and 0.125s (base + 0-25%)
+        if len(delays) >= 2:
+            actual_delay = delays[1] - delays[0]
+            # Should be at least base delay and at most base + 25%
+            assert 0.08 < actual_delay < 0.15
+
 
 class TestPresetConfigurations:
     """Test preset retry configurations."""
@@ -255,18 +318,24 @@ class TestPresetConfigurations:
         assert RETRY_QUICK.max_attempts == 2
         assert RETRY_QUICK.delay == 0.5
         assert RETRY_QUICK.backoff == 1.5
+        assert RETRY_QUICK.jitter is True
+        assert RETRY_QUICK.max_delay == 45.0
 
     def test_retry_standard(self):
         """Test RETRY_STANDARD preset."""
         assert RETRY_STANDARD.max_attempts == 3
         assert RETRY_STANDARD.delay == 1.0
         assert RETRY_STANDARD.backoff == 2.0
+        assert RETRY_STANDARD.jitter is True
+        assert RETRY_STANDARD.max_delay == 60.0
 
     def test_retry_persistent(self):
         """Test RETRY_PERSISTENT preset."""
         assert RETRY_PERSISTENT.max_attempts == 5
         assert RETRY_PERSISTENT.delay == 1.0
         assert RETRY_PERSISTENT.backoff == 2.0
+        assert RETRY_PERSISTENT.jitter is True
+        assert RETRY_PERSISTENT.max_delay == 90.0
 
     @pytest.mark.asyncio
     async def test_using_retry_quick_preset(self):

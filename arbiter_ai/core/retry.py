@@ -216,7 +216,7 @@ def with_retry(
 # Preset configurations
 # These provide common retry strategies for different scenarios
 
-RETRY_QUICK = RetryConfig(max_attempts=2, delay=0.5, backoff=1.5)
+RETRY_QUICK = RetryConfig(max_attempts=2, delay=0.5, backoff=1.5, jitter=True, max_delay=45.0)
 """Quick retry for fast operations with minimal delay.
 
 Use this for:
@@ -224,10 +224,10 @@ Use this for:
 - Fast API calls with low latency
 - Time-sensitive operations where waiting is costly
 
-Timing: 0.5s, 0.75s = ~1.25s total delay
+Timing: 0.5s + jitter = ~0.5-0.625s total delay
 """
 
-RETRY_STANDARD = RetryConfig(max_attempts=3, delay=1.0, backoff=2.0)
+RETRY_STANDARD = RetryConfig(max_attempts=3, delay=1.0, backoff=2.0, jitter=True, max_delay=60.0)
 """Standard retry configuration suitable for most API calls.
 
 Use this for:
@@ -235,10 +235,10 @@ Use this for:
 - Network operations with moderate latency
 - Default retry behavior when unsure
 
-Timing: 1s, 2s = ~3s total delay
+Timing: 1s, 2s + jitter = ~3-3.75s total delay
 """
 
-RETRY_PERSISTENT = RetryConfig(max_attempts=5, delay=1.0, backoff=2.0)
+RETRY_PERSISTENT = RetryConfig(max_attempts=5, delay=1.0, backoff=2.0, jitter=True, max_delay=90.0)
 """Persistent retry for critical operations that must succeed.
 
 Use this for:
@@ -246,5 +246,5 @@ Use this for:
 - Operations during high load or instability
 - Long-running processes where reliability matters more than speed
 
-Timing: 1s, 2s, 4s, 8s = ~15s total delay
+Timing: 1s, 2s, 4s, 8s + jitter = ~15-18.75s total delay
 """
