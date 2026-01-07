@@ -97,7 +97,14 @@ class RetryConfig:
         max_delay: Maximum delay between retries (must be > 0)
     """
 
-    def __init__(self, max_attempts: int = 3, delay: float = 1.0, backoff: float = 2.0, jitter: bool = True, max_delay: float = 60.0):
+    def __init__(
+        self,
+        max_attempts: int = 3,
+        delay: float = 1.0,
+        backoff: float = 2.0,
+        jitter: bool = True,
+        max_delay: float = 60.0,
+    ):
         """Initialize retry configuration with validation.
 
         Args:
@@ -196,7 +203,7 @@ def with_retry(
 
                     if attempt < config.max_attempts:
                         await asyncio.sleep(delay)
-                        delay = config.delay * (config.backoff ** attempt)
+                        delay = config.delay * (config.backoff**attempt)
                         if config.jitter:
                             delay += random.uniform(0, delay * 0.25)
                         delay = min(delay, config.max_delay)
@@ -216,7 +223,9 @@ def with_retry(
 # Preset configurations
 # These provide common retry strategies for different scenarios
 
-RETRY_QUICK = RetryConfig(max_attempts=2, delay=0.5, backoff=1.5, jitter=True, max_delay=45.0)
+RETRY_QUICK = RetryConfig(
+    max_attempts=2, delay=0.5, backoff=1.5, jitter=True, max_delay=45.0
+)
 """Quick retry for fast operations with minimal delay.
 
 Use this for:
@@ -227,7 +236,9 @@ Use this for:
 Timing: 0.5s + jitter = ~0.5-0.625s total delay
 """
 
-RETRY_STANDARD = RetryConfig(max_attempts=3, delay=1.0, backoff=2.0, jitter=True, max_delay=60.0)
+RETRY_STANDARD = RetryConfig(
+    max_attempts=3, delay=1.0, backoff=2.0, jitter=True, max_delay=60.0
+)
 """Standard retry configuration suitable for most API calls.
 
 Use this for:
@@ -238,7 +249,9 @@ Use this for:
 Timing: 1s, 2s + jitter = ~3-3.75s total delay
 """
 
-RETRY_PERSISTENT = RetryConfig(max_attempts=5, delay=1.0, backoff=2.0, jitter=True, max_delay=90.0)
+RETRY_PERSISTENT = RetryConfig(
+    max_attempts=5, delay=1.0, backoff=2.0, jitter=True, max_delay=90.0
+)
 """Persistent retry for critical operations that must succeed.
 
 Use this for:

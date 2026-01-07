@@ -29,7 +29,9 @@ class TestRetryConfig:
 
     def test_initialization_custom(self):
         """Test RetryConfig with custom values."""
-        config = RetryConfig(max_attempts=5, delay=2.0, backoff=1.5, jitter=False, max_delay=30.0)
+        config = RetryConfig(
+            max_attempts=5, delay=2.0, backoff=1.5, jitter=False, max_delay=30.0
+        )
 
         assert config.max_attempts == 5
         assert config.delay == 2.0
