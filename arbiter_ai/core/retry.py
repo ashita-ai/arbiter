@@ -12,6 +12,8 @@ selective retry based on error types.
   to be transient
 - **Configurable Limits**: Control max attempts, delays, and backoff rates
 - **Preset Configurations**: Quick, Standard, and Persistent retry strategies
+- **Jitter**: Add random jitter to prevent thundering herd
+- **Max Delay**: Limit maximum delay between retries
 
 ## Usage:
 
@@ -42,6 +44,7 @@ Other errors are raised immediately without retry.
 """
 
 import asyncio
+import random
 from functools import wraps
 from typing import Any, Callable, Optional, TypeVar
 
@@ -63,7 +66,8 @@ class RetryConfig:
 
     This class defines how retry logic should behave when operations fail.
     It controls the number of attempts, delays between attempts, and how
-    delays increase over time.
+    delays increase over time. It also supports jitter to prevent thundering
+    herd and a maximum delay to limit the total time spent on retries.
 
     The retry delay follows this pattern:
     - 1st retry: delay seconds
@@ -89,9 +93,11 @@ class RetryConfig:
         max_attempts: Maximum number of attempts before giving up (must be >= 1)
         delay: Initial delay in seconds between retries (must be > 0)
         backoff: Multiplier applied to delay after each retry (must be >= 1.0)
+        jitter: Add random jitter to prevent thundering herd
+        max_delay: Maximum delay between retries (must be > 0)
     """
 
-    def __init__(self, max_attempts: int = 3, delay: float = 1.0, backoff: float = 2.0):
+    def __init__(self, max_attempts: int = 3, delay: float = 1.0, backoff: float = 2.0, jitter: bool = True, max_delay: float = 60.0):
         """Initialize retry configuration with validation.
 
         Args:
@@ -104,7 +110,8 @@ class RetryConfig:
             backoff: Exponential backoff multiplier. Applied to delay after
                 each failed attempt. Common values are 2.0 (double each time)
                 or 1.5 (50% increase each time).
-
+            jitter: Add random jitter to prevent thundering herd
+            max_delay: Maximum delay between retries (must be > 0)
         Raises:
             ValueError: If any parameter is out of valid range
 
@@ -121,10 +128,14 @@ class RetryConfig:
             raise ValueError("delay must be positive")
         if backoff < 1.0:
             raise ValueError("backoff must be at least 1.0")
+        if max_delay <= 0:
+            raise ValueError("max_delay must be positive")
 
         self.max_attempts = max_attempts
         self.delay = delay
         self.backoff = backoff
+        self.jitter = jitter
+        self.max_delay = max_delay
 
 
 def with_retry(
@@ -185,7 +196,10 @@ def with_retry(
 
                     if attempt < config.max_attempts:
                         await asyncio.sleep(delay)
-                        delay *= config.backoff
+                        delay = config.delay * (config.backoff ** attempt)
+                        if config.jitter:
+                            delay += random.uniform(0, delay * 0.25)
+                        delay = min(delay, config.max_delay)
                     else:
                         raise
 
