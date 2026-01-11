@@ -25,10 +25,10 @@ helping users budget for large batch evaluations.
 """
 
 import logging
-from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 import litellm
+from pydantic import BaseModel, ConfigDict, Field
 
 from .cost_calculator import get_cost_calculator
 from .registry import get_available_evaluators, get_evaluator_class
@@ -61,8 +61,7 @@ ESTIMATED_OUTPUT_TOKENS = {
 DEFAULT_OUTPUT_TOKENS = 150
 
 
-@dataclass
-class CostEstimate:
+class CostEstimate(BaseModel):
     """Cost estimate for a single evaluation.
 
     Attributes:
@@ -74,16 +73,17 @@ class CostEstimate:
         model: Model used for estimation
     """
 
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
     total_cost: float
     total_tokens: int
     input_tokens: int
     output_tokens: int
-    by_evaluator: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    by_evaluator: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
     model: str = ""
 
 
-@dataclass
-class BatchCostEstimate:
+class BatchCostEstimate(BaseModel):
     """Cost estimate for a batch evaluation.
 
     Attributes:
@@ -96,17 +96,18 @@ class BatchCostEstimate:
         model: Model used for estimation
     """
 
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
     total_cost: float
     total_tokens: int
     per_item_cost: float
     per_item_tokens: int
     item_count: int
-    by_evaluator: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    by_evaluator: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
     model: str = ""
 
 
-@dataclass
-class DryRunResult:
+class DryRunResult(BaseModel):
     """Result of a dry-run evaluation (no API calls made).
 
     Attributes:
@@ -119,13 +120,15 @@ class DryRunResult:
         validation: Input validation status
     """
 
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
     dry_run: bool = True
-    evaluators: List[str] = field(default_factory=list)
-    prompts: Dict[str, Dict[str, str]] = field(default_factory=dict)
+    evaluators: List[str] = Field(default_factory=list)
+    prompts: Dict[str, Dict[str, str]] = Field(default_factory=dict)
     estimated_tokens: int = 0
     estimated_cost: float = 0.0
     model: str = ""
-    validation: Dict[str, bool] = field(default_factory=dict)
+    validation: Dict[str, bool] = Field(default_factory=dict)
 
 
 def estimate_tokens(text: str, model: str = "gpt-4o-mini") -> int:
@@ -194,6 +197,7 @@ def _get_evaluator_prompts(
     """
     evaluator_class = get_evaluator_class(evaluator_name)
     if evaluator_class is None:
+        logger.warning(f"Evaluator class not found for '{evaluator_name}'")
         return {"system": "", "user": ""}
 
     # Create a minimal evaluator instance to get prompts
@@ -201,23 +205,27 @@ def _get_evaluator_prompts(
     try:
         dummy_client = _DummyLLMClient()
 
-        # Try different instantiation patterns
-        # Some evaluators accept model=, others require llm_client
+        # Try model= kwarg first (newer pattern), fall back to positional client
         try:
             evaluator = evaluator_class(model="gpt-4o-mini")
-        except TypeError:
-            # Fall back to passing dummy client for evaluators like SemanticEvaluator
+        except TypeError as e:
+            logger.debug(
+                f"Evaluator {evaluator_name} doesn't accept model=, trying client: {e}"
+            )
             evaluator = evaluator_class(dummy_client)  # type: ignore[arg-type]
 
-        # Check if evaluator has prompt methods (BasePydanticEvaluator)
+        # Extract prompts from BasePydanticEvaluator subclasses
         if hasattr(evaluator, "_get_system_prompt") and hasattr(
             evaluator, "_get_user_prompt"
         ):
             system_prompt: str = evaluator._get_system_prompt()
             user_prompt: str = evaluator._get_user_prompt(output, reference, criteria)
             return {"system": system_prompt, "user": user_prompt}
+
+        logger.warning(f"Evaluator {evaluator_name} lacks prompt methods")
         return {"system": "", "user": ""}
-    except Exception:
+    except Exception as e:
+        logger.error(f"Failed to extract prompts from {evaluator_name}: {e}")
         return {"system": "", "user": ""}
 
 

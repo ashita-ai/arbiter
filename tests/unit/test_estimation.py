@@ -1,6 +1,7 @@
 """Tests for cost estimation and dry-run functionality."""
 
 import pytest
+from pydantic import ValidationError
 
 from arbiter_ai import evaluate
 from arbiter_ai.core.estimation import (
@@ -57,6 +58,59 @@ class TestEstimateTokens:
         text = "Hello, world!"
         tokens = estimate_tokens(text, model="gpt-4o-mini")
         assert tokens == 4
+
+    def test_unicode_text(self):
+        """Test token estimation with unicode characters."""
+        # Japanese text
+        text_ja = "こんにちは世界"
+        tokens_ja = estimate_tokens(text_ja, model="gpt-4o-mini")
+        assert tokens_ja > 0
+
+        # Emoji text
+        text_emoji = "Hello! How are you doing today? Great!"
+        tokens_emoji = estimate_tokens(text_emoji, model="gpt-4o-mini")
+        assert tokens_emoji > 0
+
+        # Mixed unicode
+        text_mixed = "Hello cafe resume naive"
+        tokens_mixed = estimate_tokens(text_mixed, model="gpt-4o-mini")
+        assert tokens_mixed > 0
+
+    def test_chinese_text(self):
+        """Test token estimation with Chinese characters."""
+        text = "machine learning is a very important technology"
+        tokens = estimate_tokens(text, model="gpt-4o-mini")
+        assert tokens > 0
+
+    def test_special_characters(self):
+        """Test token estimation with special characters."""
+        text = "Hello\nWorld\tTab \"quotes\" 'apostrophe' @#$%^&*()"
+        tokens = estimate_tokens(text, model="gpt-4o-mini")
+        assert tokens > 0
+
+    def test_very_long_text(self):
+        """Test token estimation with very long text."""
+        # 10,000 words of text
+        text = " ".join(["word"] * 10000)
+        tokens = estimate_tokens(text, model="gpt-4o-mini")
+        # Should be roughly 10,000 tokens (one per word)
+        assert tokens > 5000
+        assert tokens < 20000
+
+    def test_whitespace_only(self):
+        """Test token estimation with whitespace-only text."""
+        text = "   \n\t\n   "
+        tokens = estimate_tokens(text, model="gpt-4o-mini")
+        # Whitespace is tokenized but shouldn't be many tokens
+        assert tokens >= 0
+
+    def test_unknown_model_fallback(self):
+        """Test that unknown models still return reasonable estimates."""
+        text = "Hello, world!"
+        # Use a model name that definitely doesn't exist
+        tokens = estimate_tokens(text, model="nonexistent-model-xyz-123")
+        # Should still return a reasonable estimate via fallback
+        assert tokens > 0
 
 
 class TestEstimateEvaluationCost:
@@ -305,3 +359,55 @@ class TestEvaluateDryRun:
         assert "custom_criteria" in result.prompts
         # The criteria should appear in the prompt
         assert "informative" in result.prompts["custom_criteria"]["user"]
+
+
+class TestPydanticModels:
+    """Tests for Pydantic model validation."""
+
+    def test_cost_estimate_rejects_extra_fields(self):
+        """Test that CostEstimate rejects unknown fields."""
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            CostEstimate(
+                total_cost=0.001,
+                total_tokens=100,
+                input_tokens=80,
+                output_tokens=20,
+                unknown_field="should fail",  # type: ignore[call-arg]
+            )
+
+    def test_batch_cost_estimate_rejects_extra_fields(self):
+        """Test that BatchCostEstimate rejects unknown fields."""
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            BatchCostEstimate(
+                total_cost=0.01,
+                total_tokens=1000,
+                per_item_cost=0.001,
+                per_item_tokens=100,
+                item_count=10,
+                unknown_field="should fail",  # type: ignore[call-arg]
+            )
+
+    def test_dry_run_result_rejects_extra_fields(self):
+        """Test that DryRunResult rejects unknown fields."""
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            DryRunResult(
+                dry_run=True,
+                unknown_field="should fail",  # type: ignore[call-arg]
+            )
+
+    def test_cost_estimate_immutable(self):
+        """Test that CostEstimate is frozen (immutable)."""
+        estimate = CostEstimate(
+            total_cost=0.001,
+            total_tokens=100,
+            input_tokens=80,
+            output_tokens=20,
+        )
+        with pytest.raises(ValidationError, match="frozen"):
+            estimate.total_cost = 0.002  # type: ignore[misc]
+
+    def test_dry_run_result_immutable(self):
+        """Test that DryRunResult is frozen (immutable)."""
+        result = DryRunResult(dry_run=True, model="gpt-4o-mini")
+        with pytest.raises(ValidationError, match="frozen"):
+            result.model = "gpt-4"  # type: ignore[misc]

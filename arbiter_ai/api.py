@@ -33,7 +33,7 @@ This module provides the primary entry points for evaluating LLM outputs.
 import asyncio
 import logging
 import time
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Literal, Optional, Union, overload
 
 from .core import (
     DryRunResult,
@@ -62,6 +62,53 @@ from .evaluators import PairwiseComparisonEvaluator
 logger = logging.getLogger(__name__)
 
 __all__ = ["evaluate", "compare", "batch_evaluate"]
+
+
+@overload
+async def evaluate(
+    output: str,
+    reference: Optional[str] = None,
+    criteria: Optional[str] = None,
+    evaluators: Optional[List[str]] = None,
+    llm_client: Optional[LLMClient] = None,
+    model: str = "gpt-4o",
+    provider: Provider = Provider.OPENAI,
+    threshold: float = 0.7,
+    middleware: Optional[MiddlewarePipeline] = None,
+    *,
+    dry_run: Literal[True],
+) -> DryRunResult: ...
+
+
+@overload
+async def evaluate(
+    output: str,
+    reference: Optional[str] = None,
+    criteria: Optional[str] = None,
+    evaluators: Optional[List[str]] = None,
+    llm_client: Optional[LLMClient] = None,
+    model: str = "gpt-4o",
+    provider: Provider = Provider.OPENAI,
+    threshold: float = 0.7,
+    middleware: Optional[MiddlewarePipeline] = None,
+    *,
+    dry_run: Literal[False] = ...,
+) -> EvaluationResult: ...
+
+
+@overload
+async def evaluate(
+    output: str,
+    reference: Optional[str] = None,
+    criteria: Optional[str] = None,
+    evaluators: Optional[List[str]] = None,
+    llm_client: Optional[LLMClient] = None,
+    model: str = "gpt-4o",
+    provider: Provider = Provider.OPENAI,
+    threshold: float = 0.7,
+    middleware: Optional[MiddlewarePipeline] = None,
+    dry_run: bool = False,
+) -> Union[EvaluationResult, DryRunResult]: ...
 
 
 async def evaluate(
