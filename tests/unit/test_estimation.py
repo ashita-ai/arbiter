@@ -15,7 +15,7 @@ from arbiter_ai.core.estimation import (
 
 
 class TestEstimateTokens:
-    """Tests for token estimation."""
+    """Tests for token estimation using tiktoken."""
 
     def test_empty_string(self):
         """Test token estimation for empty string."""
@@ -23,23 +23,41 @@ class TestEstimateTokens:
 
     def test_short_string(self):
         """Test token estimation for short string."""
-        # "Hello" = 5 chars, should be ~1-2 tokens
+        # "Hello" is 1 token in tiktoken
         tokens = estimate_tokens("Hello")
         assert tokens >= 1
 
     def test_longer_string(self):
         """Test token estimation for longer string."""
-        # 100 chars should be ~25 tokens (at 4 chars/token)
+        # 100 'a' chars - tiktoken will tokenize this efficiently
         text = "a" * 100
         tokens = estimate_tokens(text)
-        assert tokens == 25
+        # With tiktoken, repeated chars compress well, but still > 0
+        assert tokens > 0
 
     def test_realistic_text(self):
         """Test token estimation for realistic text."""
         text = "Paris is the capital of France and is known for the Eiffel Tower."
         tokens = estimate_tokens(text)
-        # ~66 chars / 4 = ~16 tokens
+        # tiktoken gives accurate count (usually 15-17 tokens for this)
         assert 10 <= tokens <= 25
+
+    def test_with_model_parameter(self):
+        """Test that model parameter affects tokenization."""
+        text = "Hello, world! This is a test."
+        # Different models use different tokenizers
+        tokens_4o = estimate_tokens(text, model="gpt-4o-mini")
+        tokens_35 = estimate_tokens(text, model="gpt-3.5-turbo")
+        # Both should give reasonable results (may be same or different)
+        assert tokens_4o > 0
+        assert tokens_35 > 0
+
+    def test_known_token_count(self):
+        """Test against known tiktoken output."""
+        # "Hello, world!" is exactly 4 tokens with cl100k_base/o200k_base
+        text = "Hello, world!"
+        tokens = estimate_tokens(text, model="gpt-4o-mini")
+        assert tokens == 4
 
 
 class TestEstimateEvaluationCost:

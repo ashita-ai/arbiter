@@ -5,16 +5,16 @@ helping users budget for large batch evaluations.
 
 ## Key Features:
 
-- **Token Estimation**: Approximates token counts from text length
+- **Accurate Token Counting**: Uses tiktoken for precise token counts
 - **Cost Calculation**: Uses LiteLLM pricing for accurate cost estimates
 - **Prompt Preview**: Shows what prompts would be sent (dry-run mode)
 - **No API Calls**: All estimation is done locally
 
 ## Usage:
 
-    >>> from arbiter_ai import estimate_cost
+    >>> from arbiter_ai import estimate_evaluation_cost
     >>>
-    >>> estimate = await estimate_cost(
+    >>> estimate = await estimate_evaluation_cost(
     ...     output="Text to evaluate...",
     ...     reference="Reference text...",
     ...     evaluators=["semantic"],
@@ -24,11 +24,17 @@ helping users budget for large batch evaluations.
     >>> print(f"Estimated tokens: {estimate.total_tokens}")
 """
 
+import logging
 from dataclasses import dataclass, field
+from functools import lru_cache
 from typing import Any, Dict, List, Optional
+
+import tiktoken
 
 from .cost_calculator import get_cost_calculator
 from .registry import get_available_evaluators, get_evaluator_class
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "CostEstimate",
@@ -41,9 +47,30 @@ __all__ = [
 ]
 
 
-# Average characters per token for English text
-# This is a conservative estimate; actual tokenization varies by model
-CHARS_PER_TOKEN = 4
+# Model to encoding mapping for accurate tokenization
+# See: https://github.com/openai/tiktoken/blob/main/tiktoken/model.py
+MODEL_ENCODING_MAP: Dict[str, str] = {
+    # GPT-4o and GPT-4o-mini use o200k_base
+    "gpt-4o": "o200k_base",
+    "gpt-4o-mini": "o200k_base",
+    "gpt-4o-2024-05-13": "o200k_base",
+    "gpt-4o-2024-08-06": "o200k_base",
+    "gpt-4o-mini-2024-07-18": "o200k_base",
+    # GPT-4 and GPT-3.5 use cl100k_base
+    "gpt-4": "cl100k_base",
+    "gpt-4-turbo": "cl100k_base",
+    "gpt-4-turbo-preview": "cl100k_base",
+    "gpt-4-0125-preview": "cl100k_base",
+    "gpt-4-1106-preview": "cl100k_base",
+    "gpt-3.5-turbo": "cl100k_base",
+    "gpt-3.5-turbo-16k": "cl100k_base",
+}
+
+# Default encoding for unknown models (cl100k_base is widely compatible)
+DEFAULT_ENCODING = "cl100k_base"
+
+# Fallback: chars per token when tiktoken fails
+FALLBACK_CHARS_PER_TOKEN = 4
 
 # Estimated output tokens per evaluator (based on response structure)
 ESTIMATED_OUTPUT_TOKENS = {
@@ -56,6 +83,34 @@ ESTIMATED_OUTPUT_TOKENS = {
 }
 
 DEFAULT_OUTPUT_TOKENS = 150
+
+
+@lru_cache(maxsize=8)
+def _get_encoding(model: str) -> tiktoken.Encoding:
+    """Get the tiktoken encoding for a model.
+
+    Uses LRU cache to avoid repeated encoding lookups.
+
+    Args:
+        model: Model name (e.g., "gpt-4o-mini")
+
+    Returns:
+        tiktoken Encoding object
+    """
+    # Try model-specific encoding first
+    encoding_name = MODEL_ENCODING_MAP.get(model)
+    if encoding_name:
+        return tiktoken.get_encoding(encoding_name)
+
+    # Try tiktoken's built-in model lookup
+    try:
+        return tiktoken.encoding_for_model(model)
+    except KeyError:
+        pass
+
+    # Fall back to default encoding
+    logger.debug(f"Unknown model '{model}', using default encoding {DEFAULT_ENCODING}")
+    return tiktoken.get_encoding(DEFAULT_ENCODING)
 
 
 @dataclass
@@ -125,25 +180,34 @@ class DryRunResult:
     validation: Dict[str, bool] = field(default_factory=dict)
 
 
-def estimate_tokens(text: str) -> int:
-    """Estimate token count for a text string.
+def estimate_tokens(text: str, model: str = "gpt-4o-mini") -> int:
+    """Count tokens in a text string using tiktoken.
 
-    Uses a simple heuristic of ~4 characters per token for English text.
-    This is a conservative estimate; actual tokenization varies by model.
+    Uses the appropriate tokenizer for the specified model to get
+    accurate token counts. Falls back to character-based estimation
+    if tiktoken fails.
 
     Args:
-        text: Text to estimate tokens for
+        text: Text to count tokens for
+        model: Model name for tokenizer selection (default: gpt-4o-mini)
 
     Returns:
-        Estimated token count
+        Token count
 
     Example:
-        >>> tokens = estimate_tokens("Hello, world!")
-        >>> print(tokens)  # ~3-4 tokens
+        >>> tokens = estimate_tokens("Hello, world!", model="gpt-4o-mini")
+        >>> print(tokens)  # Accurate count: 4
     """
     if not text:
         return 0
-    return max(1, len(text) // CHARS_PER_TOKEN)
+
+    try:
+        encoding = _get_encoding(model)
+        return len(encoding.encode(text))
+    except Exception as e:
+        # Fallback to character-based estimation
+        logger.warning(f"tiktoken encoding failed: {e}, using fallback")
+        return max(1, len(text) // FALLBACK_CHARS_PER_TOKEN)
 
 
 class _DummyLLMClient:
@@ -258,8 +322,8 @@ async def estimate_evaluation_cost(
     for evaluator_name in evaluators:
         # Get prompts to estimate input tokens
         prompts = _get_evaluator_prompts(evaluator_name, output, reference, criteria)
-        system_tokens = estimate_tokens(prompts["system"])
-        user_tokens = estimate_tokens(prompts["user"])
+        system_tokens = estimate_tokens(prompts["system"], model)
+        user_tokens = estimate_tokens(prompts["user"], model)
         input_tokens = system_tokens + user_tokens
 
         # Estimate output tokens based on evaluator type
