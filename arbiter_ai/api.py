@@ -33,13 +33,15 @@ This module provides the primary entry points for evaluating LLM outputs.
 import asyncio
 import logging
 import time
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from .core import (
+    DryRunResult,
     LLMClient,
     LLMManager,
     Provider,
     get_evaluator_class,
+    get_prompt_preview,
     validate_batch_evaluate_inputs,
     validate_compare_inputs,
     validate_evaluate_inputs,
@@ -72,7 +74,8 @@ async def evaluate(
     provider: Provider = Provider.OPENAI,
     threshold: float = 0.7,
     middleware: Optional[MiddlewarePipeline] = None,
-) -> EvaluationResult:
+    dry_run: bool = False,
+) -> Union[EvaluationResult, DryRunResult]:
     """Evaluate an LLM output with automatic interaction tracking.
 
     This is the main entry point for Arbiter evaluations. It runs one or more
@@ -89,9 +92,12 @@ async def evaluate(
         provider: Provider to use if creating new client (default: OPENAI)
         threshold: Score threshold for pass/fail (default: 0.7)
         middleware: Optional middleware pipeline for cross-cutting concerns
+        dry_run: If True, return preview of evaluation without making API calls.
+            Useful for debugging prompts, validating inputs, and estimating costs.
 
     Returns:
         EvaluationResult with scores, metrics, and complete LLM interaction tracking.
+        If dry_run=True, returns DryRunResult with prompt previews and cost estimates.
         If some evaluators fail, result.partial will be True and result.errors will
         contain error messages keyed by evaluator name.
 
@@ -126,7 +132,26 @@ async def evaluate(
         >>> # Calculate cost
         >>> cost = result.total_llm_cost(cost_per_1k_tokens=0.03)
         >>> print(f"Total cost: ${cost:.4f}")
+        >>>
+        >>> # Dry run - preview without API calls
+        >>> preview = await evaluate(
+        ...     output="Test output",
+        ...     evaluators=["semantic"],
+        ...     dry_run=True
+        ... )
+        >>> print(f"Estimated cost: ${preview.estimated_cost:.6f}")
+        >>> print(preview.prompts["semantic"]["user"])
     """
+    # Handle dry_run mode - return preview without making API calls
+    if dry_run:
+        return await get_prompt_preview(
+            output=output,
+            reference=reference,
+            criteria=criteria,
+            evaluators=evaluators,
+            model=model,
+        )
+
     # Validate inputs before any processing
     validate_evaluate_inputs(
         output=output,
@@ -617,7 +642,8 @@ async def _batch_evaluate_impl(
                 criteria = item.get("criteria")
 
                 # Run evaluation (reuses existing evaluate function)
-                result = await evaluate(
+                # Note: dry_run=False ensures we get EvaluationResult
+                eval_result = await evaluate(
                     output=output,
                     reference=reference,
                     criteria=criteria,
@@ -627,10 +653,13 @@ async def _batch_evaluate_impl(
                     provider=provider,
                     threshold=threshold,
                     middleware=middleware,
+                    dry_run=False,
                 )
 
-                update_progress(result)
-                return (index, result, None)
+                # Type narrowing: when dry_run=False, result is EvaluationResult
+                assert isinstance(eval_result, EvaluationResult)
+                update_progress(eval_result)
+                return (index, eval_result, None)
 
             except Exception as e:
                 # Track error but don't fail entire batch
