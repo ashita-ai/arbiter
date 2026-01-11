@@ -5,7 +5,7 @@ helping users budget for large batch evaluations.
 
 ## Key Features:
 
-- **Accurate Token Counting**: Uses tiktoken for precise token counts
+- **Accurate Token Counting**: Uses LiteLLM for provider-agnostic token counts
 - **Cost Calculation**: Uses LiteLLM pricing for accurate cost estimates
 - **Prompt Preview**: Shows what prompts would be sent (dry-run mode)
 - **No API Calls**: All estimation is done locally
@@ -26,10 +26,9 @@ helping users budget for large batch evaluations.
 
 import logging
 from dataclasses import dataclass, field
-from functools import lru_cache
 from typing import Any, Dict, List, Optional
 
-import tiktoken
+import litellm
 
 from .cost_calculator import get_cost_calculator
 from .registry import get_available_evaluators, get_evaluator_class
@@ -46,30 +45,7 @@ __all__ = [
     "get_prompt_preview",
 ]
 
-
-# Model to encoding mapping for accurate tokenization
-# See: https://github.com/openai/tiktoken/blob/main/tiktoken/model.py
-MODEL_ENCODING_MAP: Dict[str, str] = {
-    # GPT-4o and GPT-4o-mini use o200k_base
-    "gpt-4o": "o200k_base",
-    "gpt-4o-mini": "o200k_base",
-    "gpt-4o-2024-05-13": "o200k_base",
-    "gpt-4o-2024-08-06": "o200k_base",
-    "gpt-4o-mini-2024-07-18": "o200k_base",
-    # GPT-4 and GPT-3.5 use cl100k_base
-    "gpt-4": "cl100k_base",
-    "gpt-4-turbo": "cl100k_base",
-    "gpt-4-turbo-preview": "cl100k_base",
-    "gpt-4-0125-preview": "cl100k_base",
-    "gpt-4-1106-preview": "cl100k_base",
-    "gpt-3.5-turbo": "cl100k_base",
-    "gpt-3.5-turbo-16k": "cl100k_base",
-}
-
-# Default encoding for unknown models (cl100k_base is widely compatible)
-DEFAULT_ENCODING = "cl100k_base"
-
-# Fallback: chars per token when tiktoken fails
+# Fallback: chars per token when litellm fails
 FALLBACK_CHARS_PER_TOKEN = 4
 
 # Estimated output tokens per evaluator (based on response structure)
@@ -83,34 +59,6 @@ ESTIMATED_OUTPUT_TOKENS = {
 }
 
 DEFAULT_OUTPUT_TOKENS = 150
-
-
-@lru_cache(maxsize=8)
-def _get_encoding(model: str) -> tiktoken.Encoding:
-    """Get the tiktoken encoding for a model.
-
-    Uses LRU cache to avoid repeated encoding lookups.
-
-    Args:
-        model: Model name (e.g., "gpt-4o-mini")
-
-    Returns:
-        tiktoken Encoding object
-    """
-    # Try model-specific encoding first
-    encoding_name = MODEL_ENCODING_MAP.get(model)
-    if encoding_name:
-        return tiktoken.get_encoding(encoding_name)
-
-    # Try tiktoken's built-in model lookup
-    try:
-        return tiktoken.encoding_for_model(model)
-    except KeyError:
-        pass
-
-    # Fall back to default encoding
-    logger.debug(f"Unknown model '{model}', using default encoding {DEFAULT_ENCODING}")
-    return tiktoken.get_encoding(DEFAULT_ENCODING)
 
 
 @dataclass
@@ -181,11 +129,12 @@ class DryRunResult:
 
 
 def estimate_tokens(text: str, model: str = "gpt-4o-mini") -> int:
-    """Count tokens in a text string using tiktoken.
+    """Count tokens in a text string using LiteLLM.
 
-    Uses the appropriate tokenizer for the specified model to get
-    accurate token counts. Falls back to character-based estimation
-    if tiktoken fails.
+    Uses LiteLLM's provider-agnostic token counter which automatically
+    selects the correct tokenizer for any supported model (OpenAI,
+    Anthropic, Google, Cohere, etc.). Falls back to character-based
+    estimation if LiteLLM fails.
 
     Args:
         text: Text to count tokens for
@@ -202,11 +151,11 @@ def estimate_tokens(text: str, model: str = "gpt-4o-mini") -> int:
         return 0
 
     try:
-        encoding = _get_encoding(model)
-        return len(encoding.encode(text))
+        # litellm.token_counter is not in type stubs but exists at runtime
+        return litellm.token_counter(model=model, text=text)  # type: ignore[attr-defined]
     except Exception as e:
         # Fallback to character-based estimation
-        logger.warning(f"tiktoken encoding failed: {e}, using fallback")
+        logger.warning(f"LiteLLM token counting failed: {e}, using fallback")
         return max(1, len(text) // FALLBACK_CHARS_PER_TOKEN)
 
 

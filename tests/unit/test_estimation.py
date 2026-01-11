@@ -15,7 +15,7 @@ from arbiter_ai.core.estimation import (
 
 
 class TestEstimateTokens:
-    """Tests for token estimation using tiktoken."""
+    """Tests for token estimation using LiteLLM."""
 
     def test_empty_string(self):
         """Test token estimation for empty string."""
@@ -23,29 +23,28 @@ class TestEstimateTokens:
 
     def test_short_string(self):
         """Test token estimation for short string."""
-        # "Hello" is 1 token in tiktoken
+        # "Hello" is 1 token
         tokens = estimate_tokens("Hello")
         assert tokens >= 1
 
     def test_longer_string(self):
         """Test token estimation for longer string."""
-        # 100 'a' chars - tiktoken will tokenize this efficiently
+        # 100 'a' chars - tokenizer will compress efficiently, but still > 0
         text = "a" * 100
         tokens = estimate_tokens(text)
-        # With tiktoken, repeated chars compress well, but still > 0
         assert tokens > 0
 
     def test_realistic_text(self):
         """Test token estimation for realistic text."""
         text = "Paris is the capital of France and is known for the Eiffel Tower."
         tokens = estimate_tokens(text)
-        # tiktoken gives accurate count (usually 15-17 tokens for this)
+        # LiteLLM gives accurate count (usually 15-17 tokens for this)
         assert 10 <= tokens <= 25
 
     def test_with_model_parameter(self):
         """Test that model parameter affects tokenization."""
         text = "Hello, world! This is a test."
-        # Different models use different tokenizers
+        # Different models may use different tokenizers
         tokens_4o = estimate_tokens(text, model="gpt-4o-mini")
         tokens_35 = estimate_tokens(text, model="gpt-3.5-turbo")
         # Both should give reasonable results (may be same or different)
@@ -53,8 +52,8 @@ class TestEstimateTokens:
         assert tokens_35 > 0
 
     def test_known_token_count(self):
-        """Test against known tiktoken output."""
-        # "Hello, world!" is exactly 4 tokens with cl100k_base/o200k_base
+        """Test against known token count."""
+        # "Hello, world!" is exactly 4 tokens with OpenAI tokenizers
         text = "Hello, world!"
         tokens = estimate_tokens(text, model="gpt-4o-mini")
         assert tokens == 4
