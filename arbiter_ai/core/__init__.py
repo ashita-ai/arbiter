@@ -13,6 +13,15 @@ This module contains the fundamental components:
 
 from .circuit_breaker import CircuitBreaker, CircuitState
 from .cost_calculator import CostCalculator, ModelPricing, get_cost_calculator
+from .estimation import (
+    BatchCostEstimate,
+    CostEstimate,
+    DryRunResult,
+    estimate_batch_cost,
+    estimate_evaluation_cost,
+    estimate_tokens,
+    get_prompt_preview,
+)
 from .exceptions import (
     ArbiterError,
     CircuitBreakerOpenError,
@@ -142,4 +151,12 @@ __all__ = [
     "validate_evaluate_inputs",
     "validate_compare_inputs",
     "validate_batch_evaluate_inputs",
+    # Estimation
+    "CostEstimate",
+    "BatchCostEstimate",
+    "DryRunResult",
+    "estimate_tokens",
+    "estimate_evaluation_cost",
+    "estimate_batch_cost",
+    "get_prompt_preview",
 ]
