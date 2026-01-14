@@ -57,12 +57,17 @@ Middleware components form a chain where each component can:
     ...         return result
 """
 
+import hashlib
+import json
 import logging
+import os
 import time
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, Callable, Dict, List, Optional, Union
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, List, Literal, Optional, Protocol, Union
 
 from .models import ComparisonResult, EvaluationResult
 from .type_defs import MiddlewareContext
@@ -80,8 +85,301 @@ __all__ = [
     "RateLimitingMiddleware",
     "MiddlewarePipeline",
     "MiddlewareResult",
+    "CacheBackend",
+    "MemoryCacheBackend",
+    "RedisCacheBackend",
     "monitor",
 ]
+
+
+class CacheBackend(Protocol):
+    """Protocol for cache backend implementations.
+
+    Backends must implement async get/set operations with optional TTL.
+    Used by CachingMiddleware for pluggable cache storage.
+
+    This protocol enables structural typing, allowing any class that
+    implements these methods to be used as a cache backend without
+    explicit inheritance.
+    """
+
+    async def get(self, key: str) -> Optional[str]:
+        """Retrieve cached value by key.
+
+        Args:
+            key: Cache key (SHA256 hash string)
+
+        Returns:
+            Cached JSON string if found and not expired, None otherwise
+        """
+        ...
+
+    async def set(self, key: str, value: str, ttl: Optional[int] = None) -> None:
+        """Store value in cache with optional TTL.
+
+        Args:
+            key: Cache key (SHA256 hash string)
+            value: JSON-serialized result to cache
+            ttl: Time-to-live in seconds (None = no expiration)
+        """
+        ...
+
+    async def delete(self, key: str) -> None:
+        """Remove key from cache.
+
+        Args:
+            key: Cache key to remove
+        """
+        ...
+
+    def size(self) -> int:
+        """Return current number of cached entries.
+
+        Returns:
+            Number of entries in cache, or -1 if unknown (e.g., Redis)
+        """
+        ...
+
+    async def clear(self) -> None:
+        """Remove all cached entries."""
+        ...
+
+
+@dataclass
+class CacheEntry:
+    """Entry in the memory cache with expiration tracking."""
+
+    value: str
+    expires_at: Optional[float]  # Unix timestamp, None = never expires
+
+
+class MemoryCacheBackend:
+    """In-memory cache backend with TTL and LRU eviction.
+
+    Thread-safe for single-process async use. Uses OrderedDict for
+    LRU eviction when max_size is exceeded.
+
+    Example:
+        >>> backend = MemoryCacheBackend(max_size=100)
+        >>> await backend.set("key", "value", ttl=300)
+        >>> cached = await backend.get("key")
+    """
+
+    def __init__(self, max_size: int = 100) -> None:
+        """Initialize memory cache backend.
+
+        Args:
+            max_size: Maximum number of entries before LRU eviction
+        """
+        self._cache: OrderedDict[str, CacheEntry] = OrderedDict()
+        self._max_size = max_size
+
+    async def get(self, key: str) -> Optional[str]:
+        """Retrieve value if exists and not expired."""
+        if key not in self._cache:
+            return None
+
+        entry = self._cache[key]
+
+        # Check TTL expiration
+        if entry.expires_at is not None and time.time() > entry.expires_at:
+            del self._cache[key]
+            return None
+
+        # Move to end for LRU tracking
+        self._cache.move_to_end(key)
+        return entry.value
+
+    async def set(self, key: str, value: str, ttl: Optional[int] = None) -> None:
+        """Store value with optional TTL."""
+        expires_at = time.time() + ttl if ttl is not None else None
+
+        # If key exists, remove it first to update position
+        if key in self._cache:
+            del self._cache[key]
+
+        # Evict oldest entries if at capacity
+        while len(self._cache) >= self._max_size:
+            self._cache.popitem(last=False)
+
+        self._cache[key] = CacheEntry(value=value, expires_at=expires_at)
+
+    async def delete(self, key: str) -> None:
+        """Remove key from cache."""
+        self._cache.pop(key, None)
+
+    def size(self) -> int:
+        """Return current cache size."""
+        return len(self._cache)
+
+    async def clear(self) -> None:
+        """Clear all entries."""
+        self._cache.clear()
+
+
+class RedisCacheBackend:
+    """Redis cache backend for distributed caching with TTL.
+
+    Provides shared cache across multiple processes/instances.
+    Follows patterns from arbiter_ai/storage/redis.py for async
+    operations and connection lifecycle management.
+
+    Example:
+        >>> backend = RedisCacheBackend(redis_url="redis://localhost:6379")
+        >>> async with backend:
+        ...     await backend.set("key", "value", ttl=300)
+        ...     cached = await backend.get("key")
+    """
+
+    def __init__(
+        self,
+        redis_url: Optional[str] = None,
+        key_prefix: str = "arbiter:cache:",
+        default_ttl: int = 3600,
+    ) -> None:
+        """Initialize Redis cache backend.
+
+        Args:
+            redis_url: Redis connection string (defaults to REDIS_URL env var)
+            key_prefix: Prefix for all cache keys in Redis
+            default_ttl: Default TTL in seconds if not specified per-key
+
+        Raises:
+            ValueError: If redis_url not provided and REDIS_URL not set
+        """
+        self._redis_url = redis_url or os.getenv("REDIS_URL")
+        if not self._redis_url:
+            raise ValueError(
+                "Redis URL required: provide redis_url or set REDIS_URL env var"
+            )
+
+        self._key_prefix = key_prefix
+        self._default_ttl = default_ttl
+        self._client: Optional[Any] = None  # redis.Redis[str]
+        self._connected = False
+
+    def _make_key(self, key: str) -> str:
+        """Generate prefixed Redis key."""
+        return f"{self._key_prefix}{key}"
+
+    async def connect(self) -> None:
+        """Establish Redis connection."""
+        if self._connected:
+            return
+
+        # redis_url is validated in __init__, safe to assert
+        assert self._redis_url is not None
+
+        try:
+            import redis.asyncio as redis
+
+            self._client = await redis.from_url(
+                self._redis_url,
+                encoding="utf-8",
+                decode_responses=True,
+            )
+            await self._client.ping()
+            self._connected = True
+            logger.info("Redis cache backend connected")
+
+        except ImportError:
+            raise ImportError(
+                "Redis backend requires redis package. "
+                "Install with: pip install redis"
+            )
+        except Exception as e:
+            logger.error(f"Failed to connect to Redis: {e}")
+            raise
+
+    async def close(self) -> None:
+        """Close Redis connection."""
+        if self._client:
+            await self._client.close()
+            self._connected = False
+            logger.info("Redis cache backend disconnected")
+
+    async def __aenter__(self) -> "RedisCacheBackend":
+        """Async context manager entry."""
+        await self.connect()
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[type],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[Any],
+    ) -> None:
+        """Async context manager exit."""
+        await self.close()
+
+    async def get(self, key: str) -> Optional[str]:
+        """Retrieve value from Redis."""
+        if not self._connected:
+            await self.connect()
+
+        assert self._client is not None  # Guaranteed after connect()
+
+        try:
+            redis_key = self._make_key(key)
+            result: Optional[str] = await self._client.get(redis_key)
+            return result
+        except Exception as e:
+            logger.warning(f"Redis get failed for {key}: {e}")
+            return None
+
+    async def set(self, key: str, value: str, ttl: Optional[int] = None) -> None:
+        """Store value in Redis with TTL."""
+        if not self._connected:
+            await self.connect()
+
+        assert self._client is not None  # Guaranteed after connect()
+
+        try:
+            redis_key = self._make_key(key)
+            effective_ttl = ttl if ttl is not None else self._default_ttl
+            await self._client.setex(redis_key, effective_ttl, value)
+        except Exception as e:
+            logger.warning(f"Redis set failed for {key}: {e}")
+
+    async def delete(self, key: str) -> None:
+        """Remove key from Redis."""
+        if not self._connected:
+            await self.connect()
+
+        assert self._client is not None  # Guaranteed after connect()
+
+        try:
+            redis_key = self._make_key(key)
+            await self._client.delete(redis_key)
+        except Exception as e:
+            logger.warning(f"Redis delete failed for {key}: {e}")
+
+    def size(self) -> int:
+        """Return approximate cache size.
+
+        Note: Returns -1 for Redis as getting exact size with prefix
+        would require scanning all keys, which is expensive.
+        """
+        return -1
+
+    async def clear(self) -> None:
+        """Clear all cache entries with this backend's prefix."""
+        if not self._connected:
+            await self.connect()
+
+        assert self._client is not None  # Guaranteed after connect()
+
+        try:
+            pattern = f"{self._key_prefix}*"
+            cursor: int = 0
+            while True:
+                cursor, keys = await self._client.scan(cursor, match=pattern, count=100)
+                if keys:
+                    await self._client.delete(*keys)
+                if cursor == 0:
+                    break
+        except Exception as e:
+            logger.warning(f"Redis clear failed: {e}")
 
 
 class Middleware(ABC):
@@ -367,54 +665,161 @@ class MetricsMiddleware(Middleware):
 
 
 class CachingMiddleware(Middleware):
-    """Caches evaluation results for identical inputs.
+    """Caches evaluation results with pluggable backends and TTL support.
 
-    Provides significant performance improvements when evaluating the
-    same output/reference pairs multiple times. Uses an LRU-style cache
-    with configurable maximum size.
+    Supports multiple cache backends (memory, Redis) with automatic
+    cost savings tracking. Uses SHA256 for deterministic cache keys.
+
+    Cache Key Components:
+        - Output text (hashed)
+        - Reference text (hashed, if provided)
+        - Criteria (if provided)
+        - Evaluator names (sorted)
+        - Metric names (sorted)
+        - Model and temperature configuration
 
     Example:
-        >>> cache = CachingMiddleware(max_size=200)
-        >>> pipeline = MiddlewarePipeline()
-        >>> pipeline.add(cache)
+        >>> # Memory backend (default)
+        >>> cache = CachingMiddleware(max_size=200, ttl=3600)
         >>>
-        >>> # First call - cache miss
-        >>> result1 = await evaluate(output, ref, middleware=pipeline)
+        >>> # Redis backend
+        >>> cache = CachingMiddleware(
+        ...     backend="redis",
+        ...     redis_url="redis://localhost:6379",
+        ...     ttl=3600
+        ... )
         >>>
-        >>> # Second call - cache hit (instant)
-        >>> result2 = await evaluate(output, ref, middleware=pipeline)
+        >>> pipeline = MiddlewarePipeline([cache])
+        >>> result = await evaluate(output, ref, middleware=pipeline)
         >>>
-        >>> # Check cache stats
+        >>> # Check stats including cost savings
         >>> stats = cache.get_stats()
         >>> print(f"Hit rate: {stats['hit_rate']:.1%}")
+        >>> print(f"Estimated savings: ${stats['estimated_savings_usd']:.4f}")
     """
 
-    def __init__(self, max_size: int = 100):
+    def __init__(
+        self,
+        backend: Literal["memory", "redis"] = "memory",
+        max_size: int = 100,
+        ttl: Optional[int] = None,
+        redis_url: Optional[str] = None,
+        redis_key_prefix: str = "arbiter:cache:",
+    ) -> None:
         """Initialize caching middleware.
 
         Args:
-            max_size: Maximum number of cached results. When exceeded,
-                oldest entries are removed (FIFO policy).
-        """
-        self.cache: Dict[str, MiddlewareResult] = {}
-        self.max_size = max_size
-        self.hits = 0
-        self.misses = 0
+            backend: Cache backend type ("memory" or "redis")
+            max_size: Maximum entries for memory backend (ignored for Redis)
+            ttl: Time-to-live in seconds (None = no expiration for memory,
+                 defaults to 3600 for Redis)
+            redis_url: Redis connection URL (required if backend="redis",
+                       falls back to REDIS_URL env var)
+            redis_key_prefix: Key prefix for Redis entries
 
-    def _get_cache_key(
-        self, output: str, reference: Optional[str], context: MiddlewareContext
+        Raises:
+            ValueError: If backend="redis" and no Redis URL available
+        """
+        self._backend_type = backend
+        self._max_size = max_size
+        self._ttl = ttl
+
+        # Initialize backend
+        if backend == "memory":
+            self._backend: Union[MemoryCacheBackend, RedisCacheBackend] = (
+                MemoryCacheBackend(max_size=max_size)
+            )
+        elif backend == "redis":
+            self._backend = RedisCacheBackend(
+                redis_url=redis_url,
+                key_prefix=redis_key_prefix,
+                default_ttl=ttl or 3600,
+            )
+        else:
+            raise ValueError(f"Unknown backend: {backend}. Use 'memory' or 'redis'")
+
+        # Statistics
+        self._hits = 0
+        self._misses = 0
+        self._estimated_savings_usd = 0.0
+
+    def _generate_cache_key(
+        self,
+        output: str,
+        reference: Optional[str],
+        context: MiddlewareContext,
     ) -> str:
-        """Generate cache key from inputs and context."""
+        """Generate deterministic SHA256 cache key from inputs.
+
+        Includes all factors that affect evaluation results:
+        - Output and reference text
+        - Criteria (for custom evaluators)
+        - Evaluator and metric configuration
+        - Model and temperature settings
+
+        Args:
+            output: LLM output text
+            reference: Reference text (may be None)
+            context: Middleware context with configuration
+
+        Returns:
+            SHA256 hex digest as cache key
+        """
+        # Extract and normalize context values
         evaluators_list = context.get("evaluators", [])
         evaluators = ",".join(sorted(str(e) for e in evaluators_list))
+
         metrics_list = context.get("metrics", [])
         metrics = ",".join(sorted(str(m) for m in metrics_list))
-        config_key = (
-            f"{context.get('model', 'default')}_{context.get('temperature', 0.7)}"
-        )
 
-        ref_hash = hash(reference) if reference else 0
-        return f"{hash(output)}_{ref_hash}_{evaluators}_{metrics}_{config_key}"
+        # Include criteria for CustomCriteriaEvaluator
+        criteria = context.get("criteria", "")
+
+        # Model configuration
+        model = context.get("model", "default")
+        temperature = context.get("temperature", 0.7)
+
+        # Build canonical key components
+        key_parts = [
+            f"output:{output}",
+            f"reference:{reference or ''}",
+            f"criteria:{criteria}",
+            f"evaluators:{evaluators}",
+            f"metrics:{metrics}",
+            f"model:{model}",
+            f"temperature:{temperature}",
+        ]
+
+        # Create deterministic hash
+        canonical_string = "|".join(key_parts)
+        return hashlib.sha256(canonical_string.encode("utf-8")).hexdigest()
+
+    def _calculate_result_cost(self, result: MiddlewareResult) -> float:
+        """Calculate the cost of a cached result's LLM interactions.
+
+        Args:
+            result: Cached evaluation or comparison result
+
+        Returns:
+            Estimated cost in USD
+        """
+        from .cost_calculator import get_cost_calculator
+
+        calc = get_cost_calculator()
+        total_cost = 0.0
+
+        for interaction in result.interactions:
+            if interaction.cost is not None:
+                total_cost += interaction.cost
+            else:
+                total_cost += calc.calculate_cost(
+                    model=interaction.model,
+                    input_tokens=interaction.input_tokens,
+                    output_tokens=interaction.output_tokens,
+                    cached_tokens=interaction.cached_tokens,
+                )
+
+        return total_cost
 
     async def process(
         self,
@@ -423,45 +828,143 @@ class CachingMiddleware(Middleware):
         next_handler: Callable[[str, Optional[str]], Any],
         context: MiddlewareContext,
     ) -> MiddlewareResult:
-        """Check cache before processing."""
-        cache_key = self._get_cache_key(output, reference, context)
+        """Check cache before processing, cache results after.
 
-        # Check cache
-        if cache_key in self.cache:
-            self.hits += 1
-            logger.debug(f"Cache hit for key: {cache_key}")
-            return self.cache[cache_key]
+        On cache hit:
+        - Returns cached result immediately
+        - Tracks estimated cost savings
 
-        # Cache miss
-        self.misses += 1
-        result: MiddlewareResult = await next_handler(output, reference)
+        On cache miss:
+        - Calls next handler
+        - Caches result with optional TTL
+        """
+        cache_key = self._generate_cache_key(output, reference, context)
 
-        # Store in cache
-        if len(self.cache) >= self.max_size:
-            # Remove oldest entry (simple FIFO)
-            oldest_key = next(iter(self.cache))
-            del self.cache[oldest_key]
+        # Attempt cache retrieval
+        cached_json = await self._backend.get(cache_key)
 
-        self.cache[cache_key] = result
+        if cached_json is not None:
+            self._hits += 1
+            logger.debug(f"Cache hit for key: {cache_key[:16]}...")
+
+            # Deserialize cached result
+            cached_data = json.loads(cached_json)
+            result_type = cached_data.get("_result_type", "evaluation")
+
+            if result_type == "comparison":
+                result: MiddlewareResult = ComparisonResult.model_validate(
+                    cached_data["result"]
+                )
+            else:
+                result = EvaluationResult.model_validate(cached_data["result"])
+
+            # Track cost savings
+            saved_cost = self._calculate_result_cost(result)
+            self._estimated_savings_usd += saved_cost
+
+            return result
+
+        # Cache miss - execute evaluation
+        self._misses += 1
+        logger.debug(f"Cache miss for key: {cache_key[:16]}...")
+
+        result = await next_handler(output, reference)
+
+        # Serialize and cache result
+        result_type_str = (
+            "comparison" if isinstance(result, ComparisonResult) else "evaluation"
+        )
+
+        # Exclude computed fields to avoid validation errors on deserialize
+        result_dict = result.model_dump(
+            mode="json", exclude={"interactions": {"__all__": {"total_tokens"}}}
+        )
+
+        cache_data = {
+            "_result_type": result_type_str,
+            "result": result_dict,
+        }
+
+        await self._backend.set(
+            cache_key,
+            json.dumps(cache_data, sort_keys=True),
+            ttl=self._ttl,
+        )
 
         return result
 
     def get_stats(self) -> Dict[str, Any]:
-        """Get cache statistics.
+        """Get comprehensive cache statistics.
 
         Returns:
-            Dictionary with hits, misses, hit_rate, size, and max_size
+            Dictionary with hits, misses, hit_rate, size, max_size,
+            and estimated_savings_usd
         """
-        total = self.hits + self.misses
-        hit_rate = self.hits / total if total > 0 else 0.0
+        total = self._hits + self._misses
+        hit_rate = self._hits / total if total > 0 else 0.0
 
         return {
-            "hits": self.hits,
-            "misses": self.misses,
+            "hits": self._hits,
+            "misses": self._misses,
             "hit_rate": hit_rate,
-            "size": len(self.cache),
-            "max_size": self.max_size,
+            "size": self._backend.size(),
+            "max_size": self._max_size,
+            "estimated_savings_usd": self._estimated_savings_usd,
         }
+
+    async def clear(self) -> None:
+        """Clear all cached entries and reset statistics."""
+        await self._backend.clear()
+        self._hits = 0
+        self._misses = 0
+        self._estimated_savings_usd = 0.0
+
+    async def close(self) -> None:
+        """Close backend connections (for Redis)."""
+        if hasattr(self._backend, "close"):
+            await self._backend.close()
+
+    async def __aenter__(self) -> "CachingMiddleware":
+        """Async context manager entry."""
+        if hasattr(self._backend, "__aenter__"):
+            await self._backend.__aenter__()
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[type],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[Any],
+    ) -> None:
+        """Async context manager exit."""
+        await self.close()
+
+    # Backward compatibility properties
+    @property
+    def cache(self) -> Dict[str, Any]:
+        """Legacy access to cache contents (memory backend only).
+
+        Returns dict mapping cache keys to serialized values.
+        For full access, use get_stats() instead.
+        """
+        if isinstance(self._backend, MemoryCacheBackend):
+            return {k: v.value for k, v in self._backend._cache.items()}
+        return {}
+
+    @property
+    def hits(self) -> int:
+        """Number of cache hits."""
+        return self._hits
+
+    @property
+    def misses(self) -> int:
+        """Number of cache misses."""
+        return self._misses
+
+    @property
+    def max_size(self) -> int:
+        """Maximum cache size."""
+        return self._max_size
 
 
 class RateLimitingMiddleware(Middleware):

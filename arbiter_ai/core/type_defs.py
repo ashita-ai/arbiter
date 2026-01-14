@@ -38,6 +38,7 @@ class MiddlewareContext(TypedDict, total=False):
     Common keys:
         evaluators: List of evaluator names being used
         metrics: List of metric names being computed
+        criteria: Evaluation criteria (for custom evaluators)
         config: Configuration object for the evaluation
         llm_calls: Counter for total LLM API calls made
         start_time: Timestamp when evaluation started
@@ -51,6 +52,7 @@ class MiddlewareContext(TypedDict, total=False):
 
     evaluators: List[Union[str, Any]]
     metrics: List[str]
+    criteria: str
     config: Any
     llm_calls: int
     start_time: float
