@@ -217,14 +217,18 @@ class TestCachingMiddleware:
             "temperature": 0.7,
         }
 
-        key1 = cache._get_cache_key("output1", "ref1", context1)
-        key2 = cache._get_cache_key("output1", "ref1", context2)
-        key3 = cache._get_cache_key("output2", "ref1", context1)
+        key1 = cache._generate_cache_key("output1", "ref1", context1)
+        key2 = cache._generate_cache_key("output1", "ref1", context2)
+        key3 = cache._generate_cache_key("output2", "ref1", context1)
 
         # Different contexts should produce different keys
         assert key1 != key2
         # Different outputs should produce different keys
         assert key1 != key3
+
+        # Verify SHA256 format: 64 hex characters
+        assert len(key1) == 64
+        assert all(c in "0123456789abcdef" for c in key1)
 
     @pytest.mark.asyncio
     async def test_cache_hit(self, eval_result):
@@ -284,18 +288,236 @@ class TestCachingMiddleware:
         # Cache should only have 2 entries
         assert len(cache.cache) == 2
 
-    def test_get_stats(self):
+    @pytest.mark.asyncio
+    async def test_get_stats(self, eval_result):
         """Test cache statistics."""
         cache = CachingMiddleware()
-        cache.hits = 10
-        cache.misses = 5
+
+        async def mock_handler(
+            output: str, reference: Optional[str]
+        ) -> EvaluationResult:
+            return eval_result
+
+        context: MiddlewareContext = {"evaluators": ["semantic"]}
+
+        # Generate cache misses and hits
+        # First call - miss
+        await cache.process("output1", "ref1", mock_handler, context)
+        # Second call - hit (same inputs)
+        await cache.process("output1", "ref1", mock_handler, context)
+        # Third call - hit (same inputs)
+        await cache.process("output1", "ref1", mock_handler, context)
+        # Fourth call - miss (different inputs)
+        await cache.process("output2", "ref2", mock_handler, context)
 
         stats = cache.get_stats()
-        assert stats["hits"] == 10
-        assert stats["misses"] == 5
-        assert stats["hit_rate"] == 10 / 15
-        assert stats["size"] == 0
+        assert stats["hits"] == 2
+        assert stats["misses"] == 2
+        assert stats["hit_rate"] == 2 / 4
+        assert stats["size"] == 2
         assert stats["max_size"] == 100
+        assert "estimated_savings_usd" in stats
+
+    @pytest.mark.asyncio
+    async def test_criteria_affects_cache_key(self, eval_result):
+        """Test that criteria is included in cache key."""
+        cache = CachingMiddleware()
+
+        context1: MiddlewareContext = {"evaluators": ["custom"], "criteria": "accuracy"}
+        context2: MiddlewareContext = {"evaluators": ["custom"], "criteria": "clarity"}
+
+        key1 = cache._generate_cache_key("output", "ref", context1)
+        key2 = cache._generate_cache_key("output", "ref", context2)
+
+        # Different criteria should produce different keys
+        assert key1 != key2
+
+    @pytest.mark.asyncio
+    async def test_ttl_parameter(self, eval_result):
+        """Test TTL parameter is stored correctly."""
+        cache_no_ttl = CachingMiddleware()
+        cache_with_ttl = CachingMiddleware(ttl=3600)
+
+        assert cache_no_ttl._ttl is None
+        assert cache_with_ttl._ttl == 3600
+
+    @pytest.mark.asyncio
+    async def test_backend_parameter(self):
+        """Test backend parameter selects correct backend."""
+        from arbiter_ai.core.middleware import MemoryCacheBackend
+
+        cache = CachingMiddleware(backend="memory", max_size=50)
+
+        assert cache._backend_type == "memory"
+        assert isinstance(cache._backend, MemoryCacheBackend)
+
+    @pytest.mark.asyncio
+    async def test_invalid_backend_raises_error(self):
+        """Test invalid backend raises ValueError."""
+        with pytest.raises(ValueError, match="Unknown backend"):
+            CachingMiddleware(backend="invalid")  # type: ignore
+
+    @pytest.mark.asyncio
+    async def test_redis_backend_requires_url(self):
+        """Test Redis backend requires URL."""
+        import os
+
+        # Temporarily clear REDIS_URL if set
+        original = os.environ.pop("REDIS_URL", None)
+        try:
+            with pytest.raises(ValueError, match="Redis URL required"):
+                CachingMiddleware(backend="redis")
+        finally:
+            if original:
+                os.environ["REDIS_URL"] = original
+
+    @pytest.mark.asyncio
+    async def test_comparison_result_caching(self, comparison_result):
+        """Test ComparisonResult is properly cached and restored."""
+        cache = CachingMiddleware()
+
+        async def mock_handler(
+            output: str, reference: Optional[str]
+        ) -> ComparisonResult:
+            return comparison_result
+
+        context: MiddlewareContext = {"evaluators": ["pairwise"]}
+
+        # Cache the comparison result
+        result1 = await cache.process("output", None, mock_handler, context)
+        assert isinstance(result1, ComparisonResult)
+
+        # Track that handler is not called on cache hit
+        call_count = 0
+
+        async def counting_handler(
+            output: str, reference: Optional[str]
+        ) -> ComparisonResult:
+            nonlocal call_count
+            call_count += 1
+            return comparison_result
+
+        result2 = await cache.process("output", None, counting_handler, context)
+
+        assert call_count == 0  # Handler not called, used cache
+        assert isinstance(result2, ComparisonResult)
+        assert result2.winner == comparison_result.winner
+
+    @pytest.mark.asyncio
+    async def test_clear_resets_stats(self, eval_result):
+        """Test clear() resets all statistics."""
+        cache = CachingMiddleware()
+
+        async def mock_handler(
+            output: str, reference: Optional[str]
+        ) -> EvaluationResult:
+            return eval_result
+
+        context: MiddlewareContext = {}
+        await cache.process("test", "ref", mock_handler, context)
+        await cache.process("test", "ref", mock_handler, context)
+
+        assert cache.hits > 0
+
+        await cache.clear()
+
+        stats = cache.get_stats()
+        assert stats["hits"] == 0
+        assert stats["misses"] == 0
+        assert stats["estimated_savings_usd"] == 0.0
+        assert stats["size"] == 0
+
+
+class TestMemoryCacheBackend:
+    """Test MemoryCacheBackend directly."""
+
+    @pytest.mark.asyncio
+    async def test_basic_get_set(self):
+        """Test basic get and set operations."""
+        from arbiter_ai.core.middleware import MemoryCacheBackend
+
+        backend = MemoryCacheBackend(max_size=10)
+
+        await backend.set("key1", "value1")
+        result = await backend.get("key1")
+        assert result == "value1"
+
+    @pytest.mark.asyncio
+    async def test_get_nonexistent_key(self):
+        """Test getting a nonexistent key returns None."""
+        from arbiter_ai.core.middleware import MemoryCacheBackend
+
+        backend = MemoryCacheBackend()
+        result = await backend.get("nonexistent")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_lru_eviction(self):
+        """Test LRU eviction when max_size exceeded."""
+        from arbiter_ai.core.middleware import MemoryCacheBackend
+
+        backend = MemoryCacheBackend(max_size=2)
+
+        await backend.set("key1", "value1")
+        await backend.set("key2", "value2")
+        await backend.set("key3", "value3")  # Should evict key1
+
+        assert await backend.get("key1") is None
+        assert await backend.get("key2") == "value2"
+        assert await backend.get("key3") == "value3"
+
+    @pytest.mark.asyncio
+    async def test_access_refreshes_lru(self):
+        """Test accessing an entry moves it to end of LRU."""
+        from arbiter_ai.core.middleware import MemoryCacheBackend
+
+        backend = MemoryCacheBackend(max_size=2)
+
+        await backend.set("key1", "value1")
+        await backend.set("key2", "value2")
+
+        # Access key1, making it more recent than key2
+        await backend.get("key1")
+
+        # Add key3, should evict key2 (now oldest)
+        await backend.set("key3", "value3")
+
+        assert await backend.get("key1") == "value1"
+        assert await backend.get("key2") is None
+        assert await backend.get("key3") == "value3"
+
+    @pytest.mark.asyncio
+    async def test_delete(self):
+        """Test delete removes key."""
+        from arbiter_ai.core.middleware import MemoryCacheBackend
+
+        backend = MemoryCacheBackend()
+        await backend.set("key1", "value1")
+        await backend.delete("key1")
+        assert await backend.get("key1") is None
+
+    @pytest.mark.asyncio
+    async def test_clear(self):
+        """Test clear removes all entries."""
+        from arbiter_ai.core.middleware import MemoryCacheBackend
+
+        backend = MemoryCacheBackend()
+        await backend.set("key1", "value1")
+        await backend.set("key2", "value2")
+        await backend.clear()
+        assert backend.size() == 0
+
+    @pytest.mark.asyncio
+    async def test_size(self):
+        """Test size returns correct count."""
+        from arbiter_ai.core.middleware import MemoryCacheBackend
+
+        backend = MemoryCacheBackend()
+        assert backend.size() == 0
+        await backend.set("key1", "value1")
+        assert backend.size() == 1
+        await backend.set("key2", "value2")
+        assert backend.size() == 2
 
 
 class TestRateLimitingMiddleware:
