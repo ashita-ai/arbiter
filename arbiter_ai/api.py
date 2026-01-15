@@ -47,7 +47,12 @@ from .core import (
     validate_evaluate_inputs,
     validate_evaluator_name,
 )
-from .core.exceptions import ArbiterError, EvaluatorError, ValidationError
+from .core.exceptions import (
+    ArbiterError,
+    EvaluatorError,
+    TimeoutError,
+    ValidationError,
+)
 from .core.middleware import MiddlewarePipeline
 from .core.models import (
     BatchEvaluationResult,
@@ -75,6 +80,7 @@ async def evaluate(
     provider: Provider = Provider.OPENAI,
     threshold: float = 0.7,
     middleware: Optional[MiddlewarePipeline] = None,
+    timeout: Optional[float] = None,
     *,
     dry_run: Literal[True],
 ) -> DryRunResult: ...
@@ -91,6 +97,7 @@ async def evaluate(
     provider: Provider = Provider.OPENAI,
     threshold: float = 0.7,
     middleware: Optional[MiddlewarePipeline] = None,
+    timeout: Optional[float] = None,
     *,
     dry_run: Literal[False] = ...,
 ) -> EvaluationResult: ...
@@ -107,6 +114,7 @@ async def evaluate(
     provider: Provider = Provider.OPENAI,
     threshold: float = 0.7,
     middleware: Optional[MiddlewarePipeline] = None,
+    timeout: Optional[float] = None,
     dry_run: bool = False,
 ) -> Union[EvaluationResult, DryRunResult]: ...
 
@@ -121,6 +129,7 @@ async def evaluate(
     provider: Provider = Provider.OPENAI,
     threshold: float = 0.7,
     middleware: Optional[MiddlewarePipeline] = None,
+    timeout: Optional[float] = None,
     dry_run: bool = False,
 ) -> Union[EvaluationResult, DryRunResult]:
     """Evaluate an LLM output with automatic interaction tracking.
@@ -139,6 +148,9 @@ async def evaluate(
         provider: Provider to use if creating new client (default: OPENAI)
         threshold: Score threshold for pass/fail (default: 0.7)
         middleware: Optional middleware pipeline for cross-cutting concerns
+        timeout: Optional timeout in seconds. If the evaluation takes longer than
+            this, a TimeoutError is raised. Useful for production environments
+            where predictable response times are required.
         dry_run: If True, return preview of evaluation without making API calls.
             Useful for debugging prompts, validating inputs, and estimating costs.
 
@@ -159,6 +171,7 @@ async def evaluate(
         ValidationError: If input validation fails or evaluator name is not recognized.
             Error messages include available evaluator names for helpful debugging.
         EvaluatorError: If all evaluators fail (partial results return successfully)
+        TimeoutError: If evaluation exceeds the specified timeout
 
     Example:
         >>> # Basic semantic evaluation
@@ -169,6 +182,13 @@ async def evaluate(
         ... )
         >>> print(f"Score: {result.overall_score:.2f}")
         >>> print(f"Passed: {result.passed}")
+        >>>
+        >>> # With timeout
+        >>> result = await evaluate(
+        ...     output="Test output",
+        ...     reference="Test reference",
+        ...     timeout=30.0  # Timeout after 30 seconds
+        ... )
         >>>
         >>> # Check LLM usage
         >>> for interaction in result.interactions:
@@ -209,36 +229,50 @@ async def evaluate(
         model=model,
     )
 
-    # If middleware is provided, use it to wrap the evaluation
-    if middleware:
+    async def _run_evaluation() -> EvaluationResult:
+        """Run evaluation with or without middleware."""
+        if middleware:
 
-        async def _evaluate_core(
-            output: str, reference: Optional[str]
-        ) -> EvaluationResult:
-            return await _evaluate_impl(
-                output=output,
-                reference=reference,
-                criteria=criteria,
-                evaluators=evaluators,
-                llm_client=llm_client,
-                model=model,
-                provider=provider,
-                threshold=threshold,
+            async def _evaluate_core(
+                output: str, reference: Optional[str]
+            ) -> EvaluationResult:
+                return await _evaluate_impl(
+                    output=output,
+                    reference=reference,
+                    criteria=criteria,
+                    evaluators=evaluators,
+                    llm_client=llm_client,
+                    model=model,
+                    provider=provider,
+                    threshold=threshold,
+                )
+
+            return await middleware.execute(output, reference, _evaluate_core)
+
+        # No middleware, run directly
+        return await _evaluate_impl(
+            output=output,
+            reference=reference,
+            criteria=criteria,
+            evaluators=evaluators,
+            llm_client=llm_client,
+            model=model,
+            provider=provider,
+            threshold=threshold,
+        )
+
+    # Apply timeout if specified
+    if timeout is not None:
+        try:
+            async with asyncio.timeout(timeout):
+                return await _run_evaluation()
+        except asyncio.TimeoutError:
+            raise TimeoutError(
+                f"Evaluation timed out after {timeout}s",
+                details={"timeout_seconds": timeout},
             )
 
-        return await middleware.execute(output, reference, _evaluate_core)
-
-    # No middleware, run directly
-    return await _evaluate_impl(
-        output=output,
-        reference=reference,
-        criteria=criteria,
-        evaluators=evaluators,
-        llm_client=llm_client,
-        model=model,
-        provider=provider,
-        threshold=threshold,
-    )
+    return await _run_evaluation()
 
 
 async def _evaluate_impl(
@@ -430,6 +464,7 @@ async def compare(
     model: str = "gpt-4o",
     provider: Provider = Provider.OPENAI,
     middleware: Optional[MiddlewarePipeline] = None,
+    timeout: Optional[float] = None,
 ) -> ComparisonResult:
     """Compare two LLM outputs to determine which is better.
 
@@ -446,6 +481,8 @@ async def compare(
         model: Model to use if creating new client (default: "gpt-4o")
         provider: Provider to use if creating new client (default: OPENAI)
         middleware: Optional middleware pipeline for cross-cutting concerns
+        timeout: Optional timeout in seconds. If the comparison takes longer than
+            this, a TimeoutError is raised.
 
     Returns:
         ComparisonResult with winner, confidence, reasoning, and aspect scores
@@ -453,6 +490,7 @@ async def compare(
     Raises:
         ValidationError: If input validation fails
         EvaluatorError: If comparison fails
+        TimeoutError: If comparison exceeds the specified timeout
 
     Example:
         >>> comparison = await compare(
@@ -464,6 +502,13 @@ async def compare(
         >>> print(f"Winner: {comparison.winner}")
         >>> print(f"Confidence: {comparison.confidence:.2f}")
         >>> print(f"Reasoning: {comparison.reasoning}")
+        >>>
+        >>> # With timeout
+        >>> comparison = await compare(
+        ...     output_a="Response A",
+        ...     output_b="Response B",
+        ...     timeout=30.0  # Timeout after 30 seconds
+        ... )
         >>>
         >>> # Check aspect scores
         >>> for aspect, scores in comparison.aspect_scores.items():
@@ -477,42 +522,56 @@ async def compare(
         model=model,
     )
 
-    # If middleware is provided, use it to wrap the comparison
-    if middleware:
+    async def _run_comparison() -> ComparisonResult:
+        """Run comparison with or without middleware."""
+        if middleware:
 
-        async def _compare_final_handler(
-            out_a: str, out_b: str, crit: Optional[str], ref: Optional[str]
-        ) -> ComparisonResult:
-            """Final handler for middleware pipeline."""
-            return await _compare_impl(
-                output_a=out_a,
-                output_b=out_b,
-                criteria=crit,
-                reference=ref,
-                llm_client=llm_client,
-                model=model,
-                provider=provider,
+            async def _compare_final_handler(
+                out_a: str, out_b: str, crit: Optional[str], ref: Optional[str]
+            ) -> ComparisonResult:
+                """Final handler for middleware pipeline."""
+                return await _compare_impl(
+                    output_a=out_a,
+                    output_b=out_b,
+                    criteria=crit,
+                    reference=ref,
+                    llm_client=llm_client,
+                    model=model,
+                    provider=provider,
+                )
+
+            # Use the middleware pipeline's execute_comparison adapter
+            return await middleware.execute_comparison(
+                output_a=output_a,
+                output_b=output_b,
+                criteria=criteria,
+                reference=reference,
+                final_handler=_compare_final_handler,
             )
 
-        # Use the middleware pipeline's execute_comparison adapter
-        return await middleware.execute_comparison(
+        # No middleware, run directly
+        return await _compare_impl(
             output_a=output_a,
             output_b=output_b,
             criteria=criteria,
             reference=reference,
-            final_handler=_compare_final_handler,
+            llm_client=llm_client,
+            model=model,
+            provider=provider,
         )
 
-    # No middleware, run directly
-    return await _compare_impl(
-        output_a=output_a,
-        output_b=output_b,
-        criteria=criteria,
-        reference=reference,
-        llm_client=llm_client,
-        model=model,
-        provider=provider,
-    )
+    # Apply timeout if specified
+    if timeout is not None:
+        try:
+            async with asyncio.timeout(timeout):
+                return await _run_comparison()
+        except asyncio.TimeoutError:
+            raise TimeoutError(
+                f"Comparison timed out after {timeout}s",
+                details={"timeout_seconds": timeout},
+            )
+
+    return await _run_comparison()
 
 
 async def _compare_impl(
@@ -557,6 +616,7 @@ async def batch_evaluate(
         Callable[[int, int, Optional["EvaluationResult"]], None]
     ] = None,
     middleware: Optional[MiddlewarePipeline] = None,
+    timeout: Optional[float] = None,
 ) -> "BatchEvaluationResult":
     """Evaluate multiple LLM outputs in parallel with progress tracking.
 
@@ -576,10 +636,13 @@ async def batch_evaluate(
         max_concurrency: Maximum parallel evaluations (default: 10)
         progress_callback: Optional callback(completed, total, latest_result)
         middleware: Optional middleware pipeline for cross-cutting concerns
+        timeout: Optional per-item timeout in seconds. Each individual evaluation
+            that exceeds this timeout will be recorded as a failed item with a
+            timeout error. The batch continues processing other items.
 
     Returns:
         BatchEvaluationResult with results list, errors, and aggregate statistics.
-        Results list preserves order - None for failed items.
+        Results list preserves order - None for failed items (including timeouts).
 
     Raises:
         ValidationError: If input validation fails (empty items, invalid format)
@@ -598,6 +661,12 @@ async def batch_evaluate(
         ... )
         >>> print(f"Success: {results.successful_items}/{results.total_items}")
         >>> print(f"Total cost: ${await results.total_llm_cost():.4f}")
+        >>>
+        >>> # With per-item timeout
+        >>> results = await batch_evaluate(
+        ...     items=[...],
+        ...     timeout=10.0  # Each item has 10 seconds to complete
+        ... )
         >>>
         >>> # With progress tracking
         >>> def on_progress(completed, total, result):
@@ -638,6 +707,7 @@ async def batch_evaluate(
         max_concurrency=max_concurrency,
         progress_callback=progress_callback,
         middleware=middleware,
+        timeout=timeout,
     )
 
 
@@ -653,6 +723,7 @@ async def _batch_evaluate_impl(
         Callable[[int, int, Optional[EvaluationResult]], None]
     ] = None,
     middleware: Optional[MiddlewarePipeline] = None,
+    timeout: Optional[float] = None,
 ) -> "BatchEvaluationResult":
     """Internal implementation of batch evaluation."""
 
@@ -700,6 +771,7 @@ async def _batch_evaluate_impl(
                     provider=provider,
                     threshold=threshold,
                     middleware=middleware,
+                    timeout=timeout,
                     dry_run=False,
                 )
 
