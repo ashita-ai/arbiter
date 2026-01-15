@@ -748,3 +748,230 @@ class TestCompareFunction:
                 criteria="",
                 llm_client=mock_llm_client,
             )
+
+    @pytest.mark.asyncio
+    async def test_compare_timeout(self, mock_llm_client, mock_agent):
+        """Test that compare raises TimeoutError when timeout is exceeded."""
+        import asyncio
+
+        from arbiter_ai.api import compare
+        from arbiter_ai.core.exceptions import TimeoutError
+        from arbiter_ai.evaluators.pairwise import PairwiseResponse
+
+        async def slow_response(*args, **kwargs):
+            await asyncio.sleep(0.5)
+            return MockAgentResult(
+                PairwiseResponse(
+                    winner="output_a",
+                    confidence=0.9,
+                    reasoning="Test",
+                    aspect_comparisons=[],
+                )
+            )
+
+        mock_agent.run = slow_response
+        mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
+
+        with pytest.raises(TimeoutError, match="Comparison timed out after 0.1s"):
+            await compare(
+                output_a="Output A",
+                output_b="Output B",
+                llm_client=mock_llm_client,
+                timeout=0.1,
+            )
+
+    @pytest.mark.asyncio
+    async def test_compare_completes_within_timeout(self, mock_llm_client, mock_agent):
+        """Test that compare completes successfully when within timeout."""
+        from arbiter_ai.api import compare
+        from arbiter_ai.evaluators.pairwise import PairwiseResponse
+
+        mock_response = PairwiseResponse(
+            winner="output_a",
+            confidence=0.9,
+            reasoning="Test",
+            aspect_comparisons=[],
+        )
+
+        mock_result = MockAgentResult(mock_response)
+        mock_agent.run = AsyncMock(return_value=mock_result)
+        mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
+
+        result = await compare(
+            output_a="Output A",
+            output_b="Output B",
+            llm_client=mock_llm_client,
+            timeout=10.0,
+        )
+
+        assert result.winner == "output_a"
+
+
+class TestEvaluateTimeout:
+    """Test suite for evaluate() timeout functionality."""
+
+    @pytest.mark.asyncio
+    async def test_evaluate_timeout(self, mock_llm_client, mock_agent):
+        """Test that evaluate raises TimeoutError when timeout is exceeded."""
+        import asyncio
+
+        from arbiter_ai.api import evaluate
+        from arbiter_ai.core.exceptions import TimeoutError
+        from arbiter_ai.evaluators.semantic import SemanticResponse
+
+        async def slow_response(*args, **kwargs):
+            await asyncio.sleep(0.5)
+            return MockAgentResult(
+                SemanticResponse(
+                    score=0.9,
+                    confidence=0.85,
+                    explanation="High similarity",
+                )
+            )
+
+        mock_agent.run = slow_response
+        mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
+
+        with pytest.raises(TimeoutError, match="Evaluation timed out after 0.1s"):
+            await evaluate(
+                output="Test output",
+                reference="Test reference",
+                llm_client=mock_llm_client,
+                timeout=0.1,
+            )
+
+    @pytest.mark.asyncio
+    async def test_evaluate_completes_within_timeout(self, mock_llm_client, mock_agent):
+        """Test that evaluate completes successfully when within timeout."""
+        from arbiter_ai.api import evaluate
+        from arbiter_ai.evaluators.semantic import SemanticResponse
+
+        mock_response = SemanticResponse(
+            score=0.9,
+            confidence=0.85,
+            explanation="High similarity",
+        )
+
+        mock_result = MockAgentResult(mock_response)
+        mock_agent.run = AsyncMock(return_value=mock_result)
+        mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
+
+        result = await evaluate(
+            output="Test output",
+            reference="Test reference",
+            llm_client=mock_llm_client,
+            timeout=10.0,
+        )
+
+        assert result.overall_score == 0.9
+
+    @pytest.mark.asyncio
+    async def test_evaluate_timeout_includes_details(self, mock_llm_client, mock_agent):
+        """Test that TimeoutError includes timeout details."""
+        import asyncio
+
+        from arbiter_ai.api import evaluate
+        from arbiter_ai.core.exceptions import TimeoutError
+        from arbiter_ai.evaluators.semantic import SemanticResponse
+
+        async def slow_response(*args, **kwargs):
+            await asyncio.sleep(0.5)
+            return MockAgentResult(
+                SemanticResponse(
+                    score=0.9,
+                    confidence=0.85,
+                    explanation="High similarity",
+                )
+            )
+
+        mock_agent.run = slow_response
+        mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
+
+        try:
+            await evaluate(
+                output="Test output",
+                reference="Test reference",
+                llm_client=mock_llm_client,
+                timeout=0.1,
+            )
+            pytest.fail("Expected TimeoutError to be raised")
+        except TimeoutError as e:
+            assert e.details["timeout_seconds"] == 0.1
+
+
+class TestBatchEvaluateTimeout:
+    """Test suite for batch_evaluate() timeout functionality."""
+
+    @pytest.mark.asyncio
+    async def test_batch_evaluate_per_item_timeout(self, mock_llm_client, mock_agent):
+        """Test that batch_evaluate records timeout errors for slow items."""
+        import asyncio
+
+        from arbiter_ai.api import batch_evaluate
+        from arbiter_ai.evaluators.semantic import SemanticResponse
+
+        call_count = [0]
+
+        async def varying_response(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 2:
+                # Second item is slow
+                await asyncio.sleep(0.5)
+            return MockAgentResult(
+                SemanticResponse(
+                    score=0.9,
+                    confidence=0.85,
+                    explanation="High similarity",
+                )
+            )
+
+        mock_agent.run = varying_response
+        mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
+
+        results = await batch_evaluate(
+            items=[
+                {"output": "Item 1", "reference": "Ref 1"},
+                {"output": "Item 2", "reference": "Ref 2"},
+                {"output": "Item 3", "reference": "Ref 3"},
+            ],
+            llm_client=mock_llm_client,
+            timeout=0.1,
+        )
+
+        # One item should have failed due to timeout
+        assert results.failed_items == 1
+        assert results.successful_items == 2
+
+        # Check that timeout error is recorded
+        assert len(results.errors) == 1
+        assert "timed out" in results.errors[0]["error"]
+
+    @pytest.mark.asyncio
+    async def test_batch_evaluate_all_complete_within_timeout(
+        self, mock_llm_client, mock_agent
+    ):
+        """Test that batch_evaluate completes all items when within timeout."""
+        from arbiter_ai.api import batch_evaluate
+        from arbiter_ai.evaluators.semantic import SemanticResponse
+
+        mock_response = SemanticResponse(
+            score=0.9,
+            confidence=0.85,
+            explanation="High similarity",
+        )
+
+        mock_result = MockAgentResult(mock_response)
+        mock_agent.run = AsyncMock(return_value=mock_result)
+        mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
+
+        results = await batch_evaluate(
+            items=[
+                {"output": "Item 1", "reference": "Ref 1"},
+                {"output": "Item 2", "reference": "Ref 2"},
+            ],
+            llm_client=mock_llm_client,
+            timeout=10.0,
+        )
+
+        assert results.failed_items == 0
+        assert results.successful_items == 2
