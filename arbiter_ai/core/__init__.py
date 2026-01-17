@@ -74,7 +74,6 @@ from .retry import (
     with_retry,
 )
 from .type_defs import MiddlewareContext
-from .types import EvaluatorName, MetricType, StorageType
 from .validation import (
     validate_batch_evaluate_inputs,
     validate_compare_inputs,
@@ -137,9 +136,6 @@ __all__ = [
     "RETRY_STANDARD",
     "RETRY_PERSISTENT",
     # Types
-    "MetricType",
-    "StorageType",
-    "EvaluatorName",
     "MiddlewareContext",
     # Registry
     "AVAILABLE_EVALUATORS",
