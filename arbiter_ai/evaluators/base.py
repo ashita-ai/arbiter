@@ -28,7 +28,6 @@ and consistent error handling.
     ...         return Score(name="my_metric", value=response.score)
 """
 
-import logging
 import time
 from abc import abstractmethod
 from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Type
@@ -38,9 +37,10 @@ from pydantic import BaseModel, Field
 from ..core.exceptions import EvaluatorError
 from ..core.interfaces import BaseEvaluator
 from ..core.llm_client import LLMClient
+from ..core.logging import get_logger
 from ..core.models import LLMInteraction, Score
 
-logger = logging.getLogger(__name__)
+logger = get_logger("evaluators")
 
 if TYPE_CHECKING:
     from ..core.types import Provider
@@ -361,6 +361,7 @@ class BasePydanticEvaluator(BaseEvaluator):
             >>> score = await evaluator.evaluate(output, reference)
         """
         start_time = time.time()
+        logger.debug("Starting %s evaluation", self.name)
 
         try:
             # Ensure client is initialized
@@ -368,6 +369,13 @@ class BasePydanticEvaluator(BaseEvaluator):
             # Get prompts
             system_prompt = self._get_system_prompt()
             user_prompt = self._get_user_prompt(output, reference, criteria)
+
+            logger.debug(
+                "%s prompts: system=%d chars, user=%d chars",
+                self.name,
+                len(system_prompt),
+                len(user_prompt),
+            )
 
             # Create PydanticAI agent with structured output
             response_type = self._get_response_type()
@@ -416,9 +424,19 @@ class BasePydanticEvaluator(BaseEvaluator):
 
             # Compute score from structured response
             score = await self._compute_score(structured_output)
+
+            logger.debug(
+                "%s evaluation complete: score=%.2f, confidence=%.2f, latency=%.2fs",
+                self.name,
+                score.value,
+                score.confidence,
+                latency,
+            )
+
             return score
 
         except Exception as e:
+            logger.error("%s evaluation failed: %s", self.name, str(e))
             raise EvaluatorError(
                 f"Evaluation failed in {self.name}",
                 details={"error": str(e), "evaluator": self.name},

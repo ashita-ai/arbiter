@@ -152,7 +152,7 @@ class TestPairwiseMiddlewareIntegration:
         """Test that LoggingMiddleware works with pairwise comparison."""
         import logging
 
-        caplog.set_level(logging.INFO)
+        caplog.set_level(logging.INFO, logger="arbiter")
 
         # Setup mock response
         mock_response = PairwiseResponse(

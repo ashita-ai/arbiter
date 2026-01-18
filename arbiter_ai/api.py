@@ -31,7 +31,6 @@ This module provides the primary entry points for evaluating LLM outputs.
 """
 
 import asyncio
-import logging
 import time
 from typing import Any, Callable, Dict, List, Literal, Optional, Union, overload
 
@@ -41,6 +40,7 @@ from .core import (
     LLMManager,
     Provider,
     get_evaluator_class,
+    get_logger,
     get_prompt_preview,
     validate_batch_evaluate_inputs,
     validate_compare_inputs,
@@ -64,7 +64,7 @@ from .core.models import (
 )
 from .evaluators import PairwiseComparisonEvaluator
 
-logger = logging.getLogger(__name__)
+logger = get_logger("api")
 
 __all__ = ["evaluate", "compare", "batch_evaluate"]
 
@@ -211,6 +211,7 @@ async def evaluate(
     """
     # Handle dry_run mode - return preview without making API calls
     if dry_run:
+        logger.debug("Dry run mode: generating preview without API calls")
         return await get_prompt_preview(
             output=output,
             reference=reference,
@@ -227,6 +228,13 @@ async def evaluate(
         evaluators=evaluators,
         threshold=threshold,
         model=model,
+    )
+
+    eval_names = evaluators or ["semantic"]
+    logger.info(
+        "Starting evaluation with evaluators=%s, model=%s",
+        eval_names,
+        model,
     )
 
     async def _run_evaluation() -> EvaluationResult:
@@ -432,7 +440,7 @@ async def _evaluate_impl(
     # Determine if this is a partial result
     partial = len(errors) > 0
 
-    return EvaluationResult(
+    result = EvaluationResult(
         output=output,
         reference=reference,
         criteria=criteria,
@@ -453,6 +461,21 @@ async def _evaluate_impl(
             "threshold": threshold,
         },
     )
+
+    logger.info(
+        "Evaluation complete: score=%.2f, passed=%s, tokens=%d, time=%.2fs",
+        overall_score,
+        passed,
+        total_tokens,
+        processing_time,
+    )
+    logger.debug(
+        "Evaluation details: evaluators=%s, interactions=%d",
+        evaluator_names,
+        len(all_interactions),
+    )
+
+    return result
 
 
 async def compare(
@@ -520,6 +543,14 @@ async def compare(
         output_b=output_b,
         criteria=criteria,
         model=model,
+    )
+
+    logger.info("Starting pairwise comparison with model=%s", model)
+    logger.debug(
+        "Comparison inputs: output_a=%d chars, output_b=%d chars, criteria=%s",
+        len(output_a),
+        len(output_b),
+        criteria[:50] if criteria else None,
     )
 
     async def _run_comparison() -> ComparisonResult:
@@ -599,6 +630,12 @@ async def _compare_impl(
         output_b=output_b,
         criteria=criteria,
         reference=reference,
+    )
+
+    logger.info(
+        "Comparison complete: winner=%s, confidence=%.2f",
+        comparison.winner,
+        comparison.confidence,
     )
 
     return comparison
@@ -694,6 +731,13 @@ async def batch_evaluate(
         threshold=threshold,
         model=model,
         max_concurrency=max_concurrency,
+    )
+
+    logger.info(
+        "Starting batch evaluation: items=%d, evaluators=%s, max_concurrency=%d",
+        len(items),
+        evaluators or ["semantic"],
+        max_concurrency,
     )
 
     # Delegate to implementation
@@ -820,7 +864,7 @@ async def _batch_evaluate_impl(
     failed_items = len(errors)
     processing_time = time.time() - start_time
 
-    return BatchEvaluationResult(
+    batch_result = BatchEvaluationResult(
         results=results,
         errors=errors,
         total_items=total_items,
@@ -836,3 +880,15 @@ async def _batch_evaluate_impl(
             "threshold": threshold,
         },
     )
+
+    logger.info(
+        "Batch evaluation complete: %d/%d successful, tokens=%d, time=%.2fs",
+        successful_items,
+        total_items,
+        total_tokens,
+        processing_time,
+    )
+    if failed_items > 0:
+        logger.warning("Batch had %d failed items", failed_items)
+
+    return batch_result
