@@ -146,6 +146,11 @@ class Score(BaseModel):
             return True  # No confidence = low confidence
         return self.confidence < threshold
 
+    def __repr__(self) -> str:
+        """Return concise string representation for debugging."""
+        conf = f" confidence={self.confidence:.2f}" if self.confidence else ""
+        return f"<Score name={self.name!r} value={self.value:.2f}{conf}>"
+
 
 class LLMInteraction(BaseModel):
     """Record of a single LLM API call during evaluation.
@@ -227,6 +232,14 @@ class LLMInteraction(BaseModel):
         """
         return self.input_tokens + self.output_tokens
 
+    def __repr__(self) -> str:
+        """Return concise string representation for debugging."""
+        return (
+            f"<LLMInteraction model={self.model!r} "
+            f"tokens={self.input_tokens}+{self.output_tokens} "
+            f"latency={self.latency:.2f}s>"
+        )
+
 
 class Metric(BaseModel):
     """Metadata about a computed metric.
@@ -249,6 +262,14 @@ class Metric(BaseModel):
     metadata: Dict[str, Any] = Field(
         default_factory=dict, description="Additional metadata"
     )
+
+    def __repr__(self) -> str:
+        """Return concise string representation for debugging."""
+        model_str = f" model={self.model!r}" if self.model else ""
+        return (
+            f"<Metric name={self.name!r} evaluator={self.evaluator!r}"
+            f"{model_str} time={self.processing_time:.2f}s>"
+        )
 
 
 class EvaluationResult(BaseModel):
@@ -582,6 +603,77 @@ class EvaluationResult(BaseModel):
                         file=out,
                     )
 
+    def __repr__(self) -> str:
+        """Return concise string representation for debugging."""
+        status = "passed" if self.passed else "failed"
+        evaluators = [s.name for s in self.scores]
+        return (
+            f"<EvaluationResult score={self.overall_score:.2f} {status}=True "
+            f"evaluators={evaluators} time={self.processing_time:.2f}s>"
+        )
+
+    def summary(self) -> str:
+        """Return one-line summary of evaluation result.
+
+        Useful for logging, status updates, and quick inspection.
+
+        Returns:
+            Single-line summary string
+
+        Example:
+            >>> result.summary()
+            '✓ PASSED (0.87) | semantic: 0.92, factuality: 0.82 | 1.23s'
+        """
+        status = "✓ PASSED" if self.passed else "✗ FAILED"
+        scores = ", ".join(f"{s.name}: {s.value:.2f}" for s in self.scores)
+        return f"{status} ({self.overall_score:.2f}) | {scores} | {self.processing_time:.2f}s"
+
+    def to_dict(
+        self,
+        exclude: Optional[set[str]] = None,
+        include_timestamp: bool = True,
+    ) -> Dict[str, Any]:
+        """Export result as dictionary.
+
+        Args:
+            exclude: Field names to exclude from output
+            include_timestamp: Whether to include timestamp (default True)
+
+        Returns:
+            Dictionary representation of the result
+
+        Example:
+            >>> data = result.to_dict()
+            >>> data = result.to_dict(exclude={'interactions', 'metadata'})
+        """
+        data = self.model_dump(exclude=exclude or set())
+        if not include_timestamp and "timestamp" in data:
+            del data["timestamp"]
+        return data
+
+    def to_json(
+        self,
+        indent: Optional[int] = None,
+        exclude: Optional[set[str]] = None,
+    ) -> str:
+        """Export result as JSON string.
+
+        Args:
+            indent: Indentation level for pretty printing
+            exclude: Field names to exclude from output
+
+        Returns:
+            JSON string representation
+
+        Example:
+            >>> json_str = result.to_json(indent=2)
+            >>> json_str = result.to_json(exclude={'interactions'})
+        """
+        import json
+
+        data = self.to_dict(exclude=exclude)
+        return json.dumps(data, indent=indent, default=str)
+
 
 class ComparisonResult(BaseModel):
     """Result of comparing two LLM outputs.
@@ -785,6 +877,77 @@ class ComparisonResult(BaseModel):
             print(f"  Input:  {total_input:,}", file=out)
             print(f"  Output: {total_output:,}", file=out)
             print(f"  Total:  {total_input + total_output:,}", file=out)
+
+    def __repr__(self) -> str:
+        """Return concise string representation for debugging."""
+        return (
+            f"<ComparisonResult winner={self.winner!r} "
+            f"confidence={self.confidence:.2f} time={self.processing_time:.2f}s>"
+        )
+
+    def summary(self) -> str:
+        """Return one-line summary of comparison result.
+
+        Useful for logging, status updates, and quick inspection.
+
+        Returns:
+            Single-line summary string
+
+        Example:
+            >>> comparison.summary()
+            'Winner: Output A (0.85 confidence) | 1.45s'
+        """
+        if self.winner == "tie":
+            winner_str = "Tie"
+        else:
+            winner_str = self.winner.replace("_", " ").title()
+        return f"Winner: {winner_str} ({self.confidence:.2f} confidence) | {self.processing_time:.2f}s"
+
+    def to_dict(
+        self,
+        exclude: Optional[set[str]] = None,
+        include_timestamp: bool = True,
+    ) -> Dict[str, Any]:
+        """Export result as dictionary.
+
+        Args:
+            exclude: Field names to exclude from output
+            include_timestamp: Whether to include timestamp (default True)
+
+        Returns:
+            Dictionary representation of the result
+
+        Example:
+            >>> data = comparison.to_dict()
+            >>> data = comparison.to_dict(exclude={'interactions', 'metadata'})
+        """
+        data = self.model_dump(exclude=exclude or set())
+        if not include_timestamp and "timestamp" in data:
+            del data["timestamp"]
+        return data
+
+    def to_json(
+        self,
+        indent: Optional[int] = None,
+        exclude: Optional[set[str]] = None,
+    ) -> str:
+        """Export result as JSON string.
+
+        Args:
+            indent: Indentation level for pretty printing
+            exclude: Field names to exclude from output
+
+        Returns:
+            JSON string representation
+
+        Example:
+            >>> json_str = comparison.to_json(indent=2)
+            >>> json_str = comparison.to_json(exclude={'interactions'})
+        """
+        import json
+
+        data = self.to_dict(exclude=exclude)
+        return json.dumps(data, indent=indent, default=str)
 
 
 class BatchEvaluationResult(BaseModel):
@@ -1101,3 +1264,93 @@ class BatchEvaluationResult(BaseModel):
             # Show top 5
             for error_type, count in list(error_types.items())[:5]:
                 print(f"  • {error_type}: {count}x", file=out)
+
+    def __repr__(self) -> str:
+        """Return concise string representation for debugging."""
+        return (
+            f"<BatchEvaluationResult items={self.total_items} "
+            f"success={self.successful_items} failed={self.failed_items} "
+            f"time={self.processing_time:.1f}s>"
+        )
+
+    def summary(self) -> str:
+        """Return one-line summary of batch results.
+
+        Useful for logging, status updates, and quick inspection.
+
+        Returns:
+            Single-line summary string
+
+        Example:
+            >>> batch.summary()
+            '95/100 passed (95.0%) | mean: 0.85, median: 0.87 | 45.2s'
+        """
+        pct = (
+            (self.successful_items / self.total_items * 100)
+            if self.total_items > 0
+            else 0
+        )
+
+        # Calculate stats from successful results
+        successful = [r for r in self.results if r is not None]
+        if successful:
+            scores = [r.overall_score for r in successful]
+            mean = sum(scores) / len(scores)
+            sorted_scores = sorted(scores)
+            n = len(sorted_scores)
+            median = (
+                sorted_scores[n // 2]
+                if n % 2
+                else (sorted_scores[n // 2 - 1] + sorted_scores[n // 2]) / 2
+            )
+            stats = f"mean: {mean:.2f}, median: {median:.2f}"
+        else:
+            stats = "no results"
+
+        return f"{self.successful_items}/{self.total_items} passed ({pct:.1f}%) | {stats} | {self.processing_time:.1f}s"
+
+    def to_dict(
+        self,
+        exclude: Optional[set[str]] = None,
+        include_timestamp: bool = True,
+    ) -> Dict[str, Any]:
+        """Export result as dictionary.
+
+        Args:
+            exclude: Field names to exclude from output
+            include_timestamp: Whether to include timestamp (default True)
+
+        Returns:
+            Dictionary representation of the result
+
+        Example:
+            >>> data = batch.to_dict()
+            >>> data = batch.to_dict(exclude={'results', 'metadata'})
+        """
+        data = self.model_dump(exclude=exclude or set())
+        if not include_timestamp and "timestamp" in data:
+            del data["timestamp"]
+        return data
+
+    def to_json(
+        self,
+        indent: Optional[int] = None,
+        exclude: Optional[set[str]] = None,
+    ) -> str:
+        """Export result as JSON string.
+
+        Args:
+            indent: Indentation level for pretty printing
+            exclude: Field names to exclude from output
+
+        Returns:
+            JSON string representation
+
+        Example:
+            >>> json_str = batch.to_json(indent=2)
+            >>> json_str = batch.to_json(exclude={'results'})
+        """
+        import json
+
+        data = self.to_dict(exclude=exclude)
+        return json.dumps(data, indent=indent, default=str)
