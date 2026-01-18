@@ -6,7 +6,7 @@
   <p>
     <a href="https://python.org"><img src="https://img.shields.io/badge/python-3.11+-blue" alt="Python"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"></a>
-    <a href="https://github.com/ashita-ai/arbiter"><img src="https://img.shields.io/badge/version-0.1.1-blue" alt="Version"></a>
+    <a href="https://github.com/ashita-ai/arbiter"><img src="https://img.shields.io/badge/version-0.1.2-blue" alt="Version"></a>
     <a href="https://ai.pydantic.dev"><img src="https://img.shields.io/badge/PydanticAI-native-purple" alt="PydanticAI"></a>
     <a href="https://codecov.io/gh/ashita-ai/arbiter"><img src="https://codecov.io/gh/ashita-ai/arbiter/branch/main/graph/badge.svg" alt="Coverage"></a>
   </p>
@@ -448,42 +448,19 @@ Built on proven patterns with type-safe foundations:
 
 ## Examples
 
-18 comprehensive examples demonstrating all features.
-
-**Running Examples:**
 ```bash
-# With uv (recommended)
+# Run any example with uv (recommended)
 uv run python examples/basic_evaluation.py
 
-# Or if you activated venv manually
+# Or with activated venv
 python examples/basic_evaluation.py
 ```
 
-**Getting Started:**
-- [Debugging Multi-Call Systems](examples/debugging_multi_call.py) - The black box problem solved
-- [Basic Evaluation](examples/basic_evaluation.py) - Simple semantic evaluation with cost tracking
-- [Cost Comparison](examples/cost_comparison.py) - Model cost/quality analysis
-- [Multiple Evaluators](examples/multiple_evaluators.py) - Combining evaluators
-
-**Evaluators:**
-- [Semantic Similarity](examples/faiss_semantic_example.py) - LLM and FAISS backends
-- [Custom Criteria](examples/custom_criteria_example.py) - Domain-specific evaluation
-- [Pairwise Comparison](examples/pairwise_comparison_example.py) - A/B testing with compare()
-- [Pairwise evaluate()](examples/pairwise_evaluate_example.py) - Output vs reference comparison
-- [Factuality](examples/factuality_example.py) - Hallucination detection
-- [Groundedness](examples/groundedness_example.py) - RAG validation
-- [Relevance](examples/relevance_example.py) - Query alignment
-
-**Advanced Features:**
+- [Basic Evaluation](examples/basic_evaluation.py) - Getting started with semantic evaluation and cost tracking
+- [Custom Criteria](examples/custom_criteria_example.py) - Domain-specific evaluation without reference text
+- [Pairwise Comparison](examples/pairwise_comparison_example.py) - A/B testing with `compare()`
 - [Batch Evaluation](examples/batch_evaluation_example.py) - Parallel processing with progress tracking
-- [RAG Evaluation](examples/rag_evaluation.py) - Complete RAG system evaluation
-- [Observability](examples/observability_example.py) - Interaction tracking and debugging
-- [Error Handling](examples/error_handling_example.py) - Handling failures gracefully
-- [Middleware Usage](examples/middleware_usage.py) - Logging, metrics, caching
-- [Circuit Breaker](examples/circuit_breaker_example.py) - Fault tolerance patterns
-- [Provider Switching](examples/provider_switching.py) - Multi-provider support
-- [Evaluator Registry](examples/evaluator_registry_example.py) - Custom evaluators
-- [Advanced Config](examples/advanced_config.py) - Temperature, retries, custom clients
+- [Observability](examples/observability_example.py) - Interaction tracking, cost analysis, debugging
 
 ## Development
 

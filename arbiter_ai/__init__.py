@@ -13,7 +13,7 @@ interaction tracking, multiple evaluators, and extensible architecture.
 
 ## Quick Start:
 
-    >>> from arbiter import evaluate
+    >>> from arbiter_ai import evaluate
     >>>
     >>> # Simple evaluation with automatic client management
     >>> result = await evaluate(
@@ -25,7 +25,7 @@ interaction tracking, multiple evaluators, and extensible architecture.
     >>> print(f"Score: {result.overall_score}")
     >>>
     >>> # Or use evaluator directly for more control
-    >>> from arbiter import SemanticEvaluator, LLMManager
+    >>> from arbiter_ai import SemanticEvaluator, LLMManager
     >>> client = await LLMManager.get_client(model="gpt-4o")
     >>> evaluator = SemanticEvaluator(client)
     >>> score = await evaluator.evaluate(
@@ -51,8 +51,8 @@ interaction tracking, multiple evaluators, and extensible architecture.
 - `EvaluationResult`, `ComparisonResult`: Result models with complete interaction tracking
 - `register_evaluator()`: Extend with custom evaluators via registry system
 
-For more information, see the documentation at:
-https://docs.arbiter.ai/
+For more information, see the README at:
+https://github.com/ashita-ai/arbiter
 """
 
 from dotenv import load_dotenv
@@ -125,7 +125,7 @@ from .evaluators import (
 # Load environment variables
 load_dotenv()
 
-__version__ = "0.1.0"
+__version__ = "0.1.2"
 
 __all__ = [
     # Version

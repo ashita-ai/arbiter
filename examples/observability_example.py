@@ -385,7 +385,7 @@ async def main():
         print("\n📚 Related Examples:")
         print("   • Basic usage: examples/basic_evaluation.py")
         print("   • Batch processing: examples/batch_evaluation_example.py")
-        print("   • Error handling: examples/error_handling_example.py")
+        print("   • Custom criteria: examples/custom_criteria_example.py")
 
     except Exception as e:
         print(f"\n❌ Error: {e}")

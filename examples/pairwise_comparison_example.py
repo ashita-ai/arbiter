@@ -183,9 +183,9 @@ For more details, see the documentation.""",
     print("  • Evaluating relative quality differences")
 
     print("\n📖 Related Examples:")
-    print("  • See batch_evaluation_example.py for comparing multiple outputs")
-    print("  • See multiple_evaluators.py for multi-evaluator comparison")
-    print("  • See semantic_example.py for similarity-based evaluation")
+    print("  • See batch_evaluation_example.py for parallel processing")
+    print("  • See basic_evaluation.py for semantic similarity evaluation")
+    print("  • See observability_example.py for cost analysis")
 
 
 if __name__ == "__main__":
