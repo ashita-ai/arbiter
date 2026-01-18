@@ -54,6 +54,7 @@ The client will automatically use the appropriate key based on the model.
 """
 
 import os
+import time
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, cast
 
 import logfire
@@ -64,8 +65,11 @@ from pydantic_ai import Agent, ModelSettings
 
 from .circuit_breaker import CircuitBreaker
 from .exceptions import ModelProviderError
+from .logging import get_logger
 from .retry import RETRY_STANDARD, with_retry
 from .types import Provider
+
+logger = get_logger("llm")
 
 if TYPE_CHECKING:
     from .llm_client_pool import ConnectionMetrics, LLMClientPool
@@ -302,6 +306,9 @@ class LLMClient:
         **kwargs: Any,
     ) -> LLMResponse:
         """Execute completion via PydanticAI for all providers."""
+        start_time = time.time()
+        model_str = f"{self.provider.value}:{provider_model}"
+        logger.debug("Calling %s (temperature=%.1f)", model_str, self.temperature)
         try:
             # Build simple system prompt from first system message if present
             system_prompt = ""
@@ -355,17 +362,32 @@ class LLMClient:
                         usage_dict["total_tokens"] = total_tokens
 
             content = result.output if hasattr(result, "output") else ""
+            latency = time.time() - start_time
+
+            input_tokens = usage_dict.get("prompt_tokens", 0)
+            output_tokens = usage_dict.get("completion_tokens", 0)
+            logger.debug(
+                "Response received in %.2fs (input=%d, output=%d tokens)",
+                latency,
+                input_tokens,
+                output_tokens,
+            )
+
             return LLMResponse(
                 content=str(content),
                 usage=usage_dict,
                 model=f"{self.provider.value}:{provider_model}",
             )
         except Exception as e:
+            latency = time.time() - start_time
             error_msg = str(e).lower()
             details = {"provider": self.provider.value}
 
             if "rate limit" in error_msg:
                 details["error_code"] = "rate_limit"
+                logger.warning(
+                    "Rate limit exceeded for %s after %.2fs", model_str, latency
+                )
                 raise ModelProviderError("Rate limit exceeded", details=details) from e
             elif (
                 "api key" in error_msg
@@ -373,10 +395,17 @@ class LLMClient:
                 or "authentication" in error_msg
             ):
                 details["error_code"] = "authentication"
+                logger.error("Authentication failed for %s", model_str)
                 raise ModelProviderError(
                     "Authentication failed", details=details
                 ) from e
             else:
+                logger.error(
+                    "LLM API error for %s after %.2fs: %s",
+                    model_str,
+                    latency,
+                    str(e),
+                )
                 raise ModelProviderError(
                     f"LLM API error via PydanticAI: {e!s}", details=details
                 ) from e

@@ -36,6 +36,7 @@ from .exceptions import (
 from .interfaces import BaseEvaluator, StorageBackend
 from .llm_client import LLMClient, LLMManager, LLMResponse, Provider
 from .llm_client_pool import ConnectionMetrics, LLMClientPool, PoolConfig
+from .logging import configure_logging, get_logger
 from .middleware import (
     CachingMiddleware,
     LoggingMiddleware,
@@ -81,6 +82,9 @@ from .validation import (
 )
 
 __all__ = [
+    # Logging
+    "configure_logging",
+    "get_logger",
     # Exceptions
     "ArbiterError",
     "ConfigurationError",

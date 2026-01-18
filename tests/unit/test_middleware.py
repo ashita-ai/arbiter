@@ -57,7 +57,7 @@ class TestLoggingMiddleware:
     @pytest.mark.asyncio
     async def test_logging_with_reference(self, caplog, eval_result):
         """Test logging when reference is provided."""
-        caplog.set_level(logging.INFO)
+        caplog.set_level(logging.INFO, logger="arbiter")
 
         middleware = LoggingMiddleware(log_level="INFO")
 
@@ -80,7 +80,7 @@ class TestLoggingMiddleware:
     @pytest.mark.asyncio
     async def test_logging_comparison_result(self, caplog, comparison_result):
         """Test logging for ComparisonResult (not EvaluationResult)."""
-        caplog.set_level(logging.INFO)
+        caplog.set_level(logging.INFO, logger="arbiter")
 
         middleware = LoggingMiddleware(log_level="INFO")
 
@@ -719,7 +719,7 @@ class TestMonitorContextManager:
     @pytest.mark.asyncio
     async def test_monitor_final_metrics_logged(self, caplog):
         """Test that final metrics are logged when monitor exits."""
-        caplog.set_level(logging.INFO)
+        caplog.set_level(logging.INFO, logger="arbiter")
 
         async with monitor() as ctx:
             metrics_mw = ctx["metrics"]

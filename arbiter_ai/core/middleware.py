@@ -69,13 +69,14 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Literal, Optional, Protocol, Union
 
+from .logging import get_logger
 from .models import ComparisonResult, EvaluationResult
 from .type_defs import MiddlewareContext
 
 # Type alias for results that can flow through middleware
 MiddlewareResult = Union[EvaluationResult, ComparisonResult]
 
-logger = logging.getLogger(__name__)
+logger = get_logger("middleware")
 
 __all__ = [
     "Middleware",
