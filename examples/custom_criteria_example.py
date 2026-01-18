@@ -196,9 +196,9 @@ It's like, the best thing ever and everyone loves it. Get yours now!!!""",
     print("  • Automatic cost tracking and token analysis")
 
     print("\n📖 Related Examples:")
-    print("  • See multiple_evaluators.py for combining criteria with other evaluators")
-    print("  • See rag_evaluation.py for evaluating RAG systems with custom criteria")
-    print("  • See factuality_example.py for fact-checking with criteria")
+    print("  • See basic_evaluation.py for semantic similarity evaluation")
+    print("  • See batch_evaluation_example.py for parallel processing")
+    print("  • See observability_example.py for cost analysis")
 
 
 if __name__ == "__main__":

@@ -166,7 +166,7 @@ async def main():
     print("\n📖 Next Steps:")
     print("  • See observability_example.py for comprehensive cost analysis")
     print("  • See batch_evaluation_example.py for parallel processing")
-    print("  • See multiple_evaluators.py for multi-perspective evaluation")
+    print("  • See custom_criteria_example.py for domain-specific evaluation")
 
 
 if __name__ == "__main__":

@@ -251,8 +251,8 @@ async def main():
 
     print("\n📖 Related Examples:")
     print("  • See basic_evaluation.py for single evaluation getting started")
-    print("  • See pairwise_comparison_example.py for comparing outputs")
-    print("  • See error_handling_example.py for handling failures")
+    print("  • See pairwise_comparison_example.py for A/B testing")
+    print("  • See observability_example.py for cost analysis")
 
 
 if __name__ == "__main__":
