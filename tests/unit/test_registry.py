@@ -1,9 +1,12 @@
 """Unit tests for evaluator registry system."""
 
+from typing import Optional
+
 import pytest
 
 from arbiter_ai.core.exceptions import ValidationError
 from arbiter_ai.core.interfaces import BaseEvaluator
+from arbiter_ai.core.models import Score
 from arbiter_ai.core.registry import (
     AVAILABLE_EVALUATORS,
     get_available_evaluators,
@@ -118,31 +121,34 @@ class TestCustomEvaluatorRegistration:
         with pytest.raises(ValueError, match="must inherit from BaseEvaluator"):
             register_evaluator("invalid", NotAnEvaluator)
 
-    def test_register_then_use_in_evaluate(self):
+    @pytest.mark.asyncio
+    async def test_register_then_use_in_evaluate(self):
         """Test that registered evaluator can be used in evaluate()."""
-        from unittest.mock import AsyncMock, MagicMock
+        from unittest.mock import MagicMock
 
         from arbiter_ai.core.llm_client import LLMClient
-        from arbiter_ai.evaluators.semantic import SemanticResponse
 
         # Create a custom evaluator
         class TestEvaluator(BaseEvaluator):
-            def __init__(self, llm_client):
+            def __init__(self, llm_client: LLMClient):
                 self._llm_client = llm_client
 
             @property
             def name(self) -> str:
                 return "test_evaluator"
 
-            async def evaluate(self, output: str, reference=None, criteria=None):
-                from arbiter_ai.core.models import Score
-
+            async def evaluate(
+                self,
+                output: str,
+                reference: Optional[str] = None,
+                criteria: Optional[str] = None,
+            ) -> Score:
                 return Score(name="test_evaluator", value=0.75)
 
-            def get_interactions(self):
+            def get_interactions(self) -> list:
                 return []
 
-            def clear_interactions(self):
+            def clear_interactions(self) -> None:
                 pass
 
         # Register it
@@ -153,39 +159,19 @@ class TestCustomEvaluatorRegistration:
             mock_client = MagicMock(spec=LLMClient)
             mock_client.model = "gpt-4o-mini"
 
-            # Mock agent
-            mock_agent = AsyncMock()
-            mock_response = SemanticResponse(
-                score=0.75,
-                confidence=0.8,
-                explanation="Test",
-            )
-
-            class MockAgentResult:
-                def __init__(self, output):
-                    self.output = output
-
-                def usage(self):
-                    mock_usage = MagicMock()
-                    mock_usage.total_tokens = 100
-                    return mock_usage
-
-            mock_result = MockAgentResult(mock_response)
-            mock_agent.run = AsyncMock(return_value=mock_result)
-            mock_client.create_agent = MagicMock(return_value=mock_agent)
-
             # Use in evaluate()
             from arbiter_ai.api import evaluate
 
-            evaluate(
+            result = await evaluate(
                 output="Test output",
                 evaluators=["test_evaluator"],
                 llm_client=mock_client,
             )
 
-            # Note: This is a coroutine, so we'd need to await it
-            # But the test structure shows it can be used
-            assert True  # If we got here, registration worked
+            # Verify evaluation was successful
+            assert result.overall_score == 0.75
+            assert len(result.scores) == 1
+            assert result.scores[0].name == "test_evaluator"
 
         finally:
             # Clean up
