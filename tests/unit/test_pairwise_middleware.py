@@ -18,8 +18,8 @@ from arbiter_ai.evaluators.pairwise import AspectComparison, PairwiseResponse
 from tests.conftest import MockAgentResult
 
 
-class TestMiddleware(Middleware):
-    """Test middleware that tracks calls."""
+class TrackingMiddleware(Middleware):
+    """Middleware that tracks calls for testing purposes."""
 
     def __init__(self) -> None:
         self.call_count = 0
@@ -60,7 +60,7 @@ class TestPairwiseMiddlewareIntegration:
         mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
 
         # Create middleware pipeline with test middleware
-        test_middleware = TestMiddleware()
+        test_middleware = TrackingMiddleware()
         pipeline = MiddlewarePipeline([test_middleware])
 
         # Execute comparison
@@ -92,7 +92,7 @@ class TestPairwiseMiddlewareIntegration:
         mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
 
         # Create middleware pipeline with test middleware
-        test_middleware = TestMiddleware()
+        test_middleware = TrackingMiddleware()
         pipeline = MiddlewarePipeline([test_middleware])
 
         # Execute comparison
@@ -128,7 +128,7 @@ class TestPairwiseMiddlewareIntegration:
         mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
 
         # Create middleware pipeline with test middleware
-        test_middleware = TestMiddleware()
+        test_middleware = TrackingMiddleware()
         pipeline = MiddlewarePipeline([test_middleware])
 
         # Execute comparison
@@ -228,7 +228,7 @@ class TestPairwiseMiddlewareIntegration:
         mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
 
         # Create pipeline with multiple middleware
-        test_middleware = TestMiddleware()
+        test_middleware = TrackingMiddleware()
         metrics_middleware = MetricsMiddleware()
         pipeline = MiddlewarePipeline(
             [
@@ -281,7 +281,7 @@ class TestPairwiseMiddlewareIntegration:
     async def test_execute_comparison_directly(self, mock_llm_client):
         """Test MiddlewarePipeline.execute_comparison() method directly."""
         # Create test middleware
-        test_middleware = TestMiddleware()
+        test_middleware = TrackingMiddleware()
         pipeline = MiddlewarePipeline([test_middleware])
 
         # Mock final handler
@@ -340,7 +340,7 @@ class TestPairwiseMiddlewareIntegration:
         mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
 
         # Create middleware pipeline
-        test_middleware = TestMiddleware()
+        test_middleware = TrackingMiddleware()
         pipeline = MiddlewarePipeline([test_middleware])
 
         # Execute comparison with reference
@@ -384,7 +384,7 @@ class TestPairwiseMiddlewareIntegration:
         mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
 
         # Create middleware pipeline
-        test_middleware = TestMiddleware()
+        test_middleware = TrackingMiddleware()
         pipeline = MiddlewarePipeline([test_middleware])
 
         # Execute comparison with criteria
