@@ -1,9 +1,8 @@
-"""LangChain integration example for Arbiter.
+"""Example of evaluating LangChain outputs with Arbiter.
 
 This example shows how to:
-1. Evaluate LangChain chain outputs
-2. Evaluate RAG responses for groundedness
-3. Use Arbiter's cost tracking with LangChain pipelines
+1. Evaluate a LangChain chain's output for correctness.
+2. Track evaluation costs and LLM interactions.
 
 Requirements:
     pip install langchain langchain-openai
@@ -12,7 +11,7 @@ Environment:
     OPENAI_API_KEY must be set in .env or environment
 
 Run with:
-    python examples/langchain_integration.py
+    python examples/evaluating_langchain_outputs.py
 """
 
 import asyncio
@@ -63,34 +62,6 @@ async def evaluate_chain_output():
     return result
 
 
-async def evaluate_rag_chain():
-    """Evaluate a RAG chain with groundedness checking."""
-
-    # Simulated RAG response with sources
-    sources = [
-        "Paris is the capital and largest city of France.",
-        "The Eiffel Tower is located in Paris.",
-    ]
-    rag_response = "Paris is the capital of France and home to the Eiffel Tower."
-
-    # Evaluate groundedness (is response supported by sources?)
-    result = await evaluate(
-        output=rag_response,
-        reference="\n".join(sources),
-        evaluators=["groundedness"],
-        model="gpt-4o-mini",
-    )
-
-    print(f"RAG Response: {rag_response}")
-    print(f"Sources: {sources}")
-    print(f"\nGroundedness Evaluation:")
-    print(f"  Score: {result.overall_score:.2f}")
-    print(f"  Passed: {result.passed}")
-    print(f"  Cost: ${await result.total_llm_cost():.6f}")
-
-    return result
-
-
 async def main():
     # Check for API key
     if not os.getenv("OPENAI_API_KEY"):
@@ -99,17 +70,12 @@ async def main():
         return
 
     print("=" * 60)
-    print("LangChain + Arbiter Integration Example")
+    print("Evaluating LangChain Outputs with Arbiter")
     print("=" * 60)
 
-    print("\n1. Evaluating Chain Output:")
+    print("\n1. Evaluating a simple chain's output:")
     print("-" * 40)
     await evaluate_chain_output()
-
-    print("\n" + "=" * 60)
-    print("\n2. Evaluating RAG Groundedness:")
-    print("-" * 40)
-    await evaluate_rag_chain()
 
 
 if __name__ == "__main__":
