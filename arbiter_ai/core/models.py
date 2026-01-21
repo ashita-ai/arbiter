@@ -1334,23 +1334,222 @@ class BatchEvaluationResult(BaseModel):
 
     def to_json(
         self,
-        indent: Optional[int] = None,
+        path: Optional[str] = None,
+        indent: Optional[int] = 2,
         exclude: Optional[set[str]] = None,
-    ) -> str:
-        """Export result as JSON string.
+    ) -> Optional[str]:
+        """Export result as JSON string or write to file.
 
         Args:
-            indent: Indentation level for pretty printing
+            path: Optional file path to write JSON to. If provided, writes to file
+                and returns None. If not provided, returns JSON string.
+            indent: Indentation level for pretty printing (default: 2)
             exclude: Field names to exclude from output
 
         Returns:
-            JSON string representation
+            JSON string if path is None, otherwise None (writes to file)
 
         Example:
-            >>> json_str = batch.to_json(indent=2)
-            >>> json_str = batch.to_json(exclude={'results'})
+            >>> # Get JSON string
+            >>> json_str = batch.to_json()
+            >>>
+            >>> # Write to file
+            >>> batch.to_json("results.json")
         """
         import json
 
-        data = self.to_dict(exclude=exclude)
-        return json.dumps(data, indent=indent, default=str)
+        # Build export structure matching issue #40 spec
+        successful = [r for r in self.results if r is not None]
+        scores = [r.overall_score for r in successful] if successful else []
+
+        export_data: Dict[str, Any] = {
+            "summary": {
+                "total_items": self.total_items,
+                "successful": self.successful_items,
+                "failed": self.failed_items,
+                "mean_score": round(sum(scores) / len(scores), 4) if scores else 0.0,
+                "processing_time": round(self.processing_time, 3),
+            },
+            "results": [
+                (
+                    {
+                        "index": i,
+                        "output": (
+                            r.output[:200] + "..." if len(r.output) > 200 else r.output
+                        ),
+                        "reference": (
+                            r.reference[:200] + "..."
+                            if r.reference and len(r.reference) > 200
+                            else r.reference
+                        ),
+                        "overall_score": round(r.overall_score, 4),
+                        "passed": r.passed,
+                        "scores": {s.name: round(s.value, 4) for s in r.scores},
+                    }
+                    if r is not None
+                    else {"index": i, "error": self.get_error(i)}
+                )
+                for i, r in enumerate(self.results)
+            ],
+            "errors": self.errors,
+            "metadata": self.metadata,
+        }
+
+        # Apply exclusions if specified
+        if exclude:
+            export_data = {k: v for k, v in export_data.items() if k not in exclude}
+
+        json_str = json.dumps(export_data, indent=indent, default=str)
+
+        if path is not None:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(json_str)
+            return None
+
+        return json_str
+
+    def to_records(self) -> List[Dict[str, Any]]:
+        """Export results as list of flat dictionaries for tabular processing.
+
+        Each record represents one evaluation item with flattened score columns.
+        Failed items include error information instead of scores.
+
+        Returns:
+            List of dictionaries, one per item in original order
+
+        Example:
+            >>> records = batch.to_records()
+            >>> for r in records:
+            ...     print(f"Item {r['index']}: {r.get('overall_score', 'FAILED')}")
+        """
+        records: List[Dict[str, Any]] = []
+
+        for i, result in enumerate(self.results):
+            if result is not None:
+                record: Dict[str, Any] = {
+                    "index": i,
+                    "output": result.output,
+                    "reference": result.reference,
+                    "overall_score": result.overall_score,
+                    "passed": result.passed,
+                    "processing_time": result.processing_time,
+                }
+                # Flatten scores as individual columns
+                for score in result.scores:
+                    record[f"{score.name}_score"] = score.value
+                    if score.confidence is not None:
+                        record[f"{score.name}_confidence"] = score.confidence
+                records.append(record)
+            else:
+                # Failed item
+                error_info = self.get_error(i)
+                record = {
+                    "index": i,
+                    "output": (
+                        error_info.get("item", {}).get("output") if error_info else None
+                    ),
+                    "reference": (
+                        error_info.get("item", {}).get("reference")
+                        if error_info
+                        else None
+                    ),
+                    "overall_score": None,
+                    "passed": None,
+                    "processing_time": None,
+                    "error": error_info.get("error") if error_info else "Unknown error",
+                }
+                records.append(record)
+
+        return records
+
+    def to_csv(self, path: str, include_header: bool = True) -> None:
+        """Export results to CSV file.
+
+        Creates a flat CSV with one row per evaluation item. Score columns
+        are dynamically named based on evaluator names (e.g., semantic_score).
+
+        Args:
+            path: File path to write CSV to
+            include_header: Whether to include header row (default: True)
+
+        Example:
+            >>> batch.to_csv("results.csv")
+            >>> batch.to_csv("results.csv", include_header=False)
+        """
+        import csv
+
+        records = self.to_records()
+        if not records:
+            # Write empty file with basic headers
+            with open(path, "w", newline="", encoding="utf-8") as f:
+                empty_writer = csv.writer(f)
+                if include_header:
+                    empty_writer.writerow(
+                        [
+                            "index",
+                            "output",
+                            "reference",
+                            "overall_score",
+                            "passed",
+                            "error",
+                        ]
+                    )
+            return
+
+        # Collect all unique keys across all records for consistent columns
+        all_keys: set[str] = set()
+        for record in records:
+            all_keys.update(record.keys())
+
+        # Order columns: fixed columns first, then dynamic score columns, then error
+        fixed_cols = [
+            "index",
+            "output",
+            "reference",
+            "overall_score",
+            "passed",
+            "processing_time",
+        ]
+        score_cols = sorted(
+            [k for k in all_keys if k.endswith("_score") and k != "overall_score"]
+        )
+        confidence_cols = sorted([k for k in all_keys if k.endswith("_confidence")])
+        other_cols = ["error"] if "error" in all_keys else []
+
+        fieldnames = fixed_cols + score_cols + confidence_cols + other_cols
+
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            dict_writer = csv.DictWriter(
+                f, fieldnames=fieldnames, extrasaction="ignore"
+            )
+            if include_header:
+                dict_writer.writeheader()
+            dict_writer.writerows(records)
+
+    def to_dataframe(self) -> "Any":
+        """Export results as pandas DataFrame.
+
+        Requires pandas to be installed. Returns a DataFrame with one row
+        per evaluation item, suitable for analysis and visualization.
+
+        Returns:
+            pandas.DataFrame with evaluation results
+
+        Raises:
+            ImportError: If pandas is not installed
+
+        Example:
+            >>> df = batch.to_dataframe()
+            >>> print(df.describe())
+            >>> df.to_excel("results.xlsx")
+        """
+        try:
+            import pandas as pd  # type: ignore[import-untyped]
+        except ImportError:
+            raise ImportError(
+                "pandas is required for to_dataframe(). "
+                "Install with: pip install pandas"
+            )
+
+        records = self.to_records()
+        return pd.DataFrame(records)
