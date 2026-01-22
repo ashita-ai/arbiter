@@ -174,14 +174,14 @@ def batch(
 
         # Output results
         if output_path:
-            json_str = result.to_json(indent=2)
-            with open(output_path, "w", encoding="utf-8") as f:
-                f.write(json_str)
+            # Use the built-in file writing capability
+            result.to_json(path=str(output_path), indent=2)
             console.print(f"[green]Results written to {output_path}[/green]")
         else:
             # Print to stdout
             json_str = result.to_json(indent=2)
-            console.print_json(json_str)
+            if json_str is not None:
+                console.print_json(json_str)
 
         # Summary
         console.print(f"\n[bold]Summary:[/bold] {result.summary()}")

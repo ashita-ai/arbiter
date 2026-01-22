@@ -6,7 +6,7 @@
   <p>
     <a href="https://python.org"><img src="https://img.shields.io/badge/python-3.11+-blue" alt="Python"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"></a>
-    <a href="https://github.com/ashita-ai/arbiter"><img src="https://img.shields.io/badge/version-0.1.2-blue" alt="Version"></a>
+    <a href="https://github.com/ashita-ai/arbiter"><img src="https://img.shields.io/badge/version-0.2.0-blue" alt="Version"></a>
     <a href="https://ai.pydantic.dev"><img src="https://img.shields.io/badge/PydanticAI-native-purple" alt="PydanticAI"></a>
   </p>
 </div>

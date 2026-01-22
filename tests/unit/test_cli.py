@@ -148,8 +148,17 @@ class TestBatchCommand:
 
         output_file = tmp_path / "output.json"
 
+        def mock_to_json(
+            path: str | None = None, indent: int | None = None
+        ) -> str | None:
+            if path:
+                with open(path, "w") as f:
+                    f.write('{"summary": {}}')
+                return None
+            return '{"summary": {}}'
+
         mock_result = MagicMock()
-        mock_result.to_json.return_value = '{"summary": {}}'
+        mock_result.to_json.side_effect = mock_to_json
         mock_result.summary.return_value = "1/1"
 
         mock_batch.return_value = mock_result
