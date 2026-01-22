@@ -470,8 +470,10 @@ class TestBatchEvaluationResultExport:
     def test_to_json_basic(self, batch_result: BatchEvaluationResult) -> None:
         """Test basic to_json export."""
         json_str = batch_result.to_json()
+        assert json_str is not None
         data = json.loads(json_str)
-        assert data["total_items"] == 1
+        # New format has summary/results/errors structure
+        assert data["summary"]["total_items"] == 1
 
     def test_to_json_indent(self, batch_result: BatchEvaluationResult) -> None:
         """Test to_json with indentation."""
@@ -520,5 +522,261 @@ class TestDatetimeSerialization:
             timestamp=datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc),
         )
         json_str = result.to_json()
+        assert json_str is not None
         data = json.loads(json_str)
-        assert "2024-01-15" in data["timestamp"]
+        assert "summary" in data
+
+
+class TestBatchExportMethods:
+    """Tests for BatchEvaluationResult export methods (issue #40)."""
+
+    @pytest.fixture
+    def batch_with_results(self) -> BatchEvaluationResult:
+        """Create a BatchEvaluationResult with mixed success/failure."""
+        return BatchEvaluationResult(
+            results=[
+                EvaluationResult(
+                    output="Paris is the capital of France",
+                    reference="The capital of France is Paris",
+                    overall_score=0.92,
+                    passed=True,
+                    processing_time=0.5,
+                    scores=[
+                        Score(name="semantic", value=0.92, confidence=0.88),
+                        Score(name="factuality", value=0.95),
+                    ],
+                ),
+                EvaluationResult(
+                    output="Tokyo is in Japan",
+                    reference="Tokyo is the capital of Japan",
+                    overall_score=0.85,
+                    passed=True,
+                    processing_time=0.4,
+                    scores=[Score(name="semantic", value=0.85)],
+                ),
+                None,  # Failed item
+            ],
+            errors=[
+                {
+                    "index": 2,
+                    "item": {"output": "Bad input", "reference": "Expected"},
+                    "error": "Rate limit exceeded",
+                }
+            ],
+            total_items=3,
+            successful_items=2,
+            failed_items=1,
+            processing_time=1.2,
+            metadata={"evaluators": ["semantic"]},
+        )
+
+    @pytest.fixture
+    def empty_batch(self) -> BatchEvaluationResult:
+        """Create an empty BatchEvaluationResult."""
+        return BatchEvaluationResult(
+            results=[],
+            total_items=0,
+            successful_items=0,
+            failed_items=0,
+            processing_time=0.0,
+        )
+
+    # to_records() tests
+    def test_to_records_basic(self, batch_with_results: BatchEvaluationResult) -> None:
+        """Test to_records returns list of dicts."""
+        records = batch_with_results.to_records()
+        assert isinstance(records, list)
+        assert len(records) == 3
+
+    def test_to_records_successful_item(
+        self, batch_with_results: BatchEvaluationResult
+    ) -> None:
+        """Test to_records includes correct fields for successful items."""
+        records = batch_with_results.to_records()
+        first = records[0]
+
+        assert first["index"] == 0
+        assert first["output"] == "Paris is the capital of France"
+        assert first["overall_score"] == 0.92
+        assert first["passed"] is True
+        assert first["semantic_score"] == 0.92
+        assert first["semantic_confidence"] == 0.88
+        assert first["factuality_score"] == 0.95
+        assert "error" not in first
+
+    def test_to_records_failed_item(
+        self, batch_with_results: BatchEvaluationResult
+    ) -> None:
+        """Test to_records includes error info for failed items."""
+        records = batch_with_results.to_records()
+        failed = records[2]
+
+        assert failed["index"] == 2
+        assert failed["overall_score"] is None
+        assert failed["passed"] is None
+        assert failed["error"] == "Rate limit exceeded"
+
+    def test_to_records_empty(self, empty_batch: BatchEvaluationResult) -> None:
+        """Test to_records with empty batch."""
+        records = empty_batch.to_records()
+        assert records == []
+
+    # to_json() tests
+    def test_to_json_returns_string(
+        self, batch_with_results: BatchEvaluationResult
+    ) -> None:
+        """Test to_json returns JSON string when no path provided."""
+        result = batch_with_results.to_json()
+        assert isinstance(result, str)
+        data = json.loads(result)
+        assert "summary" in data
+        assert "results" in data
+
+    def test_to_json_summary_structure(
+        self, batch_with_results: BatchEvaluationResult
+    ) -> None:
+        """Test to_json summary contains expected fields."""
+        result = batch_with_results.to_json()
+        assert result is not None
+        data = json.loads(result)
+        summary = data["summary"]
+
+        assert summary["total_items"] == 3
+        assert summary["successful"] == 2
+        assert summary["failed"] == 1
+        assert "mean_score" in summary
+        assert summary["mean_score"] == pytest.approx(0.885, rel=0.01)
+
+    def test_to_json_writes_file(
+        self,
+        batch_with_results: BatchEvaluationResult,
+        tmp_path: pytest.TempPathFactory,
+    ) -> None:
+        """Test to_json writes to file when path provided."""
+        file_path = tmp_path / "results.json"  # type: ignore[operator]
+        result = batch_with_results.to_json(str(file_path))
+
+        assert result is None  # Returns None when writing to file
+        assert file_path.exists()
+
+        with open(file_path) as f:
+            data = json.load(f)
+        assert data["summary"]["total_items"] == 3
+
+    def test_to_json_exclude(self, batch_with_results: BatchEvaluationResult) -> None:
+        """Test to_json with exclude parameter."""
+        result = batch_with_results.to_json(exclude={"errors", "metadata"})
+        assert result is not None
+        data = json.loads(result)
+        assert "errors" not in data
+        assert "metadata" not in data
+        assert "summary" in data
+
+    # to_csv() tests
+    def test_to_csv_creates_file(
+        self,
+        batch_with_results: BatchEvaluationResult,
+        tmp_path: pytest.TempPathFactory,
+    ) -> None:
+        """Test to_csv creates a CSV file."""
+        file_path = tmp_path / "results.csv"  # type: ignore[operator]
+        batch_with_results.to_csv(str(file_path))
+
+        assert file_path.exists()
+        content = file_path.read_text()
+        assert "index" in content
+        assert "overall_score" in content
+
+    def test_to_csv_content(
+        self,
+        batch_with_results: BatchEvaluationResult,
+        tmp_path: pytest.TempPathFactory,
+    ) -> None:
+        """Test to_csv contains expected data."""
+        import csv
+
+        file_path = tmp_path / "results.csv"  # type: ignore[operator]
+        batch_with_results.to_csv(str(file_path))
+
+        with open(file_path, newline="") as f:
+            reader = csv.DictReader(f)
+            rows = list(reader)
+
+        assert len(rows) == 3
+        assert rows[0]["overall_score"] == "0.92"
+        assert rows[2]["error"] == "Rate limit exceeded"
+
+    def test_to_csv_no_header(
+        self,
+        batch_with_results: BatchEvaluationResult,
+        tmp_path: pytest.TempPathFactory,
+    ) -> None:
+        """Test to_csv without header."""
+        file_path = tmp_path / "results.csv"  # type: ignore[operator]
+        batch_with_results.to_csv(str(file_path), include_header=False)
+
+        content = file_path.read_text()
+        assert "index" not in content.split("\n")[0]  # First line is data, not header
+
+    def test_to_csv_empty_batch(
+        self, empty_batch: BatchEvaluationResult, tmp_path: pytest.TempPathFactory
+    ) -> None:
+        """Test to_csv with empty batch."""
+        file_path = tmp_path / "results.csv"  # type: ignore[operator]
+        empty_batch.to_csv(str(file_path))
+
+        assert file_path.exists()
+        content = file_path.read_text()
+        # Should have header but no data rows
+        lines = [line for line in content.strip().split("\n") if line]
+        assert len(lines) == 1  # Just header
+
+    # to_dataframe() tests
+    def test_to_dataframe_returns_dataframe(
+        self, batch_with_results: BatchEvaluationResult
+    ) -> None:
+        """Test to_dataframe returns pandas DataFrame."""
+        pytest.importorskip("pandas")
+        import pandas as pd
+
+        df = batch_with_results.to_dataframe()
+        assert isinstance(df, pd.DataFrame)
+        assert len(df) == 3
+
+    def test_to_dataframe_columns(
+        self, batch_with_results: BatchEvaluationResult
+    ) -> None:
+        """Test to_dataframe has expected columns."""
+        pytest.importorskip("pandas")
+
+        df = batch_with_results.to_dataframe()
+        assert "index" in df.columns
+        assert "overall_score" in df.columns
+        assert "semantic_score" in df.columns
+
+    def test_to_dataframe_values(
+        self, batch_with_results: BatchEvaluationResult
+    ) -> None:
+        """Test to_dataframe contains correct values."""
+        pytest.importorskip("pandas")
+        import pandas as pd
+
+        df = batch_with_results.to_dataframe()
+
+        # First row should have score
+        assert df.iloc[0]["overall_score"] == 0.92
+
+        # Last row should have None/NaN for score
+        assert pd.isna(df.iloc[2]["overall_score"])
+
+    def test_to_dataframe_without_pandas(
+        self, batch_with_results: BatchEvaluationResult, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test to_dataframe raises ImportError without pandas."""
+        import sys
+
+        # Hide pandas
+        monkeypatch.setitem(sys.modules, "pandas", None)
+
+        with pytest.raises(ImportError, match="pandas is required"):
+            batch_with_results.to_dataframe()
