@@ -37,6 +37,9 @@ dependencies = [
     "litellm>=1.50.0",  # Bundled pricing database - consistent with Conduit
 ]
 
+[project.scripts]
+arbiter = "arbiter_ai.cli:main"
+
 [project.urls]
 Homepage = "https://github.com/ashita-ai/arbiter"
 Documentation = "https://github.com/ashita-ai/arbiter#readme"
@@ -65,6 +68,9 @@ storage = ["arbiter-ai[postgres,redis]"]  # All storage backends
 
 # Fact verification plugins
 verifiers = ["tavily-python>=0.5.0"]  # SearchVerifier for web search verification
+
+# Command-line interface
+cli = ["typer>=0.15.0", "rich>=14.0.0"]
 
 # Development tools
 dev = [
@@ -102,7 +108,7 @@ dev = [
 ]
 
 # All features
-all = ["arbiter-ai[anthropic,gemini,mistral,cohere,scale,storage,verifiers,dev]"]
+all = ["arbiter-ai[anthropic,gemini,mistral,cohere,scale,storage,verifiers,cli,dev]"]
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -189,7 +195,7 @@ module = "tests.*"
 disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
-module = ["pymilvus", "pymilvus.*", "logfire", "faiss", "sentence_transformers", "sentence_transformers.*", "asyncpg", "asyncpg.*"]
+module = ["pymilvus", "pymilvus.*", "logfire", "faiss", "sentence_transformers", "sentence_transformers.*", "asyncpg", "asyncpg.*", "typer", "typer.*", "rich", "rich.*"]
 ignore_missing_imports = true
 
 [dependency-groups]
