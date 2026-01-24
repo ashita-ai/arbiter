@@ -109,6 +109,10 @@ from .core import (
     estimate_evaluation_cost,
     get_available_evaluators,
     get_cost_calculator,
+    get_default_max_concurrency,
+    get_default_model,
+    get_default_threshold,
+    get_default_timeout,
     get_evaluator_class,
     get_global_monitor,
     get_logger,
@@ -191,6 +195,10 @@ __all__ = [
     "monitor",
     # Configuration
     "RetryConfig",
+    "get_default_model",
+    "get_default_threshold",
+    "get_default_timeout",
+    "get_default_max_concurrency",
     # Types
     "Provider",
     # Registry

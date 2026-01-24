@@ -12,6 +12,12 @@ This module contains the fundamental components:
 """
 
 from .circuit_breaker import CircuitBreaker, CircuitState
+from .config import (
+    get_default_max_concurrency,
+    get_default_model,
+    get_default_threshold,
+    get_default_timeout,
+)
 from .cost_calculator import CostCalculator, ModelPricing, get_cost_calculator
 from .estimation import (
     BatchCostEstimate,
@@ -96,6 +102,11 @@ __all__ = [
     # Logging
     "configure_logging",
     "get_logger",
+    # Configuration
+    "get_default_model",
+    "get_default_threshold",
+    "get_default_timeout",
+    "get_default_max_concurrency",
     # Exceptions - Base
     "ArbiterError",
     "ConfigurationError",

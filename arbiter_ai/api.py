@@ -38,6 +38,10 @@ from .core import (
     LLMClient,
     LLMManager,
     Provider,
+    get_default_max_concurrency,
+    get_default_model,
+    get_default_threshold,
+    get_default_timeout,
     get_evaluator_class,
     get_logger,
     get_prompt_preview,
@@ -75,9 +79,9 @@ async def evaluate(
     criteria: Optional[str] = None,
     evaluators: Optional[List[str]] = None,
     llm_client: Optional[LLMClient] = None,
-    model: str = "gpt-4o",
+    model: Optional[str] = None,
     provider: Provider = Provider.OPENAI,
-    threshold: float = 0.7,
+    threshold: Optional[float] = None,
     middleware: Optional[MiddlewarePipeline] = None,
     timeout: Optional[float] = None,
     weights: Optional[Dict[str, float]] = None,
@@ -93,9 +97,9 @@ async def evaluate(
     criteria: Optional[str] = None,
     evaluators: Optional[List[str]] = None,
     llm_client: Optional[LLMClient] = None,
-    model: str = "gpt-4o",
+    model: Optional[str] = None,
     provider: Provider = Provider.OPENAI,
-    threshold: float = 0.7,
+    threshold: Optional[float] = None,
     middleware: Optional[MiddlewarePipeline] = None,
     timeout: Optional[float] = None,
     weights: Optional[Dict[str, float]] = None,
@@ -111,9 +115,9 @@ async def evaluate(
     criteria: Optional[str] = None,
     evaluators: Optional[List[str]] = None,
     llm_client: Optional[LLMClient] = None,
-    model: str = "gpt-4o",
+    model: Optional[str] = None,
     provider: Provider = Provider.OPENAI,
-    threshold: float = 0.7,
+    threshold: Optional[float] = None,
     middleware: Optional[MiddlewarePipeline] = None,
     timeout: Optional[float] = None,
     weights: Optional[Dict[str, float]] = None,
@@ -127,9 +131,9 @@ async def evaluate(
     criteria: Optional[str] = None,
     evaluators: Optional[List[str]] = None,
     llm_client: Optional[LLMClient] = None,
-    model: str = "gpt-4o",
+    model: Optional[str] = None,
     provider: Provider = Provider.OPENAI,
-    threshold: float = 0.7,
+    threshold: Optional[float] = None,
     middleware: Optional[MiddlewarePipeline] = None,
     timeout: Optional[float] = None,
     weights: Optional[Dict[str, float]] = None,
@@ -147,13 +151,16 @@ async def evaluate(
         criteria: Optional evaluation criteria for reference-free evaluation
         evaluators: List of evaluator names to run (default: ["semantic"])
         llm_client: Optional pre-configured LLM client (will create if not provided)
-        model: Model to use if creating new client (default: "gpt-4o")
+        model: Model to use if creating new client. If None, uses ARBITER_DEFAULT_MODEL
+            env var or falls back to "gpt-4o-mini".
         provider: Provider to use if creating new client (default: OPENAI)
-        threshold: Score threshold for pass/fail (default: 0.7)
+        threshold: Score threshold for pass/fail. If None, uses ARBITER_DEFAULT_THRESHOLD
+            env var or falls back to 0.7.
         middleware: Optional middleware pipeline for cross-cutting concerns
-        timeout: Optional timeout in seconds. If the evaluation takes longer than
-            this, a TimeoutError is raised. Useful for production environments
-            where predictable response times are required.
+        timeout: Timeout in seconds. If None, uses ARBITER_TIMEOUT env var.
+            If the evaluation takes longer than this, a TimeoutError is raised.
+            Useful for production environments where predictable response times
+            are required.
         weights: Optional dict mapping evaluator names to relative weights for
             overall score calculation. Evaluators not in the dict default to 1.0.
             All weights must be positive. Example: {"semantic": 1.0, "factuality": 2.0}
@@ -224,7 +231,17 @@ async def evaluate(
         ... )
         >>> # Overall score = weighted average:
         >>> # (semantic * 1.0 + factuality * 2.0 + relevance * 1.0) / 4.0
+        >>>
+        >>> # Use environment variable defaults
+        >>> # Set ARBITER_DEFAULT_MODEL=claude-3-5-sonnet before running
+        >>> result = await evaluate(output="...", reference="...")
+        >>> # Uses claude-3-5-sonnet from environment
     """
+    # Apply defaults from environment variables
+    model = model if model is not None else get_default_model()
+    threshold = threshold if threshold is not None else get_default_threshold()
+    timeout = timeout if timeout is not None else get_default_timeout()
+
     # Handle dry_run mode - return preview without making API calls
     if dry_run:
         logger.debug("Dry run mode: generating preview without API calls")
@@ -522,7 +539,7 @@ async def compare(
     criteria: Optional[str] = None,
     reference: Optional[str] = None,
     llm_client: Optional[LLMClient] = None,
-    model: str = "gpt-4o",
+    model: Optional[str] = None,
     provider: Provider = Provider.OPENAI,
     middleware: Optional[MiddlewarePipeline] = None,
     timeout: Optional[float] = None,
@@ -539,11 +556,12 @@ async def compare(
         criteria: Optional criteria for comparison (e.g., "accuracy, clarity, completeness")
         reference: Optional reference context (e.g., user question or ground truth)
         llm_client: Optional pre-configured LLM client (will create if not provided)
-        model: Model to use if creating new client (default: "gpt-4o")
+        model: Model to use if creating new client. If None, uses ARBITER_DEFAULT_MODEL
+            env var or falls back to "gpt-4o-mini".
         provider: Provider to use if creating new client (default: OPENAI)
         middleware: Optional middleware pipeline for cross-cutting concerns
-        timeout: Optional timeout in seconds. If the comparison takes longer than
-            this, a TimeoutError is raised.
+        timeout: Timeout in seconds. If None, uses ARBITER_TIMEOUT env var.
+            If the comparison takes longer than this, a TimeoutError is raised.
 
     Returns:
         ComparisonResult with winner, confidence, reasoning, and aspect scores
@@ -575,6 +593,10 @@ async def compare(
         >>> for aspect, scores in comparison.aspect_scores.items():
         ...     print(f"{aspect}: A={scores['output_a']:.2f}, B={scores['output_b']:.2f}")
     """
+    # Apply defaults from environment variables
+    model = model if model is not None else get_default_model()
+    timeout = timeout if timeout is not None else get_default_timeout()
+
     # Validate inputs before any processing
     validate_compare_inputs(
         output_a=output_a,
@@ -683,10 +705,10 @@ async def batch_evaluate(
     items: List[Dict[str, Any]],
     evaluators: Optional[List[str]] = None,
     llm_client: Optional[LLMClient] = None,
-    model: str = "gpt-4o",
+    model: Optional[str] = None,
     provider: Provider = Provider.OPENAI,
-    threshold: float = 0.7,
-    max_concurrency: int = 10,
+    threshold: Optional[float] = None,
+    max_concurrency: Optional[int] = None,
     on_progress: Optional[
         Callable[[int, int, Optional["EvaluationResult"], Optional[Exception]], None]
     ] = None,
@@ -705,10 +727,13 @@ async def batch_evaluate(
             - "criteria" (optional): Evaluation criteria
         evaluators: List of evaluator names to run (default: ["semantic"])
         llm_client: Optional pre-configured LLM client (shared across batch)
-        model: Model to use if creating new client (default: "gpt-4o")
+        model: Model to use if creating new client. If None, uses ARBITER_DEFAULT_MODEL
+            env var or falls back to "gpt-4o-mini".
         provider: Provider to use if creating new client (default: OPENAI)
-        threshold: Score threshold for pass/fail (default: 0.7)
-        max_concurrency: Maximum parallel evaluations (default: 10)
+        threshold: Score threshold for pass/fail. If None, uses ARBITER_DEFAULT_THRESHOLD
+            env var or falls back to 0.7.
+        max_concurrency: Maximum parallel evaluations. If None, uses ARBITER_MAX_CONCURRENCY
+            env var or falls back to 10.
         on_progress: Optional callback invoked after each item completes.
             Signature: (completed, total, result, error) where:
             - completed: Number of items processed so far
@@ -716,9 +741,10 @@ async def batch_evaluate(
             - result: EvaluationResult if successful, None if failed
             - error: Exception if failed, None if successful
         middleware: Optional middleware pipeline for cross-cutting concerns
-        timeout: Optional per-item timeout in seconds. Each individual evaluation
-            that exceeds this timeout will be recorded as a failed item with a
-            timeout error. The batch continues processing other items.
+        timeout: Per-item timeout in seconds. If None, uses ARBITER_TIMEOUT env var.
+            Each individual evaluation that exceeds this timeout will be recorded
+            as a failed item with a timeout error. The batch continues processing
+            other items.
 
     Returns:
         BatchEvaluationResult with results list, errors, and aggregate statistics.
@@ -769,6 +795,16 @@ async def batch_evaluate(
         ...         error = results.get_error(i)
         ...         print(f"Item {i}: FAILED - {error['error']}")
     """
+    # Apply defaults from environment variables
+    model = model if model is not None else get_default_model()
+    threshold = threshold if threshold is not None else get_default_threshold()
+    max_concurrency = (
+        max_concurrency
+        if max_concurrency is not None
+        else get_default_max_concurrency()
+    )
+    timeout = timeout if timeout is not None else get_default_timeout()
+
     # Validate inputs before any processing
     validate_batch_evaluate_inputs(
         items=items,
