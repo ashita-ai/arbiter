@@ -14,6 +14,7 @@ from typing import Any, Optional
 import asyncpg
 
 from arbiter_ai.core.models import BatchEvaluationResult, EvaluationResult
+from arbiter_ai.core.monitoring import track_query
 from arbiter_ai.storage.base import (
     ConnectionError,
     RetrievalError,
@@ -161,19 +162,20 @@ class PostgresStorage(StorageBackend):
             model = result.interactions[0].model if result.interactions else None
 
             async with self.pool.acquire() as conn:
-                row = await conn.fetchrow(
-                    f"""
-                    INSERT INTO {self.schema}.evaluation_results
-                    (result_data, metadata, overall_score, evaluators, model)
-                    VALUES ($1, $2, $3, $4, $5)
-                    RETURNING id
-                    """,
-                    json.dumps(result_data),
-                    json.dumps(metadata) if metadata else None,
-                    overall_score,
-                    evaluators,
-                    model,
-                )
+                with track_query("save_result"):
+                    row = await conn.fetchrow(
+                        f"""
+                        INSERT INTO {self.schema}.evaluation_results
+                        (result_data, metadata, overall_score, evaluators, model)
+                        VALUES ($1, $2, $3, $4, $5)
+                        RETURNING id
+                        """,
+                        json.dumps(result_data),
+                        json.dumps(metadata) if metadata else None,
+                        overall_score,
+                        evaluators,
+                        model,
+                    )
 
                 result_id = str(row["id"])
                 logger.debug(f"Saved evaluation result: {result_id}")
@@ -221,20 +223,21 @@ class PostgresStorage(StorageBackend):
             )
 
             async with self.pool.acquire() as conn:
-                row = await conn.fetchrow(
-                    f"""
-                    INSERT INTO {self.schema}.batch_evaluation_results
-                    (result_data, metadata, total_items, successful_items, failed_items, avg_score)
-                    VALUES ($1, $2, $3, $4, $5, $6)
-                    RETURNING id
-                    """,
-                    json.dumps(result_data),
-                    json.dumps(metadata) if metadata else None,
-                    result.total_items,
-                    result.successful_items,
-                    result.failed_items,
-                    avg_score,
-                )
+                with track_query("save_batch_result"):
+                    row = await conn.fetchrow(
+                        f"""
+                        INSERT INTO {self.schema}.batch_evaluation_results
+                        (result_data, metadata, total_items, successful_items, failed_items, avg_score)
+                        VALUES ($1, $2, $3, $4, $5, $6)
+                        RETURNING id
+                        """,
+                        json.dumps(result_data),
+                        json.dumps(metadata) if metadata else None,
+                        result.total_items,
+                        result.successful_items,
+                        result.failed_items,
+                        avg_score,
+                    )
 
                 batch_id = str(row["id"])
                 logger.debug(f"Saved batch result: {batch_id}")
@@ -258,13 +261,14 @@ class PostgresStorage(StorageBackend):
 
         try:
             async with self.pool.acquire() as conn:
-                row = await conn.fetchrow(
-                    f"""
-                    SELECT result_data FROM {self.schema}.evaluation_results
-                    WHERE id = $1
-                    """,
-                    uuid.UUID(result_id),
-                )
+                with track_query("get_result"):
+                    row = await conn.fetchrow(
+                        f"""
+                        SELECT result_data FROM {self.schema}.evaluation_results
+                        WHERE id = $1
+                        """,
+                        uuid.UUID(result_id),
+                    )
 
                 if not row:
                     return None
@@ -290,13 +294,14 @@ class PostgresStorage(StorageBackend):
 
         try:
             async with self.pool.acquire() as conn:
-                row = await conn.fetchrow(
-                    f"""
-                    SELECT result_data FROM {self.schema}.batch_evaluation_results
-                    WHERE id = $1
-                    """,
-                    uuid.UUID(batch_id),
-                )
+                with track_query("get_batch_result"):
+                    row = await conn.fetchrow(
+                        f"""
+                        SELECT result_data FROM {self.schema}.batch_evaluation_results
+                        WHERE id = $1
+                        """,
+                        uuid.UUID(batch_id),
+                    )
 
                 if not row:
                     return None
