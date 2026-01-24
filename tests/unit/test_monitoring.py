@@ -8,8 +8,12 @@ import pytest
 from arbiter_ai.core.monitoring import (
     PerformanceMetrics,
     PerformanceMonitor,
+    QueryMetrics,
+    QueryMonitor,
     get_global_monitor,
+    get_query_monitor,
     monitor,
+    track_query,
 )
 
 
@@ -335,3 +339,336 @@ class TestLogfireIntegration:
         import os
 
         assert os.getenv("LOGFIRE_TOKEN") == "test_token"
+
+
+class TestQueryMetrics:
+    """Test QueryMetrics dataclass."""
+
+    def test_initialization(self):
+        """Test QueryMetrics initialization."""
+        metrics = QueryMetrics(
+            operation="save_result",
+            duration=0.045,
+            timestamp=time.time(),
+        )
+
+        assert metrics.operation == "save_result"
+        assert metrics.duration == 0.045
+        assert metrics.success is True
+        assert metrics.error is None
+
+    def test_initialization_with_error(self):
+        """Test QueryMetrics with error."""
+        metrics = QueryMetrics(
+            operation="get_result",
+            duration=0.1,
+            timestamp=time.time(),
+            success=False,
+            error="Connection timeout",
+        )
+
+        assert metrics.success is False
+        assert metrics.error == "Connection timeout"
+
+
+class TestQueryMonitor:
+    """Test QueryMonitor class."""
+
+    def test_initialization(self):
+        """Test QueryMonitor initialization."""
+        monitor = QueryMonitor()
+
+        assert monitor.slow_query_threshold == 1.0
+        assert monitor.max_history == 10000
+        assert len(monitor._queries) == 0
+        assert monitor.on_slow_query is None
+
+    def test_initialization_with_custom_threshold(self):
+        """Test QueryMonitor with custom threshold."""
+        monitor = QueryMonitor(slow_query_threshold=0.5, max_history=100)
+
+        assert monitor.slow_query_threshold == 0.5
+        assert monitor.max_history == 100
+
+    def test_record_query(self):
+        """Test recording a query."""
+        monitor = QueryMonitor()
+        metrics = QueryMetrics(
+            operation="save_result",
+            duration=0.05,
+            timestamp=time.time(),
+        )
+
+        monitor.record(metrics)
+
+        assert len(monitor._queries) == 1
+        assert monitor._queries[0] == metrics
+
+    def test_record_trims_history(self):
+        """Test that recording trims history when exceeding max."""
+        monitor = QueryMonitor(max_history=3)
+
+        for i in range(5):
+            metrics = QueryMetrics(
+                operation=f"op_{i}",
+                duration=0.01 * i,
+                timestamp=time.time(),
+            )
+            monitor.record(metrics)
+
+        assert len(monitor._queries) == 3
+        assert monitor._queries[0].operation == "op_2"
+        assert monitor._queries[-1].operation == "op_4"
+
+    def test_slow_query_callback(self):
+        """Test slow query callback is invoked."""
+        monitor = QueryMonitor(slow_query_threshold=0.1)
+        slow_queries = []
+        monitor.on_slow_query = lambda m: slow_queries.append(m)
+
+        # Fast query - no callback
+        fast = QueryMetrics(operation="fast_op", duration=0.05, timestamp=time.time())
+        monitor.record(fast)
+        assert len(slow_queries) == 0
+
+        # Slow query - callback invoked
+        slow = QueryMetrics(operation="slow_op", duration=0.2, timestamp=time.time())
+        monitor.record(slow)
+        assert len(slow_queries) == 1
+        assert slow_queries[0].operation == "slow_op"
+
+    def test_track_context_manager(self):
+        """Test track() context manager."""
+        monitor = QueryMonitor()
+
+        with monitor.track("test_query"):
+            time.sleep(0.01)
+
+        assert len(monitor._queries) == 1
+        assert monitor._queries[0].operation == "test_query"
+        assert monitor._queries[0].duration >= 0.01
+        assert monitor._queries[0].success is True
+
+    def test_track_records_error(self):
+        """Test track() records errors."""
+        monitor = QueryMonitor()
+
+        with pytest.raises(ValueError):
+            with monitor.track("failing_query"):
+                raise ValueError("Query failed")
+
+        assert len(monitor._queries) == 1
+        assert monitor._queries[0].success is False
+        assert "Query failed" in monitor._queries[0].error
+
+    def test_get_statistics_empty(self):
+        """Test get_statistics with no queries."""
+        monitor = QueryMonitor()
+
+        stats = monitor.get_statistics()
+
+        assert stats["count"] == 0
+        assert stats["success_rate"] == 0.0
+        assert stats["timing"]["min"] == 0.0
+        assert stats["percentiles"]["p50"] == 0.0
+
+    def test_get_statistics_with_queries(self):
+        """Test get_statistics with recorded queries."""
+        monitor = QueryMonitor()
+
+        # Record queries with known durations
+        for duration in [0.01, 0.02, 0.03, 0.04, 0.05]:
+            metrics = QueryMetrics(
+                operation="test_op",
+                duration=duration,
+                timestamp=time.time(),
+            )
+            monitor.record(metrics)
+
+        stats = monitor.get_statistics()
+
+        assert stats["count"] == 5
+        assert stats["success_rate"] == 1.0
+        assert stats["timing"]["min"] == 0.01
+        assert stats["timing"]["max"] == 0.05
+        assert stats["timing"]["avg"] == 0.03
+        assert stats["percentiles"]["p50"] == 0.03
+
+    def test_get_statistics_filtered_by_operation(self):
+        """Test get_statistics filtered by operation name."""
+        monitor = QueryMonitor()
+
+        # Record different operations
+        for op in ["save_result", "save_result", "get_result"]:
+            metrics = QueryMetrics(
+                operation=op,
+                duration=0.01,
+                timestamp=time.time(),
+            )
+            monitor.record(metrics)
+
+        stats = monitor.get_statistics("save_result")
+
+        assert stats["count"] == 2
+
+        stats_get = monitor.get_statistics("get_result")
+        assert stats_get["count"] == 1
+
+    def test_get_statistics_success_rate(self):
+        """Test success rate calculation."""
+        monitor = QueryMonitor()
+
+        # 3 successful, 2 failed
+        for success in [True, True, True, False, False]:
+            metrics = QueryMetrics(
+                operation="test_op",
+                duration=0.01,
+                timestamp=time.time(),
+                success=success,
+            )
+            monitor.record(metrics)
+
+        stats = monitor.get_statistics()
+
+        assert stats["success_rate"] == 0.6
+
+    def test_get_operations(self):
+        """Test get_operations returns unique operations."""
+        monitor = QueryMonitor()
+
+        for op in ["save_result", "get_result", "save_result", "save_batch"]:
+            metrics = QueryMetrics(
+                operation=op,
+                duration=0.01,
+                timestamp=time.time(),
+            )
+            monitor.record(metrics)
+
+        operations = monitor.get_operations()
+
+        assert len(operations) == 3
+        assert set(operations) == {"save_result", "get_result", "save_batch"}
+
+    def test_get_slow_queries(self):
+        """Test get_slow_queries filtering."""
+        monitor = QueryMonitor(slow_query_threshold=0.1)
+
+        for duration in [0.05, 0.1, 0.15, 0.2]:
+            metrics = QueryMetrics(
+                operation="test_op",
+                duration=duration,
+                timestamp=time.time(),
+            )
+            monitor.record(metrics)
+
+        slow = monitor.get_slow_queries()
+
+        assert len(slow) == 3  # 0.1, 0.15, 0.2
+
+    def test_get_slow_queries_custom_threshold(self):
+        """Test get_slow_queries with custom threshold."""
+        monitor = QueryMonitor(slow_query_threshold=0.1)
+
+        for duration in [0.05, 0.1, 0.15, 0.2]:
+            metrics = QueryMetrics(
+                operation="test_op",
+                duration=duration,
+                timestamp=time.time(),
+            )
+            monitor.record(metrics)
+
+        slow = monitor.get_slow_queries(threshold=0.15)
+
+        assert len(slow) == 2  # 0.15, 0.2
+
+    def test_reset(self):
+        """Test reset clears all queries."""
+        monitor = QueryMonitor()
+
+        for i in range(5):
+            metrics = QueryMetrics(
+                operation="test_op",
+                duration=0.01,
+                timestamp=time.time(),
+            )
+            monitor.record(metrics)
+
+        assert len(monitor._queries) == 5
+
+        monitor.reset()
+
+        assert len(monitor._queries) == 0
+
+    def test_percentile_calculation(self):
+        """Test percentile calculation accuracy."""
+        # Test with 100 values for accurate percentile calculation
+        durations = [i / 100.0 for i in range(1, 101)]
+
+        monitor = QueryMonitor()
+        p50 = monitor._percentile(durations, 50)
+        p95 = monitor._percentile(durations, 95)
+        p99 = monitor._percentile(durations, 99)
+
+        assert abs(p50 - 0.505) < 0.01
+        assert abs(p95 - 0.955) < 0.01
+        assert abs(p99 - 0.995) < 0.01
+
+    def test_percentile_empty_list(self):
+        """Test percentile with empty list."""
+        monitor = QueryMonitor()
+        assert monitor._percentile([], 50) == 0.0
+
+    def test_percentile_single_value(self):
+        """Test percentile with single value."""
+        monitor = QueryMonitor()
+        assert monitor._percentile([0.5], 50) == 0.5
+        assert monitor._percentile([0.5], 99) == 0.5
+
+
+class TestGlobalQueryMonitor:
+    """Test global query monitor functions."""
+
+    def test_get_query_monitor_creates_instance(self):
+        """Test that get_query_monitor creates a monitor."""
+        import arbiter_ai.core.monitoring as mon_module
+
+        mon_module._query_monitor = None
+
+        monitor = get_query_monitor()
+
+        assert monitor is not None
+        assert isinstance(monitor, QueryMonitor)
+
+    def test_get_query_monitor_returns_same_instance(self):
+        """Test that get_query_monitor returns the same instance."""
+        monitor1 = get_query_monitor()
+        monitor2 = get_query_monitor()
+
+        assert monitor1 is monitor2
+
+    def test_track_query_context_manager(self):
+        """Test track_query() context manager."""
+        import arbiter_ai.core.monitoring as mon_module
+
+        mon_module._query_monitor = QueryMonitor()
+
+        with track_query("test_query"):
+            time.sleep(0.01)
+
+        monitor = get_query_monitor()
+        assert len(monitor._queries) == 1
+        assert monitor._queries[0].operation == "test_query"
+
+    def test_track_query_records_errors(self):
+        """Test track_query() records errors."""
+        import arbiter_ai.core.monitoring as mon_module
+
+        mon_module._query_monitor = QueryMonitor()
+
+        with pytest.raises(RuntimeError):
+            with track_query("failing_query"):
+                raise RuntimeError("DB error")
+
+        monitor = get_query_monitor()
+        assert len(monitor._queries) == 1
+        assert monitor._queries[0].success is False

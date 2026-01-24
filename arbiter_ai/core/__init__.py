@@ -57,8 +57,12 @@ from .models import (
 from .monitoring import (
     PerformanceMetrics,
     PerformanceMonitor,
+    QueryMetrics,
+    QueryMonitor,
     get_global_monitor,
+    get_query_monitor,
     monitor,
+    track_query,
 )
 from .registry import (
     AVAILABLE_EVALUATORS,
@@ -131,8 +135,12 @@ __all__ = [
     # Monitoring
     "PerformanceMetrics",
     "PerformanceMonitor",
+    "QueryMetrics",
+    "QueryMonitor",
     "get_global_monitor",
+    "get_query_monitor",
     "monitor",
+    "track_query",
     # Retry
     "RetryConfig",
     "with_retry",
