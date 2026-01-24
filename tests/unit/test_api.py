@@ -975,3 +975,94 @@ class TestBatchEvaluateTimeout:
 
         assert results.failed_items == 0
         assert results.successful_items == 2
+
+
+class TestWeightedScoring:
+    """Test suite for weighted scoring in evaluate()."""
+
+    @pytest.mark.asyncio
+    async def test_weighted_scoring_basic(self, mock_llm_client, mock_agent):
+        """Test that weighted scoring calculates correctly."""
+        from arbiter_ai.api import evaluate
+        from arbiter_ai.evaluators.semantic import SemanticResponse
+
+        # Mock semantic evaluator to return 0.80
+        mock_response = SemanticResponse(
+            score=0.80,
+            confidence=0.9,
+            explanation="Test",
+        )
+
+        mock_result = MockAgentResult(mock_response)
+        mock_agent.run = AsyncMock(return_value=mock_result)
+        mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
+
+        # With equal weights (default), should get simple average
+        result = await evaluate(
+            output="Test output",
+            reference="Test reference",
+            evaluators=["semantic"],
+            llm_client=mock_llm_client,
+        )
+
+        assert result.overall_score == pytest.approx(0.80, rel=0.01)
+
+    @pytest.mark.asyncio
+    async def test_weighted_scoring_with_single_evaluator(
+        self, mock_llm_client, mock_agent
+    ):
+        """Test that weights work correctly with single evaluator."""
+        from arbiter_ai.api import evaluate
+        from arbiter_ai.evaluators.semantic import SemanticResponse
+
+        mock_response = SemanticResponse(
+            score=0.80,
+            confidence=0.9,
+            explanation="Test",
+        )
+
+        mock_result = MockAgentResult(mock_response)
+        mock_agent.run = AsyncMock(return_value=mock_result)
+        mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
+
+        # Weight should be included in metadata
+        result = await evaluate(
+            output="Test output",
+            reference="Test reference",
+            evaluators=["semantic"],
+            llm_client=mock_llm_client,
+            weights={"semantic": 2.0},
+        )
+
+        assert result.overall_score == pytest.approx(0.80, rel=0.01)
+        assert result.metadata["weights"] == {"semantic": 2.0}
+
+    @pytest.mark.asyncio
+    async def test_weighted_scoring_validation_negative_weight(self, mock_llm_client):
+        """Test that negative weights are rejected."""
+        from arbiter_ai.api import evaluate
+        from arbiter_ai.core.exceptions import ValidationError
+
+        with pytest.raises(ValidationError, match="must be positive"):
+            await evaluate(
+                output="Test output",
+                reference="Test reference",
+                evaluators=["semantic"],
+                llm_client=mock_llm_client,
+                weights={"semantic": -1.0},
+            )
+
+    @pytest.mark.asyncio
+    async def test_weighted_scoring_validation_zero_weight(self, mock_llm_client):
+        """Test that zero weights are rejected."""
+        from arbiter_ai.api import evaluate
+        from arbiter_ai.core.exceptions import ValidationError
+
+        with pytest.raises(ValidationError, match="must be positive"):
+            await evaluate(
+                output="Test output",
+                reference="Test reference",
+                evaluators=["semantic"],
+                llm_client=mock_llm_client,
+                weights={"semantic": 0.0},
+            )
