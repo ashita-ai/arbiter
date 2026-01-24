@@ -8,7 +8,7 @@ This module defines the primary data structures used throughout Arbiter:
 """
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Literal, Optional, TextIO
+from typing import Any, Dict, List, Literal, Optional, TextIO, Tuple
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
@@ -1798,3 +1798,104 @@ class BatchEvaluationResult(BaseModel):
 
         records = self.to_records()
         return pd.DataFrame(records)
+
+    def filter(
+        self,
+        passed: Optional[bool] = None,
+        min_score: Optional[float] = None,
+        max_score: Optional[float] = None,
+    ) -> List["EvaluationResult"]:
+        """Filter results by criteria.
+
+        Returns a list of EvaluationResult objects matching the specified
+        criteria. Multiple criteria are combined with AND logic.
+
+        Args:
+            passed: Filter by pass/fail status (True for passed, False for failed)
+            min_score: Minimum overall_score threshold (inclusive)
+            max_score: Maximum overall_score threshold (inclusive)
+
+        Returns:
+            List of matching EvaluationResult objects (excludes None results)
+
+        Example:
+            >>> # Get only passed results
+            >>> passed = batch_result.filter(passed=True)
+            >>> print(f"{len(passed)} items passed")
+            >>>
+            >>> # Get high-quality results
+            >>> high_quality = batch_result.filter(min_score=0.9)
+            >>>
+            >>> # Combine filters: failed but close to threshold
+            >>> needs_review = batch_result.filter(passed=False, min_score=0.6)
+        """
+        filtered: List[EvaluationResult] = [r for r in self.results if r is not None]
+
+        if passed is not None:
+            filtered = [r for r in filtered if r.passed == passed]
+
+        if min_score is not None:
+            filtered = [r for r in filtered if r.overall_score >= min_score]
+
+        if max_score is not None:
+            filtered = [r for r in filtered if r.overall_score <= max_score]
+
+        return filtered
+
+    def slice(self, start: int, end: int) -> List[Optional["EvaluationResult"]]:
+        """Get results by index range.
+
+        Returns a slice of results including None values for items that
+        failed to evaluate. Uses standard Python slice semantics.
+
+        Args:
+            start: Start index (inclusive, 0-based)
+            end: End index (exclusive)
+
+        Returns:
+            List of results in the range (may include None for failed items)
+
+        Example:
+            >>> # Get first 10 results
+            >>> first_ten = batch_result.slice(0, 10)
+            >>>
+            >>> # Get results 20-30
+            >>> page = batch_result.slice(20, 30)
+        """
+        return self.results[start:end]
+
+    def get_failed_items(self) -> List[Dict[str, Any]]:
+        """Get items that failed to evaluate.
+
+        Returns a copy of the errors list containing information about
+        items that could not be evaluated due to exceptions.
+
+        Returns:
+            List of error dictionaries with 'index' and 'error' keys
+
+        Example:
+            >>> failed = batch_result.get_failed_items()
+            >>> for item in failed:
+            ...     print(f"Item {item['index']} failed: {item['error']}")
+        """
+        return self.errors.copy()
+
+    def get_results_with_indices(
+        self,
+    ) -> List[Tuple[int, Optional["EvaluationResult"]]]:
+        """Get results paired with their original indices.
+
+        Useful for maintaining position context when iterating through
+        results or when correlating results back to input items.
+
+        Returns:
+            List of (index, result) tuples where result may be None
+
+        Example:
+            >>> for idx, result in batch_result.get_results_with_indices():
+            ...     if result is not None:
+            ...         print(f"Item {idx}: score={result.overall_score}")
+            ...     else:
+            ...         print(f"Item {idx}: evaluation failed")
+        """
+        return list(enumerate(self.results))
