@@ -674,6 +674,146 @@ class EvaluationResult(BaseModel):
         data = self.to_dict(exclude=exclude)
         return json.dumps(data, indent=indent, default=str)
 
+    @classmethod
+    def merge(
+        cls,
+        *results: "EvaluationResult",
+        score_aggregation: Literal["mean", "min", "max"] = "mean",
+    ) -> "EvaluationResult":
+        """Merge multiple evaluation results into one.
+
+        Combines scores, interactions, and metadata from multiple evaluation
+        results into a single result. Useful when running evaluators separately
+        or combining results from different evaluation runs.
+
+        Args:
+            *results: EvaluationResult objects to merge
+            score_aggregation: How to compute overall_score from merged scores.
+                - "mean": Average of all scores (default)
+                - "min": Minimum score (conservative)
+                - "max": Maximum score (optimistic)
+
+        Returns:
+            New EvaluationResult combining all scores and interactions
+
+        Raises:
+            ValueError: If no results provided or results have different outputs
+
+        Example:
+            >>> result1 = await evaluate(output="...", evaluators=["semantic"])
+            >>> result2 = await evaluate(output="...", evaluators=["factuality"])
+            >>> combined = EvaluationResult.merge(result1, result2)
+            >>> print(f"Combined score: {combined.overall_score}")
+            >>>
+            >>> # With min aggregation (conservative)
+            >>> combined = EvaluationResult.merge(result1, result2, score_aggregation="min")
+        """
+        if not results:
+            raise ValueError("At least one result required for merge")
+
+        if len(results) == 1:
+            return results[0]
+
+        # Verify all results have the same output
+        output = results[0].output
+        for r in results[1:]:
+            if r.output != output:
+                raise ValueError(
+                    "Cannot merge results with different outputs. "
+                    f"Expected output starting with '{output[:50]}...', "
+                    f"got '{r.output[:50]}...'"
+                )
+
+        # Combine scores (avoid duplicates by name, keep first occurrence)
+        all_scores: List[Score] = []
+        seen_names: set[str] = set()
+        for r in results:
+            for score in r.scores:
+                if score.name not in seen_names:
+                    all_scores.append(score)
+                    seen_names.add(score.name)
+
+        # Calculate overall score based on aggregation method
+        if all_scores:
+            values = [s.value for s in all_scores]
+            if score_aggregation == "mean":
+                overall = sum(values) / len(values)
+            elif score_aggregation == "min":
+                overall = min(values)
+            else:  # score_aggregation == "max"
+                overall = max(values)
+        else:
+            overall = 0.0
+
+        # Combine interactions from all results
+        all_interactions: List[LLMInteraction] = []
+        for r in results:
+            all_interactions.extend(r.interactions)
+
+        # Combine errors from all results
+        all_errors: Dict[str, str] = {}
+        for r in results:
+            all_errors.update(r.errors)
+
+        # Combine metrics from all results
+        all_metrics: List[Metric] = []
+        for r in results:
+            all_metrics.extend(r.metrics)
+
+        # Use first result's threshold for passed check
+        threshold = results[0].metadata.get("threshold", 0.7)
+        if not isinstance(threshold, (int, float)):
+            threshold = 0.7
+
+        # Use first result's reference and criteria
+        reference = results[0].reference
+        criteria = results[0].criteria
+
+        return cls(
+            output=output,
+            reference=reference,
+            criteria=criteria,
+            scores=all_scores,
+            overall_score=overall,
+            passed=overall >= threshold,
+            errors=all_errors,
+            partial=len(all_errors) > 0,
+            metrics=all_metrics,
+            evaluator_names=[s.name for s in all_scores],
+            total_tokens=sum(r.total_tokens for r in results),
+            processing_time=sum(r.processing_time for r in results),
+            interactions=all_interactions,
+            metadata={
+                "merged_from": len(results),
+                "score_aggregation": score_aggregation,
+                "threshold": threshold,
+                "original_scores": {s.name: s.value for s in all_scores},
+            },
+        )
+
+    def merge_with(
+        self,
+        other: "EvaluationResult",
+        score_aggregation: Literal["mean", "min", "max"] = "mean",
+    ) -> "EvaluationResult":
+        """Merge this result with another.
+
+        Convenience method that calls EvaluationResult.merge().
+
+        Args:
+            other: Another EvaluationResult to merge with this one
+            score_aggregation: How to compute overall_score ("mean", "min", "max")
+
+        Returns:
+            New EvaluationResult combining both results
+
+        Example:
+            >>> result1 = await evaluate(output="...", evaluators=["semantic"])
+            >>> result2 = await evaluate(output="...", evaluators=["factuality"])
+            >>> combined = result1.merge_with(result2)
+        """
+        return EvaluationResult.merge(self, other, score_aggregation=score_aggregation)
+
 
 class ComparisonResult(BaseModel):
     """Result of comparing two LLM outputs.
@@ -1272,6 +1412,111 @@ class BatchEvaluationResult(BaseModel):
             f"success={self.successful_items} failed={self.failed_items} "
             f"time={self.processing_time:.1f}s>"
         )
+
+    def statistics(self, threshold: Optional[float] = None) -> Dict[str, float]:
+        """Calculate aggregate statistics for batch results.
+
+        Computes statistical measures across all successful evaluations,
+        useful for analyzing batch performance and monitoring quality over time.
+
+        Args:
+            threshold: Optional threshold for pass_rate calculation.
+                If not provided, uses individual result.passed flags.
+
+        Returns:
+            Dictionary with statistical measures:
+            - mean: Average overall score
+            - std: Standard deviation of scores (0.0 if single result)
+            - min: Minimum score
+            - max: Maximum score
+            - median: 50th percentile score
+            - p25: 25th percentile score
+            - p75: 75th percentile score
+            - p95: 95th percentile score
+            - pass_rate: Fraction of items that passed threshold
+            - success_rate: Fraction of evaluations that succeeded
+            - count: Number of successful evaluations
+
+        Example:
+            >>> stats = batch_result.statistics()
+            >>> print(f"Mean: {stats['mean']:.2f} +/- {stats['std']:.2f}")
+            >>> print(f"Pass rate: {stats['pass_rate']:.1%}")
+            >>> print(f"Range: {stats['min']:.2f} - {stats['max']:.2f}")
+        """
+        import statistics as stats_module
+
+        successful = [r for r in self.results if r is not None]
+
+        # Return zeros for empty results
+        if not successful:
+            return {
+                "mean": 0.0,
+                "std": 0.0,
+                "min": 0.0,
+                "max": 0.0,
+                "median": 0.0,
+                "p25": 0.0,
+                "p75": 0.0,
+                "p95": 0.0,
+                "pass_rate": 0.0,
+                "success_rate": 0.0,
+                "count": 0,
+            }
+
+        scores = [r.overall_score for r in successful]
+
+        # Calculate pass rate
+        if threshold is not None:
+            passed_count = sum(1 for s in scores if s >= threshold)
+        else:
+            passed_count = sum(1 for r in successful if r.passed)
+
+        return {
+            "mean": stats_module.mean(scores),
+            "std": stats_module.stdev(scores) if len(scores) > 1 else 0.0,
+            "min": min(scores),
+            "max": max(scores),
+            "median": stats_module.median(scores),
+            "p25": self._percentile(scores, 25),
+            "p75": self._percentile(scores, 75),
+            "p95": self._percentile(scores, 95),
+            "pass_rate": passed_count / len(successful),
+            "success_rate": (
+                len(successful) / self.total_items if self.total_items > 0 else 0.0
+            ),
+            "count": len(successful),
+        }
+
+    @staticmethod
+    def _percentile(data: List[float], p: int) -> float:
+        """Calculate percentile without numpy.
+
+        Uses linear interpolation between data points for accurate percentile
+        calculation with small datasets.
+
+        Args:
+            data: List of numeric values
+            p: Percentile to calculate (0-100)
+
+        Returns:
+            Percentile value
+        """
+        if not data:
+            return 0.0
+
+        sorted_data = sorted(data)
+        n = len(sorted_data)
+
+        if n == 1:
+            return sorted_data[0]
+
+        # Calculate index using linear interpolation
+        k = (n - 1) * p / 100
+        f = int(k)
+        c = f + 1 if f + 1 < n else f
+
+        # Interpolate between adjacent values
+        return sorted_data[f] + (sorted_data[c] - sorted_data[f]) * (k - f)
 
     def summary(self) -> str:
         """Return one-line summary of batch results.

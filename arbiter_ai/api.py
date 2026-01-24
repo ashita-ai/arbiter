@@ -4,8 +4,7 @@ This module provides the primary entry points for evaluating LLM outputs.
 
 ## Quick Start:
 
-    >>> from arbiter import evaluate
-    >>> from arbiter_ai.core import LLMManager
+    >>> from arbiter_ai import evaluate, LLMManager
     >>>
     >>> # Evaluate semantic similarity
     >>> client = await LLMManager.get_client(model="gpt-4o")
@@ -81,6 +80,7 @@ async def evaluate(
     threshold: float = 0.7,
     middleware: Optional[MiddlewarePipeline] = None,
     timeout: Optional[float] = None,
+    weights: Optional[Dict[str, float]] = None,
     *,
     dry_run: Literal[True],
 ) -> DryRunResult: ...
@@ -98,6 +98,7 @@ async def evaluate(
     threshold: float = 0.7,
     middleware: Optional[MiddlewarePipeline] = None,
     timeout: Optional[float] = None,
+    weights: Optional[Dict[str, float]] = None,
     *,
     dry_run: Literal[False] = ...,
 ) -> EvaluationResult: ...
@@ -115,6 +116,7 @@ async def evaluate(
     threshold: float = 0.7,
     middleware: Optional[MiddlewarePipeline] = None,
     timeout: Optional[float] = None,
+    weights: Optional[Dict[str, float]] = None,
     dry_run: bool = False,
 ) -> Union[EvaluationResult, DryRunResult]: ...
 
@@ -130,6 +132,7 @@ async def evaluate(
     threshold: float = 0.7,
     middleware: Optional[MiddlewarePipeline] = None,
     timeout: Optional[float] = None,
+    weights: Optional[Dict[str, float]] = None,
     dry_run: bool = False,
 ) -> Union[EvaluationResult, DryRunResult]:
     """Evaluate an LLM output with automatic interaction tracking.
@@ -151,6 +154,10 @@ async def evaluate(
         timeout: Optional timeout in seconds. If the evaluation takes longer than
             this, a TimeoutError is raised. Useful for production environments
             where predictable response times are required.
+        weights: Optional dict mapping evaluator names to relative weights for
+            overall score calculation. Evaluators not in the dict default to 1.0.
+            All weights must be positive. Example: {"semantic": 1.0, "factuality": 2.0}
+            would weight factuality twice as heavily in the overall score.
         dry_run: If True, return preview of evaluation without making API calls.
             Useful for debugging prompts, validating inputs, and estimating costs.
 
@@ -208,6 +215,15 @@ async def evaluate(
         ... )
         >>> print(f"Estimated cost: ${preview.estimated_cost:.6f}")
         >>> print(preview.prompts["semantic"]["user"])
+        >>>
+        >>> # Weighted scoring
+        >>> result = await evaluate(
+        ...     output="Medical advice text",
+        ...     evaluators=["semantic", "factuality", "relevance"],
+        ...     weights={"semantic": 1.0, "factuality": 2.0, "relevance": 1.0}
+        ... )
+        >>> # Overall score = weighted average:
+        >>> # (semantic * 1.0 + factuality * 2.0 + relevance * 1.0) / 4.0
     """
     # Handle dry_run mode - return preview without making API calls
     if dry_run:
@@ -229,6 +245,14 @@ async def evaluate(
         threshold=threshold,
         model=model,
     )
+
+    # Validate weights if provided
+    if weights:
+        for name, weight in weights.items():
+            if weight <= 0:
+                raise ValidationError(
+                    f"Weight for '{name}' must be positive, got {weight}"
+                )
 
     eval_names = evaluators or ["semantic"]
     logger.info(
@@ -253,6 +277,7 @@ async def evaluate(
                     model=model,
                     provider=provider,
                     threshold=threshold,
+                    weights=weights,
                 )
 
             return await middleware.execute(output, reference, _evaluate_core)
@@ -267,6 +292,7 @@ async def evaluate(
             model=model,
             provider=provider,
             threshold=threshold,
+            weights=weights,
         )
 
     # Apply timeout if specified
@@ -292,6 +318,7 @@ async def _evaluate_impl(
     model: str = "gpt-4o",
     provider: Provider = Provider.OPENAI,
     threshold: float = 0.7,
+    weights: Optional[Dict[str, float]] = None,
 ) -> EvaluationResult:
     """Internal implementation of evaluation (called directly or via middleware)."""
     start_time = time.time()
@@ -424,11 +451,21 @@ async def _evaluate_impl(
             details={"errors": errors, "evaluator_count": len(evaluator_instances)},
         )
 
-    # Calculate overall score (average of successful evaluators only)
+    # Calculate overall score (weighted average of successful evaluators only)
     # Note: This only includes scores from successful evaluators. If some evaluators
     # failed, their scores are not included in the average. This ensures the overall
     # score reflects only the evaluations that completed successfully.
-    overall_score = sum(s.value for s in scores) / len(scores) if scores else 0.0
+    if scores:
+        if weights:
+            # Weighted average: sum(score * weight) / sum(weights)
+            weighted_sum = sum(s.value * weights.get(s.name, 1.0) for s in scores)
+            weight_total = sum(weights.get(s.name, 1.0) for s in scores)
+            overall_score = weighted_sum / weight_total if weight_total > 0 else 0.0
+        else:
+            # Simple average
+            overall_score = sum(s.value for s in scores) / len(scores)
+    else:
+        overall_score = 0.0
 
     # Determine if passed threshold
     passed = overall_score >= threshold
@@ -459,6 +496,7 @@ async def _evaluate_impl(
             "successful_evaluators": len(scores),
             "failed_evaluators": len(errors),
             "threshold": threshold,
+            "weights": weights,
         },
     )
 
@@ -649,8 +687,8 @@ async def batch_evaluate(
     provider: Provider = Provider.OPENAI,
     threshold: float = 0.7,
     max_concurrency: int = 10,
-    progress_callback: Optional[
-        Callable[[int, int, Optional["EvaluationResult"]], None]
+    on_progress: Optional[
+        Callable[[int, int, Optional["EvaluationResult"], Optional[Exception]], None]
     ] = None,
     middleware: Optional[MiddlewarePipeline] = None,
     timeout: Optional[float] = None,
@@ -671,7 +709,12 @@ async def batch_evaluate(
         provider: Provider to use if creating new client (default: OPENAI)
         threshold: Score threshold for pass/fail (default: 0.7)
         max_concurrency: Maximum parallel evaluations (default: 10)
-        progress_callback: Optional callback(completed, total, latest_result)
+        on_progress: Optional callback invoked after each item completes.
+            Signature: (completed, total, result, error) where:
+            - completed: Number of items processed so far
+            - total: Total number of items in batch
+            - result: EvaluationResult if successful, None if failed
+            - error: Exception if failed, None if successful
         middleware: Optional middleware pipeline for cross-cutting concerns
         timeout: Optional per-item timeout in seconds. Each individual evaluation
             that exceeds this timeout will be recorded as a failed item with a
@@ -706,14 +749,16 @@ async def batch_evaluate(
         ... )
         >>>
         >>> # With progress tracking
-        >>> def on_progress(completed, total, result):
-        ...     print(f"Progress: {completed}/{total}")
+        >>> def progress_handler(completed, total, result, error):
+        ...     pct = (completed / total) * 100
         ...     if result:
-        ...         print(f"Latest score: {result.overall_score:.2f}")
+        ...         print(f"[{completed}/{total}] {pct:.0f}% Score: {result.overall_score:.2f}")
+        ...     elif error:
+        ...         print(f"[{completed}/{total}] {pct:.0f}% Failed: {error}")
         >>>
         >>> results = await batch_evaluate(
         ...     items=[...],
-        ...     progress_callback=on_progress
+        ...     on_progress=progress_handler
         ... )
         >>>
         >>> # Access individual results
@@ -749,7 +794,7 @@ async def batch_evaluate(
         provider=provider,
         threshold=threshold,
         max_concurrency=max_concurrency,
-        progress_callback=progress_callback,
+        on_progress=on_progress,
         middleware=middleware,
         timeout=timeout,
     )
@@ -763,8 +808,8 @@ async def _batch_evaluate_impl(
     provider: Provider = Provider.OPENAI,
     threshold: float = 0.7,
     max_concurrency: int = 10,
-    progress_callback: Optional[
-        Callable[[int, int, Optional[EvaluationResult]], None]
+    on_progress: Optional[
+        Callable[[int, int, Optional[EvaluationResult], Optional[Exception]], None]
     ] = None,
     middleware: Optional[MiddlewarePipeline] = None,
     timeout: Optional[float] = None,
@@ -786,11 +831,13 @@ async def _batch_evaluate_impl(
     # Track completion for progress callback
     completed_count = [0]  # Use list for closure mutability
 
-    def update_progress(result: Optional[EvaluationResult]) -> None:
+    def update_progress(
+        result: Optional[EvaluationResult], error: Optional[Exception] = None
+    ) -> None:
         """Helper to update progress counter and invoke callback."""
         completed_count[0] += 1
-        if progress_callback:
-            progress_callback(completed_count[0], total_items, result)
+        if on_progress:
+            on_progress(completed_count[0], total_items, result, error)
 
     async def evaluate_item(
         index: int, item: Dict[str, Any]
@@ -821,7 +868,7 @@ async def _batch_evaluate_impl(
 
                 # Type narrowing: when dry_run=False, result is EvaluationResult
                 assert isinstance(eval_result, EvaluationResult)
-                update_progress(eval_result)
+                update_progress(eval_result, None)
                 return (index, eval_result, None)
 
             except Exception as e:
@@ -832,7 +879,7 @@ async def _batch_evaluate_impl(
                     extra={"batch_index": index, "error_type": type(e).__name__},
                 )
 
-                update_progress(None)
+                update_progress(None, e)
                 return (index, None, error_msg)
 
     # Create tasks for all items

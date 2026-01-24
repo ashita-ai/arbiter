@@ -245,7 +245,7 @@ For questions about usage:
 To set clear expectations:
 
 - **Hosted platform or UI** - Arbiter is a pure Python library
-- **Support for Python <3.10** - Modern type hints required
+- **Support for Python <3.11** - Modern type hints required
 - **Built-in dashboard** - Use external tools for visualization
 - **Non-LLM evaluators** - Focus is LLM-as-judge evaluation
 

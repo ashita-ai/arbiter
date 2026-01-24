@@ -157,16 +157,19 @@ def batch(
     evaluator_list = [e.strip() for e in evaluators.split(",")]
 
     async def run_batch() -> None:
-        def progress_callback(completed: int, total: int, result: Any) -> None:
+        def progress_handler(
+            completed: int, total: int, result: Any, error: Any
+        ) -> None:
             if verbose:
-                console.print(f"Progress: {completed}/{total}", end="\r")
+                status = "ok" if result else "err"
+                console.print(f"Progress: {completed}/{total} [{status}]", end="\r")
 
         result = await batch_evaluate(
             items=items,
             evaluators=evaluator_list,
             model=model,
             max_concurrency=max_concurrency,
-            progress_callback=progress_callback if verbose else None,
+            on_progress=progress_handler if verbose else None,
         )
 
         if verbose:

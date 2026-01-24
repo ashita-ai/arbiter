@@ -88,12 +88,13 @@ class TestBatchEvaluateFunction:
 
         callback_calls = []
 
-        def progress_callback(completed, total, latest_result):
+        def progress_handler(completed, total, latest_result, error):
             callback_calls.append(
                 {
                     "completed": completed,
                     "total": total,
                     "latest_result": latest_result,
+                    "error": error,
                 }
             )
 
@@ -101,7 +102,7 @@ class TestBatchEvaluateFunction:
             items=items,
             evaluators=["semantic"],
             llm_client=mock_llm_client,
-            progress_callback=progress_callback,
+            on_progress=progress_handler,
         )
 
         assert result.successful_items == 2
@@ -111,6 +112,7 @@ class TestBatchEvaluateFunction:
         assert callback_calls[1]["completed"] == 2
         assert callback_calls[1]["total"] == 2
         assert all(call["latest_result"] is not None for call in callback_calls)
+        assert all(call["error"] is None for call in callback_calls)
 
     @pytest.mark.asyncio
     async def test_batch_evaluate_partial_failures(self, mock_llm_client, mock_agent):

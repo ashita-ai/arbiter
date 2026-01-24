@@ -1017,3 +1017,410 @@ class TestBatchEvaluationResult:
         assert breakdown["by_evaluator"] == {}
         assert breakdown["by_model"] == {}
         assert breakdown["success_rate"] == 0.0
+
+
+class TestBatchEvaluationResultStatistics:
+    """Test suite for BatchEvaluationResult.statistics() method."""
+
+    def test_statistics_with_successful_results(self):
+        """Test statistics calculation with successful evaluation results."""
+        from arbiter_ai.core.models import (
+            BatchEvaluationResult,
+            EvaluationResult,
+            Score,
+        )
+
+        # Create evaluation results with known scores
+        results = [
+            EvaluationResult(
+                output="Test 1",
+                scores=[Score(name="semantic", value=0.80)],
+                overall_score=0.80,
+                passed=True,
+                processing_time=1.0,
+            ),
+            EvaluationResult(
+                output="Test 2",
+                scores=[Score(name="semantic", value=0.90)],
+                overall_score=0.90,
+                passed=True,
+                processing_time=1.0,
+            ),
+            EvaluationResult(
+                output="Test 3",
+                scores=[Score(name="semantic", value=0.70)],
+                overall_score=0.70,
+                passed=True,
+                processing_time=1.0,
+            ),
+            EvaluationResult(
+                output="Test 4",
+                scores=[Score(name="semantic", value=0.60)],
+                overall_score=0.60,
+                passed=False,
+                processing_time=1.0,
+            ),
+        ]
+
+        batch = BatchEvaluationResult(
+            results=results,
+            total_items=4,
+            successful_items=4,
+            failed_items=0,
+            processing_time=4.0,
+        )
+
+        stats = batch.statistics()
+
+        assert stats["count"] == 4
+        assert stats["mean"] == pytest.approx(0.75, rel=0.01)
+        assert stats["min"] == 0.60
+        assert stats["max"] == 0.90
+        assert stats["median"] == pytest.approx(0.75, rel=0.01)
+        assert stats["pass_rate"] == 0.75  # 3 out of 4 passed
+        assert stats["success_rate"] == 1.0  # All 4 succeeded
+        assert stats["std"] > 0  # Should have some standard deviation
+
+    def test_statistics_with_empty_results(self):
+        """Test statistics returns zeros for empty batch results."""
+        from arbiter_ai.core.models import BatchEvaluationResult
+
+        batch = BatchEvaluationResult(
+            results=[None, None],
+            total_items=2,
+            successful_items=0,
+            failed_items=2,
+            processing_time=1.0,
+        )
+
+        stats = batch.statistics()
+
+        assert stats["count"] == 0
+        assert stats["mean"] == 0.0
+        assert stats["std"] == 0.0
+        assert stats["min"] == 0.0
+        assert stats["max"] == 0.0
+        assert stats["median"] == 0.0
+        assert stats["pass_rate"] == 0.0
+        assert stats["success_rate"] == 0.0
+
+    def test_statistics_with_single_result(self):
+        """Test statistics with single result (std should be 0)."""
+        from arbiter_ai.core.models import (
+            BatchEvaluationResult,
+            EvaluationResult,
+            Score,
+        )
+
+        results = [
+            EvaluationResult(
+                output="Test 1",
+                scores=[Score(name="semantic", value=0.85)],
+                overall_score=0.85,
+                passed=True,
+                processing_time=1.0,
+            ),
+        ]
+
+        batch = BatchEvaluationResult(
+            results=results,
+            total_items=1,
+            successful_items=1,
+            failed_items=0,
+            processing_time=1.0,
+        )
+
+        stats = batch.statistics()
+
+        assert stats["count"] == 1
+        assert stats["mean"] == 0.85
+        assert stats["std"] == 0.0  # Single value has no std
+        assert stats["min"] == 0.85
+        assert stats["max"] == 0.85
+        assert stats["median"] == 0.85
+
+    def test_statistics_with_custom_threshold(self):
+        """Test pass_rate calculation with custom threshold."""
+        from arbiter_ai.core.models import (
+            BatchEvaluationResult,
+            EvaluationResult,
+            Score,
+        )
+
+        results = [
+            EvaluationResult(
+                output="Test 1",
+                scores=[Score(name="semantic", value=0.80)],
+                overall_score=0.80,
+                passed=True,
+                processing_time=1.0,
+            ),
+            EvaluationResult(
+                output="Test 2",
+                scores=[Score(name="semantic", value=0.85)],
+                overall_score=0.85,
+                passed=True,
+                processing_time=1.0,
+            ),
+            EvaluationResult(
+                output="Test 3",
+                scores=[Score(name="semantic", value=0.90)],
+                overall_score=0.90,
+                passed=True,
+                processing_time=1.0,
+            ),
+        ]
+
+        batch = BatchEvaluationResult(
+            results=results,
+            total_items=3,
+            successful_items=3,
+            failed_items=0,
+            processing_time=3.0,
+        )
+
+        # With high threshold, fewer should pass
+        stats = batch.statistics(threshold=0.88)
+        assert stats["pass_rate"] == pytest.approx(1 / 3, rel=0.01)
+
+        # With low threshold, all should pass
+        stats = batch.statistics(threshold=0.70)
+        assert stats["pass_rate"] == 1.0
+
+
+class TestEvaluationResultMerge:
+    """Test suite for EvaluationResult.merge() and merge_with() methods."""
+
+    def test_merge_two_results(self):
+        """Test merging two evaluation results."""
+        from arbiter_ai.core.models import EvaluationResult, LLMInteraction, Score
+
+        result1 = EvaluationResult(
+            output="Test output",
+            scores=[Score(name="semantic", value=0.80)],
+            overall_score=0.80,
+            passed=True,
+            processing_time=1.0,
+            interactions=[
+                LLMInteraction(
+                    prompt="prompt1",
+                    response="response1",
+                    model="gpt-4o",
+                    latency=0.5,
+                    purpose="semantic",
+                )
+            ],
+            metadata={"threshold": 0.7},
+        )
+
+        result2 = EvaluationResult(
+            output="Test output",
+            scores=[Score(name="factuality", value=0.90)],
+            overall_score=0.90,
+            passed=True,
+            processing_time=1.0,
+            interactions=[
+                LLMInteraction(
+                    prompt="prompt2",
+                    response="response2",
+                    model="gpt-4o",
+                    latency=0.5,
+                    purpose="factuality",
+                )
+            ],
+        )
+
+        merged = EvaluationResult.merge(result1, result2)
+
+        assert len(merged.scores) == 2
+        assert merged.scores[0].name == "semantic"
+        assert merged.scores[1].name == "factuality"
+        assert merged.overall_score == pytest.approx(
+            0.85, rel=0.01
+        )  # mean of 0.80 and 0.90
+        assert merged.passed is True
+        assert len(merged.interactions) == 2
+        assert merged.processing_time == 2.0
+        assert merged.metadata["merged_from"] == 2
+        assert merged.metadata["score_aggregation"] == "mean"
+
+    def test_merge_with_min_aggregation(self):
+        """Test merging with min score aggregation."""
+        from arbiter_ai.core.models import EvaluationResult, Score
+
+        result1 = EvaluationResult(
+            output="Test",
+            scores=[Score(name="semantic", value=0.80)],
+            overall_score=0.80,
+            passed=True,
+            processing_time=1.0,
+        )
+
+        result2 = EvaluationResult(
+            output="Test",
+            scores=[Score(name="factuality", value=0.60)],
+            overall_score=0.60,
+            passed=False,
+            processing_time=1.0,
+        )
+
+        merged = EvaluationResult.merge(result1, result2, score_aggregation="min")
+
+        assert merged.overall_score == 0.60
+        assert merged.passed is False  # Below threshold
+
+    def test_merge_with_max_aggregation(self):
+        """Test merging with max score aggregation."""
+        from arbiter_ai.core.models import EvaluationResult, Score
+
+        result1 = EvaluationResult(
+            output="Test",
+            scores=[Score(name="semantic", value=0.80)],
+            overall_score=0.80,
+            passed=True,
+            processing_time=1.0,
+        )
+
+        result2 = EvaluationResult(
+            output="Test",
+            scores=[Score(name="factuality", value=0.95)],
+            overall_score=0.95,
+            passed=True,
+            processing_time=1.0,
+        )
+
+        merged = EvaluationResult.merge(result1, result2, score_aggregation="max")
+
+        assert merged.overall_score == 0.95
+        assert merged.passed is True
+
+    def test_merge_single_result(self):
+        """Test that merging single result returns the same result."""
+        from arbiter_ai.core.models import EvaluationResult, Score
+
+        result = EvaluationResult(
+            output="Test",
+            scores=[Score(name="semantic", value=0.85)],
+            overall_score=0.85,
+            passed=True,
+            processing_time=1.0,
+        )
+
+        merged = EvaluationResult.merge(result)
+
+        assert merged is result  # Should return same object
+
+    def test_merge_no_results_raises(self):
+        """Test that merging no results raises ValueError."""
+        from arbiter_ai.core.models import EvaluationResult
+
+        with pytest.raises(ValueError, match="At least one result required"):
+            EvaluationResult.merge()
+
+    def test_merge_different_outputs_raises(self):
+        """Test that merging results with different outputs raises ValueError."""
+        from arbiter_ai.core.models import EvaluationResult, Score
+
+        result1 = EvaluationResult(
+            output="Output A",
+            scores=[Score(name="semantic", value=0.80)],
+            overall_score=0.80,
+            passed=True,
+            processing_time=1.0,
+        )
+
+        result2 = EvaluationResult(
+            output="Output B",
+            scores=[Score(name="factuality", value=0.90)],
+            overall_score=0.90,
+            passed=True,
+            processing_time=1.0,
+        )
+
+        with pytest.raises(
+            ValueError, match="Cannot merge results with different outputs"
+        ):
+            EvaluationResult.merge(result1, result2)
+
+    def test_merge_with_instance_method(self):
+        """Test merge_with() instance method."""
+        from arbiter_ai.core.models import EvaluationResult, Score
+
+        result1 = EvaluationResult(
+            output="Test",
+            scores=[Score(name="semantic", value=0.80)],
+            overall_score=0.80,
+            passed=True,
+            processing_time=1.0,
+        )
+
+        result2 = EvaluationResult(
+            output="Test",
+            scores=[Score(name="factuality", value=0.90)],
+            overall_score=0.90,
+            passed=True,
+            processing_time=1.0,
+        )
+
+        merged = result1.merge_with(result2)
+
+        assert len(merged.scores) == 2
+        assert merged.overall_score == pytest.approx(0.85, rel=0.01)
+
+    def test_merge_avoids_duplicate_scores(self):
+        """Test that merge avoids duplicate evaluator scores."""
+        from arbiter_ai.core.models import EvaluationResult, Score
+
+        result1 = EvaluationResult(
+            output="Test",
+            scores=[Score(name="semantic", value=0.80)],
+            overall_score=0.80,
+            passed=True,
+            processing_time=1.0,
+        )
+
+        result2 = EvaluationResult(
+            output="Test",
+            scores=[Score(name="semantic", value=0.90)],  # Same evaluator
+            overall_score=0.90,
+            passed=True,
+            processing_time=1.0,
+        )
+
+        merged = EvaluationResult.merge(result1, result2)
+
+        # Should only have one semantic score (first one kept)
+        assert len(merged.scores) == 1
+        assert merged.scores[0].name == "semantic"
+        assert merged.scores[0].value == 0.80
+
+    def test_merge_combines_errors(self):
+        """Test that merge combines errors from all results."""
+        from arbiter_ai.core.models import EvaluationResult, Score
+
+        result1 = EvaluationResult(
+            output="Test",
+            scores=[Score(name="semantic", value=0.80)],
+            overall_score=0.80,
+            passed=True,
+            partial=True,
+            errors={"factuality": "API timeout"},
+            processing_time=1.0,
+        )
+
+        result2 = EvaluationResult(
+            output="Test",
+            scores=[Score(name="relevance", value=0.90)],
+            overall_score=0.90,
+            passed=True,
+            partial=True,
+            errors={"groundedness": "Rate limited"},
+            processing_time=1.0,
+        )
+
+        merged = EvaluationResult.merge(result1, result2)
+
+        assert len(merged.errors) == 2
+        assert "factuality" in merged.errors
+        assert "groundedness" in merged.errors
+        assert merged.partial is True
