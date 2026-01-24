@@ -19,6 +19,7 @@ from arbiter_ai.storage.base import (
     RetrievalError,
     SaveError,
     StorageBackend,
+    sanitize_url,
 )
 
 logger = logging.getLogger(__name__)
@@ -71,6 +72,7 @@ class PostgresStorage(StorageBackend):
         Note: Schema and tables should be created via Alembic migrations.
         Run 'alembic upgrade head' before using this storage backend.
         """
+        # Create connection pool - sanitize errors to prevent credential leakage
         try:
             self.pool = await asyncpg.create_pool(
                 self.database_url,
@@ -78,16 +80,21 @@ class PostgresStorage(StorageBackend):
                 max_size=self.max_pool_size,
                 command_timeout=60,
             )
-            logger.info(
-                f"PostgreSQL connection pool created (min={self.min_pool_size}, max={self.max_pool_size})"
-            )
-
-            # Verify schema exists
-            await self._verify_schema()
-
         except Exception as e:
-            logger.error(f"Failed to connect to PostgreSQL: {e}")
-            raise ConnectionError(f"PostgreSQL connection failed: {e}") from e
+            safe_url = sanitize_url(self.database_url) if self.database_url else "N/A"
+            logger.error(
+                f"Failed to connect to PostgreSQL at {safe_url}: {type(e).__name__}"
+            )
+            raise ConnectionError(
+                "PostgreSQL connection failed. Check DATABASE_URL and network connectivity."
+            ) from e
+
+        logger.info(
+            f"PostgreSQL connection pool created (min={self.min_pool_size}, max={self.max_pool_size})"
+        )
+
+        # Verify schema exists (raises ConnectionError with helpful message if missing)
+        await self._verify_schema()
 
     async def close(self) -> None:
         """Close connection pool."""

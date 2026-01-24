@@ -17,6 +17,7 @@ from arbiter_ai.storage.base import (
     RetrievalError,
     SaveError,
     StorageBackend,
+    sanitize_url,
 )
 
 logger = logging.getLogger(__name__)
@@ -72,8 +73,14 @@ class RedisStorage(StorageBackend):
             logger.info(f"Redis connection established (TTL={self.ttl}s)")
 
         except Exception as e:
-            logger.error(f"Failed to connect to Redis: {e}")
-            raise ConnectionError(f"Redis connection failed: {e}") from e
+            # Sanitize any URL in error message to prevent credential leakage
+            safe_url = sanitize_url(self.redis_url) if self.redis_url else "N/A"
+            logger.error(
+                f"Failed to connect to Redis at {safe_url}: {type(e).__name__}"
+            )
+            raise ConnectionError(
+                "Redis connection failed. Check REDIS_URL and network connectivity."
+            ) from e
 
     async def close(self) -> None:
         """Close Redis connection."""

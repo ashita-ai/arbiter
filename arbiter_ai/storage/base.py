@@ -3,10 +3,33 @@
 All storage backends must implement this async interface.
 """
 
+import re
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
 from arbiter_ai.core.models import BatchEvaluationResult, EvaluationResult
+
+
+def sanitize_url(url: str) -> str:
+    """Remove credentials from database/cache URL for safe logging.
+
+    Replaces username:password in URLs with ***:*** to prevent
+    credential leakage in error messages and logs.
+
+    Args:
+        url: Connection URL that may contain credentials
+
+    Returns:
+        URL with credentials replaced by ***:***
+
+    Example:
+        >>> sanitize_url("postgresql://user:secret@localhost/db")
+        'postgresql://***:***@localhost/db'
+        >>> sanitize_url("redis://:password@redis.example.com:6379")
+        'redis://***:***@redis.example.com:6379'
+    """
+    # Pattern matches ://user:pass@ or ://:pass@ (Redis often omits user)
+    return re.sub(r"://([^:]*):([^@]*)@", "://***:***@", url)
 
 
 class StorageBackend(ABC):
