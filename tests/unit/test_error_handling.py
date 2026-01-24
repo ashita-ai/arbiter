@@ -505,3 +505,254 @@ class TestMultiEvaluatorErrorHandling:
                     found_failure_log = True
                     break
             assert found_failure_log, "Should have logged evaluator failure"
+
+
+class TestExceptionHierarchy:
+    """Test suite for the exception class hierarchy."""
+
+    def test_arbiter_error_base(self):
+        """Test ArbiterError base class."""
+        from arbiter_ai.core.exceptions import ArbiterError
+
+        error = ArbiterError("Test error")
+        assert str(error) == "Test error"
+        assert error.message == "Test error"
+        assert error.details == {}
+
+        error_with_details = ArbiterError("Test", details={"key": "value"})
+        assert "key=value" in str(error_with_details)
+        assert error_with_details.details == {"key": "value"}
+
+    def test_arbiter_error_inheritance(self):
+        """Test that all exceptions inherit from ArbiterError."""
+        from arbiter_ai.core.exceptions import (
+            ArbiterError,
+            AuthenticationError,
+            CircuitBreakerOpenError,
+            ConfigurationError,
+            ContextLengthError,
+            CostLimitError,
+            EvaluatorConfigError,
+            EvaluatorError,
+            EvaluatorNotFoundError,
+            ModelNotFoundError,
+            ModelProviderError,
+            PluginError,
+            RateLimitError,
+            StorageError,
+            TimeoutError,
+            ValidationError,
+        )
+
+        # All exceptions should be subclasses of ArbiterError
+        assert issubclass(ConfigurationError, ArbiterError)
+        assert issubclass(ModelProviderError, ArbiterError)
+        assert issubclass(EvaluatorError, ArbiterError)
+        assert issubclass(StorageError, ArbiterError)
+        assert issubclass(PluginError, ArbiterError)
+        assert issubclass(ValidationError, ArbiterError)
+        assert issubclass(TimeoutError, ArbiterError)
+        assert issubclass(CostLimitError, ArbiterError)
+        assert issubclass(CircuitBreakerOpenError, ArbiterError)
+
+        # Model provider subclasses
+        assert issubclass(RateLimitError, ModelProviderError)
+        assert issubclass(AuthenticationError, ModelProviderError)
+        assert issubclass(ModelNotFoundError, ModelProviderError)
+        assert issubclass(ContextLengthError, ModelProviderError)
+
+        # Evaluator subclasses
+        assert issubclass(EvaluatorNotFoundError, EvaluatorError)
+        assert issubclass(EvaluatorConfigError, EvaluatorError)
+
+    def test_rate_limit_error(self):
+        """Test RateLimitError with retry_after attribute."""
+        from arbiter_ai.core.exceptions import RateLimitError
+
+        error = RateLimitError(
+            "Rate limit exceeded",
+            provider="openai",
+            model="gpt-4o",
+            retry_after=60.0,
+        )
+        assert error.retry_after == 60.0
+        assert error.provider == "openai"
+        assert error.model == "gpt-4o"
+
+        # Default message
+        error_default = RateLimitError()
+        assert error_default.message == "Rate limit exceeded"
+
+    def test_authentication_error(self):
+        """Test AuthenticationError."""
+        from arbiter_ai.core.exceptions import AuthenticationError
+
+        error = AuthenticationError(
+            "Invalid API key",
+            provider="anthropic",
+        )
+        assert error.provider == "anthropic"
+        assert "Invalid API key" in str(error)
+
+    def test_model_not_found_error(self):
+        """Test ModelNotFoundError."""
+        from arbiter_ai.core.exceptions import ModelNotFoundError
+
+        error = ModelNotFoundError(
+            "Model not found",
+            provider="openai",
+            model="gpt-5",
+        )
+        assert error.model == "gpt-5"
+        assert error.provider == "openai"
+
+    def test_context_length_error(self):
+        """Test ContextLengthError with token attributes."""
+        from arbiter_ai.core.exceptions import ContextLengthError
+
+        error = ContextLengthError(
+            "Input too long",
+            max_tokens=128000,
+            requested_tokens=150000,
+            provider="openai",
+            model="gpt-4o",
+        )
+        assert error.max_tokens == 128000
+        assert error.requested_tokens == 150000
+        assert error.provider == "openai"
+
+    def test_evaluator_not_found_error(self):
+        """Test EvaluatorNotFoundError with available list."""
+        from arbiter_ai.core.exceptions import EvaluatorNotFoundError
+
+        available = ["semantic", "custom_criteria", "factuality"]
+        error = EvaluatorNotFoundError(
+            evaluator_name="invalid_evaluator",
+            available=available,
+        )
+        assert error.evaluator_name == "invalid_evaluator"
+        assert error.available == available
+        assert error.evaluator == "invalid_evaluator"
+        assert "invalid_evaluator" in str(error)
+        assert "semantic" in str(error)
+
+    def test_evaluator_config_error(self):
+        """Test EvaluatorConfigError."""
+        from arbiter_ai.core.exceptions import EvaluatorConfigError
+
+        error = EvaluatorConfigError(
+            "Invalid threshold",
+            evaluator="custom_criteria",
+            details={"threshold": -0.5},
+        )
+        assert error.evaluator == "custom_criteria"
+        assert "Invalid threshold" in str(error)
+
+    def test_validation_error_with_field(self):
+        """Test ValidationError with field attribute."""
+        from arbiter_ai.core.exceptions import ValidationError
+
+        error = ValidationError(
+            "Output cannot be empty",
+            field="output",
+        )
+        assert error.field == "output"
+        assert "Output cannot be empty" in str(error)
+
+        # Without field (backward compatible)
+        error_no_field = ValidationError("Generic error")
+        assert error_no_field.field is None
+
+    def test_timeout_error_with_timeout_value(self):
+        """Test TimeoutError with timeout attribute."""
+        from arbiter_ai.core.exceptions import TimeoutError
+
+        error = TimeoutError(
+            "Evaluation timed out",
+            timeout=30.0,
+        )
+        assert error.timeout == 30.0
+
+    def test_cost_limit_error(self):
+        """Test CostLimitError with cost attributes."""
+        from arbiter_ai.core.exceptions import CostLimitError
+
+        error = CostLimitError(
+            "Cost limit exceeded",
+            limit=1.00,
+            estimated_cost=1.50,
+            currency="USD",
+        )
+        assert error.limit == 1.00
+        assert error.estimated_cost == 1.50
+        assert error.currency == "USD"
+
+        # Default values
+        error_default = CostLimitError()
+        assert error_default.message == "Cost limit exceeded"
+        assert error_default.currency == "USD"
+
+    def test_model_provider_error_with_provider_and_model(self):
+        """Test ModelProviderError with provider and model attributes."""
+        from arbiter_ai.core.exceptions import ModelProviderError
+
+        error = ModelProviderError(
+            "API error",
+            provider="google",
+            model="gemini-1.5-pro",
+        )
+        assert error.provider == "google"
+        assert error.model == "gemini-1.5-pro"
+
+    def test_evaluator_error_with_evaluator_name(self):
+        """Test EvaluatorError with evaluator attribute."""
+        from arbiter_ai.core.exceptions import EvaluatorError
+
+        error = EvaluatorError(
+            "Evaluation failed",
+            evaluator="semantic",
+        )
+        assert error.evaluator == "semantic"
+
+    def test_exception_can_be_caught_by_base_class(self):
+        """Test that specific exceptions can be caught by base class."""
+        from arbiter_ai.core.exceptions import (
+            ArbiterError,
+            EvaluatorError,
+            EvaluatorNotFoundError,
+            ModelProviderError,
+            RateLimitError,
+        )
+
+        # RateLimitError can be caught as ModelProviderError or ArbiterError
+        try:
+            raise RateLimitError("Rate limit", retry_after=60.0)
+        except ModelProviderError as e:
+            assert isinstance(e, RateLimitError)
+            assert e.retry_after == 60.0
+
+        try:
+            raise RateLimitError("Rate limit")
+        except ArbiterError:
+            pass  # Should be caught
+
+        # EvaluatorNotFoundError can be caught as EvaluatorError
+        try:
+            raise EvaluatorNotFoundError("invalid", ["semantic"])
+        except EvaluatorError as e:
+            assert isinstance(e, EvaluatorNotFoundError)
+
+    def test_all_exceptions_exported_from_package(self):
+        """Test that all exceptions are exported from main package."""
+        from arbiter_ai import (
+            ArbiterError,
+            CostLimitError,
+            EvaluatorNotFoundError,
+            RateLimitError,
+        )
+
+        # Just verify they can be imported
+        assert ArbiterError is not None
+        assert RateLimitError is not None
+        assert EvaluatorNotFoundError is not None
+        assert CostLimitError is not None

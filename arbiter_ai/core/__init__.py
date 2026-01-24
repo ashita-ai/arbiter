@@ -24,11 +24,18 @@ from .estimation import (
 )
 from .exceptions import (
     ArbiterError,
+    AuthenticationError,
     CircuitBreakerOpenError,
     ConfigurationError,
+    ContextLengthError,
+    CostLimitError,
+    EvaluatorConfigError,
     EvaluatorError,
+    EvaluatorNotFoundError,
+    ModelNotFoundError,
     ModelProviderError,
     PluginError,
+    RateLimitError,
     StorageError,
     TimeoutError,
     ValidationError,
@@ -89,15 +96,25 @@ __all__ = [
     # Logging
     "configure_logging",
     "get_logger",
-    # Exceptions
+    # Exceptions - Base
     "ArbiterError",
     "ConfigurationError",
+    # Exceptions - Model Provider
     "ModelProviderError",
+    "RateLimitError",
+    "AuthenticationError",
+    "ModelNotFoundError",
+    "ContextLengthError",
+    # Exceptions - Evaluator
     "EvaluatorError",
+    "EvaluatorNotFoundError",
+    "EvaluatorConfigError",
+    # Exceptions - Other
     "ValidationError",
     "StorageError",
     "PluginError",
     "TimeoutError",
+    "CostLimitError",
     "CircuitBreakerOpenError",
     # Circuit Breaker
     "CircuitBreaker",
