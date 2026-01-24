@@ -729,3 +729,258 @@ class TestMonitorContextManager:
 
         # After exit, metrics should be logged
         assert "Session metrics" in caplog.text
+
+
+class TestMemoryCacheBackendAdvanced:
+    """Additional tests for MemoryCacheBackend edge cases."""
+
+    @pytest.mark.asyncio
+    async def test_cache_ttl_expiration(self):
+        """Test that expired cache entries are removed on get."""
+        import time
+        from unittest.mock import patch
+
+        from arbiter_ai.core.middleware import MemoryCacheBackend
+
+        backend = MemoryCacheBackend(max_size=100)
+
+        # Set a value with 1 second TTL
+        await backend.set("key1", "value1", ttl=1)
+
+        # Value should exist immediately
+        result = await backend.get("key1")
+        assert result == "value1"
+
+        # Mock time in middleware module to simulate expiration
+        original_time = time.time()
+        with patch(
+            "arbiter_ai.core.middleware.time.time", return_value=original_time + 2
+        ):
+            # Value should be expired and return None
+            result = await backend.get("key1")
+            assert result is None
+
+            # Key should be removed from cache
+            assert backend.size() == 0
+
+    @pytest.mark.asyncio
+    async def test_cache_update_existing_key(self):
+        """Test that updating an existing key works correctly."""
+        from arbiter_ai.core.middleware import MemoryCacheBackend
+
+        backend = MemoryCacheBackend(max_size=100)
+
+        # Set initial value
+        await backend.set("key1", "value1")
+        assert await backend.get("key1") == "value1"
+        assert backend.size() == 1
+
+        # Update with new value
+        await backend.set("key1", "value2")
+        assert await backend.get("key1") == "value2"
+        assert backend.size() == 1  # Still only 1 entry
+
+
+class TestRedisCacheBackend:
+    """Tests for RedisCacheBackend with mocking."""
+
+    def test_init_requires_redis_url(self):
+        """Test that initialization fails without Redis URL."""
+        import os
+        from unittest.mock import patch
+
+        from arbiter_ai.core.middleware import RedisCacheBackend
+
+        # Clear environment variable if set
+        with patch.dict(os.environ, {}, clear=True):
+            with pytest.raises(ValueError, match="Redis URL required"):
+                RedisCacheBackend(redis_url=None)
+
+    def test_init_with_url(self):
+        """Test initialization with Redis URL."""
+        from arbiter_ai.core.middleware import RedisCacheBackend
+
+        backend = RedisCacheBackend(redis_url="redis://localhost:6379")
+        assert backend._redis_url == "redis://localhost:6379"
+        assert backend._key_prefix == "arbiter:cache:"
+        assert backend._default_ttl == 3600
+
+    def test_make_key(self):
+        """Test key prefixing."""
+        from arbiter_ai.core.middleware import RedisCacheBackend
+
+        backend = RedisCacheBackend(
+            redis_url="redis://localhost:6379", key_prefix="test:"
+        )
+        assert backend._make_key("mykey") == "test:mykey"
+
+    @pytest.mark.asyncio
+    async def test_connect_and_operations(self):
+        """Test Redis operations with mocked client."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from arbiter_ai.core.middleware import RedisCacheBackend
+
+        backend = RedisCacheBackend(redis_url="redis://localhost:6379")
+
+        # Create mock Redis client
+        mock_client = MagicMock()
+        mock_client.ping = AsyncMock()
+        mock_client.get = AsyncMock(return_value="cached_value")
+        mock_client.setex = AsyncMock()
+        mock_client.delete = AsyncMock()
+        mock_client.close = AsyncMock()
+
+        with patch("redis.asyncio.from_url", AsyncMock(return_value=mock_client)):
+            await backend.connect()
+            assert backend._connected is True
+
+            # Test get
+            result = await backend.get("test_key")
+            assert result == "cached_value"
+            mock_client.get.assert_called_with("arbiter:cache:test_key")
+
+            # Test set
+            await backend.set("test_key", "test_value", ttl=60)
+            mock_client.setex.assert_called_with(
+                "arbiter:cache:test_key", 60, "test_value"
+            )
+
+            # Test set with default TTL
+            await backend.set("test_key2", "test_value2")
+            mock_client.setex.assert_called_with(
+                "arbiter:cache:test_key2", 3600, "test_value2"
+            )
+
+            # Test delete
+            await backend.delete("test_key")
+            mock_client.delete.assert_called_with("arbiter:cache:test_key")
+
+            # Test size returns -1 for Redis
+            assert backend.size() == -1
+
+            # Test close
+            await backend.close()
+            assert backend._connected is False
+            mock_client.close.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_context_manager(self):
+        """Test async context manager."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from arbiter_ai.core.middleware import RedisCacheBackend
+
+        backend = RedisCacheBackend(redis_url="redis://localhost:6379")
+
+        mock_client = MagicMock()
+        mock_client.ping = AsyncMock()
+        mock_client.close = AsyncMock()
+
+        with patch("redis.asyncio.from_url", AsyncMock(return_value=mock_client)):
+            async with backend:
+                assert backend._connected is True
+
+            assert backend._connected is False
+
+    @pytest.mark.asyncio
+    async def test_auto_connect_on_operations(self):
+        """Test that operations auto-connect if not connected."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from arbiter_ai.core.middleware import RedisCacheBackend
+
+        backend = RedisCacheBackend(redis_url="redis://localhost:6379")
+
+        mock_client = MagicMock()
+        mock_client.ping = AsyncMock()
+        mock_client.get = AsyncMock(return_value=None)
+        mock_client.setex = AsyncMock()
+        mock_client.delete = AsyncMock()
+        mock_client.close = AsyncMock()
+
+        with patch("redis.asyncio.from_url", AsyncMock(return_value=mock_client)):
+            # These should auto-connect
+            await backend.get("key")
+            assert backend._connected is True
+
+            backend._connected = False
+            await backend.set("key", "value")
+            assert backend._connected is True
+
+            backend._connected = False
+            await backend.delete("key")
+            assert backend._connected is True
+
+    @pytest.mark.asyncio
+    async def test_operations_handle_errors(self):
+        """Test that operations handle errors gracefully."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from arbiter_ai.core.middleware import RedisCacheBackend
+
+        backend = RedisCacheBackend(redis_url="redis://localhost:6379")
+
+        mock_client = MagicMock()
+        mock_client.ping = AsyncMock()
+        mock_client.get = AsyncMock(side_effect=Exception("Redis error"))
+        mock_client.setex = AsyncMock(side_effect=Exception("Redis error"))
+        mock_client.delete = AsyncMock(side_effect=Exception("Redis error"))
+
+        with patch("redis.asyncio.from_url", AsyncMock(return_value=mock_client)):
+            await backend.connect()
+
+            # get should return None on error
+            result = await backend.get("key")
+            assert result is None
+
+            # set should not raise
+            await backend.set("key", "value")
+
+            # delete should not raise
+            await backend.delete("key")
+
+    @pytest.mark.asyncio
+    async def test_clear_with_keys(self):
+        """Test clear operation scans and deletes keys."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from arbiter_ai.core.middleware import RedisCacheBackend
+
+        backend = RedisCacheBackend(redis_url="redis://localhost:6379")
+
+        mock_client = MagicMock()
+        mock_client.ping = AsyncMock()
+        # Simulate scan returning some keys, then no more
+        mock_client.scan = AsyncMock(
+            side_effect=[
+                (123, ["arbiter:cache:key1", "arbiter:cache:key2"]),
+                (0, []),  # cursor 0 means done
+            ]
+        )
+        mock_client.delete = AsyncMock()
+
+        with patch("redis.asyncio.from_url", AsyncMock(return_value=mock_client)):
+            await backend.connect()
+            await backend.clear()
+
+            # Should have deleted the keys
+            mock_client.delete.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_clear_handles_error(self):
+        """Test clear handles errors gracefully."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from arbiter_ai.core.middleware import RedisCacheBackend
+
+        backend = RedisCacheBackend(redis_url="redis://localhost:6379")
+
+        mock_client = MagicMock()
+        mock_client.ping = AsyncMock()
+        mock_client.scan = AsyncMock(side_effect=Exception("Scan failed"))
+
+        with patch("redis.asyncio.from_url", AsyncMock(return_value=mock_client)):
+            await backend.connect()
+            # Should not raise
+            await backend.clear()
