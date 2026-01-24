@@ -64,7 +64,7 @@ from pydantic import BaseModel, Field
 from pydantic_ai import Agent, ModelSettings
 
 from .circuit_breaker import CircuitBreaker
-from .exceptions import ModelProviderError
+from .exceptions import AuthenticationError, ModelProviderError, RateLimitError
 from .logging import get_logger
 from .retry import RETRY_STANDARD, with_retry
 from .types import Provider
@@ -381,23 +381,27 @@ class LLMClient:
         except Exception as e:
             latency = time.time() - start_time
             error_msg = str(e).lower()
-            details = {"provider": self.provider.value}
+            provider_name = self.provider.value
 
             if "rate limit" in error_msg:
-                details["error_code"] = "rate_limit"
                 logger.warning(
                     "Rate limit exceeded for %s after %.2fs", model_str, latency
                 )
-                raise ModelProviderError("Rate limit exceeded", details=details) from e
+                raise RateLimitError(
+                    "Rate limit exceeded",
+                    provider=provider_name,
+                    model=provider_model,
+                ) from e
             elif (
                 "api key" in error_msg
                 or "unauthorized" in error_msg
                 or "authentication" in error_msg
             ):
-                details["error_code"] = "authentication"
                 logger.error("Authentication failed for %s", model_str)
-                raise ModelProviderError(
-                    "Authentication failed", details=details
+                raise AuthenticationError(
+                    "Authentication failed",
+                    provider=provider_name,
+                    model=provider_model,
                 ) from e
             else:
                 logger.error(
@@ -407,7 +411,9 @@ class LLMClient:
                     str(e),
                 )
                 raise ModelProviderError(
-                    f"LLM API error via PydanticAI: {e!s}", details=details
+                    f"LLM API error via PydanticAI: {e!s}",
+                    provider=provider_name,
+                    model=provider_model,
                 ) from e
 
     @with_retry(RETRY_STANDARD)
