@@ -88,7 +88,7 @@ class GroundednessResponse(BaseModel):
             self.ungrounded_statements
         )
         if (
-            self.confidence > 0.7
+            self.confidence > 0.9
             and total_statements == 0
             and self.score not in (0.0, 1.0)
         ):

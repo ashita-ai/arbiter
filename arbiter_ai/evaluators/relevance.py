@@ -88,7 +88,7 @@ class RelevanceResponse(BaseModel):
             + len(self.missing_points)
             + len(self.irrelevant_content)
         )
-        if self.confidence > 0.7 and total_points == 0 and self.score not in (0.0, 1.0):
+        if self.confidence > 0.9 and total_points == 0 and self.score not in (0.0, 1.0):
             raise ValueError(
                 "High confidence scores (>0.9) require at least one point to be identified"
             )

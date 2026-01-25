@@ -8,6 +8,7 @@ Reads DATABASE_URL from environment for database connection.
 import json
 import logging
 import os
+import re
 import uuid
 from typing import Any, Optional
 
@@ -60,6 +61,18 @@ class PostgresStorage(StorageBackend):
         if not self.database_url:
             raise ValueError(
                 "DATABASE_URL must be provided or set in environment variables"
+            )
+
+        # Validate schema name to prevent SQL injection
+        # Schema names must be valid PostgreSQL identifiers:
+        # - Start with a letter or underscore
+        # - Contain only letters, digits, and underscores
+        # - Maximum 63 characters (PostgreSQL limit)
+        if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]{0,62}$", schema):
+            raise ValueError(
+                f"Invalid schema name '{schema}'. Schema names must start with a letter "
+                "or underscore, contain only letters, digits, and underscores, "
+                "and be at most 63 characters."
             )
 
         self.schema = schema

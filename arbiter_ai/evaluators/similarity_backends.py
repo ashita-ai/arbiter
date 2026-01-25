@@ -17,7 +17,7 @@ Example:
 from typing import Any, Dict, Protocol
 
 import numpy as np
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from ..core.llm_client import LLMClient
 
@@ -31,6 +31,12 @@ __all__ = [
 
 class SimilarityResult(BaseModel):
     """Result from similarity computation."""
+
+    model_config = ConfigDict(
+        extra="forbid",
+        str_strip_whitespace=True,
+        validate_assignment=True,
+    )
 
     score: float = Field(
         ge=0.0, le=1.0, description="Similarity score (0=different, 1=identical)"

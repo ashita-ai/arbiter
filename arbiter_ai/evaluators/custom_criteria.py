@@ -93,7 +93,7 @@ class CustomCriteriaResponse(BaseModel):
         """Ensure criteria are identified for non-trivial assessments."""
         total_criteria = len(self.criteria_met) + len(self.criteria_not_met)
         if (
-            self.confidence > 0.7
+            self.confidence > 0.9
             and total_criteria == 0
             and self.score not in (0.0, 1.0)
         ):
