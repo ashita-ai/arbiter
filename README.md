@@ -197,7 +197,22 @@ Arbiter works with any model via PydanticAI:
 - Mistral
 - Cohere
 
-Set the appropriate API key as an environment variable.
+## Environment Variables
+
+**API Keys** (set for your provider):
+```bash
+export OPENAI_API_KEY=sk-...
+export ANTHROPIC_API_KEY=sk-ant-...
+export GOOGLE_API_KEY=...
+export GROQ_API_KEY=gsk_...
+```
+
+**Configuration Options**:
+```bash
+export ARBITER_DEFAULT_MODEL=gpt-4o-mini     # Default model for evaluations
+export ARBITER_DEFAULT_THRESHOLD=0.7         # Default pass/fail threshold (0.0-1.0)
+export ARBITER_LOG_LEVEL=INFO                # Logging level (DEBUG, INFO, WARNING, ERROR)
+```
 
 ## Examples
 
@@ -208,6 +223,8 @@ python examples/custom_criteria_example.py
 python examples/pairwise_comparison_example.py
 python examples/batch_evaluation_example.py
 python examples/observability_example.py
+python examples/groundedness_example.py      # RAG source attribution
+python examples/relevance_example.py         # Query-output alignment
 ```
 
 ## Development
