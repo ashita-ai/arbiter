@@ -33,7 +33,7 @@ from datetime import datetime, timezone
 from typing import Dict, Optional
 
 import litellm
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 __all__ = ["ModelPricing", "CostCalculator", "get_cost_calculator"]
 
@@ -64,6 +64,12 @@ class ModelPricing(BaseModel):
         ...     last_updated=datetime.now()
         ... )
     """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        str_strip_whitespace=True,
+        validate_assignment=True,
+    )
 
     id: str = Field(..., description="Model identifier")
     vendor: str = Field(..., description="Provider name")

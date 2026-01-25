@@ -22,7 +22,7 @@ Example:
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 __all__ = ["FactualityVerifier", "VerificationResult"]
 
@@ -37,6 +37,12 @@ class VerificationResult(BaseModel):
         explanation: Human-readable explanation of verification process
         source: Source of verification (e.g., "tavily_search", "wikipedia")
     """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        str_strip_whitespace=True,
+        validate_assignment=True,
+    )
 
     is_verified: bool = Field(
         ..., description="Whether the claim was verified as factual"
