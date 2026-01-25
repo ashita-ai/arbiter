@@ -93,7 +93,7 @@ class FactualityResponse(BaseModel):
             + len(self.non_factual_claims)
             + len(self.uncertain_claims)
         )
-        if self.confidence > 0.7 and total_claims == 0 and self.score not in (0.0, 1.0):
+        if self.confidence > 0.9 and total_claims == 0 and self.score not in (0.0, 1.0):
             raise ValueError(
                 "High confidence scores (>0.9) require at least one claim to be identified"
             )
