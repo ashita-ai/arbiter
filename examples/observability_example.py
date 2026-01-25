@@ -110,10 +110,11 @@ async def example2_multi_evaluator_transparency():
     print("Example 2: Multi-Evaluator Transparency")
     print("=" * 70)
 
+    # Note: semantic evaluator requires reference; custom_criteria uses criteria
     result = await evaluate(
         output="Our product is revolutionary and will change everything!",
         criteria="Professional tone, factual accuracy, no hyperbole",
-        evaluators=["semantic", "custom_criteria"],
+        evaluators=["custom_criteria", "factuality"],
         model="gpt-4o-mini",
     )
 
