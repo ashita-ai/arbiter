@@ -751,10 +751,11 @@ class TestMemoryCacheBackendAdvanced:
         result = await backend.get("key1")
         assert result == "value1"
 
-        # Mock time in middleware module to simulate expiration
+        # Mock time in cache_backends module to simulate expiration
         original_time = time.time()
         with patch(
-            "arbiter_ai.core.middleware.time.time", return_value=original_time + 2
+            "arbiter_ai.core.middleware.cache_backends.time.time",
+            return_value=original_time + 2,
         ):
             # Value should be expired and return None
             result = await backend.get("key1")
