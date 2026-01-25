@@ -24,6 +24,10 @@ from .custom_criteria import (
 )
 from .factuality import FactualityEvaluator, FactualityResponse
 from .groundedness import GroundednessEvaluator, GroundednessResponse
+from .instruction_following import (
+    InstructionFollowingEvaluator,
+    InstructionFollowingResponse,
+)
 from .pairwise import (
     AspectComparison,
     PairwiseComparisonEvaluator,
@@ -50,6 +54,8 @@ __all__ = [
     "FactualityResponse",
     "GroundednessEvaluator",
     "GroundednessResponse",
+    "InstructionFollowingEvaluator",
+    "InstructionFollowingResponse",
     "RelevanceEvaluator",
     "RelevanceResponse",
     "PairwiseComparisonEvaluator",
