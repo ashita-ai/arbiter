@@ -60,7 +60,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, cast
 import logfire
 from dotenv import load_dotenv
 from openai.types.chat import ChatCompletionMessageParam
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic_ai import Agent, ModelSettings
 
 from .circuit_breaker import CircuitBreaker
@@ -103,6 +103,12 @@ class LLMResponse(BaseModel):
         ...     model="gpt-4"
         ... )
     """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        str_strip_whitespace=True,
+        validate_assignment=True,
+    )
 
     content: str
     usage: Dict[str, int] = Field(default_factory=dict)

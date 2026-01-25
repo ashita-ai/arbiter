@@ -17,7 +17,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from .exceptions import ModelProviderError
 from .llm_client import LLMClient
@@ -91,6 +91,12 @@ class PooledConnection:
 
 class PoolConfig(BaseModel):
     """Configuration for LLM client connection pool."""
+
+    model_config = ConfigDict(
+        extra="forbid",
+        str_strip_whitespace=True,
+        validate_assignment=True,
+    )
 
     max_pool_size: int = Field(
         default=10, ge=1, le=100, description="Maximum number of connections per pool"

@@ -32,7 +32,7 @@ import time
 from abc import abstractmethod
 from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Type
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from ..core.exceptions import EvaluatorError
 from ..core.interfaces import BaseEvaluator
@@ -55,6 +55,12 @@ class EvaluatorResponse(BaseModel):
     It ensures all evaluators return structured data with scores
     and explanations.
     """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        str_strip_whitespace=True,
+        validate_assignment=True,
+    )
 
     score: float = Field(..., ge=0.0, le=1.0, description="Score between 0 and 1")
     confidence: float = Field(
