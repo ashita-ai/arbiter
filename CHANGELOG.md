@@ -9,8 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Filtering methods for `BatchEvaluationResult`: `filter()`, `slice()`, `get_failed_items()`, `get_results_with_indices()`
-- InstructionFollowingEvaluator for agent/pipeline validation
 - Environment variable configuration support (ARBITER_DEFAULT_MODEL, ARBITER_DEFAULT_THRESHOLD, etc.)
+- Examples for GroundednessEvaluator and RelevanceEvaluator
+
+### Planned
+- InstructionFollowingEvaluator for agent/pipeline validation
 - Custom exception hierarchy with specific error types (RateLimitError, AuthenticationError, etc.)
 - Query performance monitoring for storage backends
 - EditorConfig for consistent code formatting
