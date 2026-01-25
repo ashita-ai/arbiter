@@ -780,3 +780,262 @@ class TestBatchExportMethods:
 
         with pytest.raises(ImportError, match="pandas is required"):
             batch_with_results.to_dataframe()
+
+
+class TestBatchEvaluationResultFiltering:
+    """Tests for BatchEvaluationResult filtering methods (#73)."""
+
+    @pytest.fixture
+    def batch_with_varied_results(self) -> BatchEvaluationResult:
+        """Create a BatchEvaluationResult with varied scores for filtering tests."""
+        return BatchEvaluationResult(
+            results=[
+                EvaluationResult(
+                    output="High quality output",
+                    reference="Reference text",
+                    overall_score=0.95,
+                    passed=True,
+                    processing_time=0.3,
+                    scores=[Score(name="semantic", value=0.95, confidence=0.9)],
+                ),
+                EvaluationResult(
+                    output="Medium quality output",
+                    reference="Reference text",
+                    overall_score=0.75,
+                    passed=True,
+                    processing_time=0.4,
+                    scores=[Score(name="semantic", value=0.75, confidence=0.85)],
+                ),
+                EvaluationResult(
+                    output="Low quality output",
+                    reference="Reference text",
+                    overall_score=0.45,
+                    passed=False,
+                    processing_time=0.35,
+                    scores=[Score(name="semantic", value=0.45, confidence=0.8)],
+                ),
+                None,  # Failed item
+                EvaluationResult(
+                    output="Borderline output",
+                    reference="Reference text",
+                    overall_score=0.70,
+                    passed=False,
+                    processing_time=0.5,
+                    scores=[Score(name="semantic", value=0.70, confidence=0.75)],
+                ),
+            ],
+            errors=[
+                {
+                    "index": 3,
+                    "item": {"output": "Error output", "reference": "Ref"},
+                    "error": "Evaluation timed out",
+                }
+            ],
+            total_items=5,
+            successful_items=4,
+            failed_items=1,
+            processing_time=2.0,
+        )
+
+    @pytest.fixture
+    def empty_batch(self) -> BatchEvaluationResult:
+        """Create an empty BatchEvaluationResult."""
+        return BatchEvaluationResult(
+            results=[],
+            total_items=0,
+            successful_items=0,
+            failed_items=0,
+            processing_time=0.0,
+        )
+
+    # filter() tests
+    def test_filter_by_passed_true(
+        self, batch_with_varied_results: BatchEvaluationResult
+    ) -> None:
+        """Test filter returns only passed results."""
+        passed = batch_with_varied_results.filter(passed=True)
+        assert len(passed) == 2
+        assert all(r.passed for r in passed)
+        assert passed[0].overall_score == 0.95
+        assert passed[1].overall_score == 0.75
+
+    def test_filter_by_passed_false(
+        self, batch_with_varied_results: BatchEvaluationResult
+    ) -> None:
+        """Test filter returns only failed results."""
+        failed = batch_with_varied_results.filter(passed=False)
+        assert len(failed) == 2
+        assert all(not r.passed for r in failed)
+
+    def test_filter_by_min_score(
+        self, batch_with_varied_results: BatchEvaluationResult
+    ) -> None:
+        """Test filter with min_score threshold."""
+        high_quality = batch_with_varied_results.filter(min_score=0.9)
+        assert len(high_quality) == 1
+        assert high_quality[0].overall_score == 0.95
+
+    def test_filter_by_max_score(
+        self, batch_with_varied_results: BatchEvaluationResult
+    ) -> None:
+        """Test filter with max_score threshold."""
+        low_quality = batch_with_varied_results.filter(max_score=0.5)
+        assert len(low_quality) == 1
+        assert low_quality[0].overall_score == 0.45
+
+    def test_filter_by_score_range(
+        self, batch_with_varied_results: BatchEvaluationResult
+    ) -> None:
+        """Test filter with both min and max score."""
+        mid_range = batch_with_varied_results.filter(min_score=0.6, max_score=0.8)
+        assert len(mid_range) == 2
+        # Should include 0.75 and 0.70
+        scores = {r.overall_score for r in mid_range}
+        assert scores == {0.75, 0.70}
+
+    def test_filter_combined_criteria(
+        self, batch_with_varied_results: BatchEvaluationResult
+    ) -> None:
+        """Test filter with combined passed and score criteria."""
+        needs_review = batch_with_varied_results.filter(passed=False, min_score=0.6)
+        assert len(needs_review) == 1
+        assert needs_review[0].overall_score == 0.70
+        assert not needs_review[0].passed
+
+    def test_filter_no_criteria_returns_all_valid(
+        self, batch_with_varied_results: BatchEvaluationResult
+    ) -> None:
+        """Test filter without criteria returns all non-None results."""
+        all_valid = batch_with_varied_results.filter()
+        assert len(all_valid) == 4  # 5 total minus 1 None
+
+    def test_filter_no_matches(
+        self, batch_with_varied_results: BatchEvaluationResult
+    ) -> None:
+        """Test filter returns empty list when no matches."""
+        impossible = batch_with_varied_results.filter(min_score=0.99)
+        assert impossible == []
+
+    def test_filter_empty_batch(self, empty_batch: BatchEvaluationResult) -> None:
+        """Test filter on empty batch returns empty list."""
+        result = empty_batch.filter(passed=True)
+        assert result == []
+
+    def test_filter_excludes_none_results(
+        self, batch_with_varied_results: BatchEvaluationResult
+    ) -> None:
+        """Test that filter always excludes None results."""
+        # Even with no filter criteria, None should be excluded
+        all_results = batch_with_varied_results.filter()
+        assert None not in all_results
+        assert len(all_results) == 4
+
+    # slice() tests
+    def test_slice_basic(
+        self, batch_with_varied_results: BatchEvaluationResult
+    ) -> None:
+        """Test slice returns correct range."""
+        first_three = batch_with_varied_results.slice(0, 3)
+        assert len(first_three) == 3
+        assert first_three[0].overall_score == 0.95  # type: ignore[union-attr]
+        assert first_three[1].overall_score == 0.75  # type: ignore[union-attr]
+        assert first_three[2].overall_score == 0.45  # type: ignore[union-attr]
+
+    def test_slice_includes_none(
+        self, batch_with_varied_results: BatchEvaluationResult
+    ) -> None:
+        """Test slice includes None values for failed items."""
+        middle = batch_with_varied_results.slice(2, 5)
+        assert len(middle) == 3
+        assert middle[1] is None  # The failed item at index 3
+
+    def test_slice_out_of_range(
+        self, batch_with_varied_results: BatchEvaluationResult
+    ) -> None:
+        """Test slice with out-of-range indices works like list slicing."""
+        result = batch_with_varied_results.slice(10, 20)
+        assert result == []
+
+    def test_slice_partial_range(
+        self, batch_with_varied_results: BatchEvaluationResult
+    ) -> None:
+        """Test slice with partial out-of-range returns available items."""
+        result = batch_with_varied_results.slice(3, 100)
+        assert len(result) == 2  # Only items at index 3 and 4
+
+    def test_slice_empty_batch(self, empty_batch: BatchEvaluationResult) -> None:
+        """Test slice on empty batch returns empty list."""
+        result = empty_batch.slice(0, 10)
+        assert result == []
+
+    # get_failed_items() tests
+    def test_get_failed_items_returns_copy(
+        self, batch_with_varied_results: BatchEvaluationResult
+    ) -> None:
+        """Test get_failed_items returns a copy of errors."""
+        failed = batch_with_varied_results.get_failed_items()
+        assert len(failed) == 1
+        # Modify the returned list and verify original is unchanged
+        failed.append({"index": 99, "error": "test"})
+        assert len(batch_with_varied_results.errors) == 1
+
+    def test_get_failed_items_structure(
+        self, batch_with_varied_results: BatchEvaluationResult
+    ) -> None:
+        """Test get_failed_items returns correct error structure."""
+        failed = batch_with_varied_results.get_failed_items()
+        assert failed[0]["index"] == 3
+        assert failed[0]["error"] == "Evaluation timed out"
+        assert "item" in failed[0]
+
+    def test_get_failed_items_empty(self, empty_batch: BatchEvaluationResult) -> None:
+        """Test get_failed_items on batch with no errors."""
+        failed = empty_batch.get_failed_items()
+        assert failed == []
+
+    # get_results_with_indices() tests
+    def test_get_results_with_indices_basic(
+        self, batch_with_varied_results: BatchEvaluationResult
+    ) -> None:
+        """Test get_results_with_indices returns indexed tuples."""
+        indexed = batch_with_varied_results.get_results_with_indices()
+        assert len(indexed) == 5
+        assert all(isinstance(item, tuple) for item in indexed)
+        assert all(len(item) == 2 for item in indexed)
+
+    def test_get_results_with_indices_correct_indices(
+        self, batch_with_varied_results: BatchEvaluationResult
+    ) -> None:
+        """Test get_results_with_indices has correct index values."""
+        indexed = batch_with_varied_results.get_results_with_indices()
+        for i, (idx, _) in enumerate(indexed):
+            assert idx == i
+
+    def test_get_results_with_indices_includes_none(
+        self, batch_with_varied_results: BatchEvaluationResult
+    ) -> None:
+        """Test get_results_with_indices includes None entries."""
+        indexed = batch_with_varied_results.get_results_with_indices()
+        idx, result = indexed[3]
+        assert idx == 3
+        assert result is None
+
+    def test_get_results_with_indices_empty(
+        self, empty_batch: BatchEvaluationResult
+    ) -> None:
+        """Test get_results_with_indices on empty batch."""
+        indexed = empty_batch.get_results_with_indices()
+        assert indexed == []
+
+    def test_get_results_with_indices_preserves_order(
+        self, batch_with_varied_results: BatchEvaluationResult
+    ) -> None:
+        """Test get_results_with_indices maintains original order."""
+        indexed = batch_with_varied_results.get_results_with_indices()
+        # Check specific results at expected positions
+        _, first = indexed[0]
+        assert first is not None
+        assert first.overall_score == 0.95
+        _, last = indexed[4]
+        assert last is not None
+        assert last.overall_score == 0.70
