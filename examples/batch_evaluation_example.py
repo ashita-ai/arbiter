@@ -96,17 +96,21 @@ async def main():
     print("\n\n📝 Example 2: With Progress Tracking")
     print("-" * 60)
 
-    # Progress callback
-    def on_progress(
-        completed: int, total: int, latest_result: Optional[EvaluationResult]
+    # Progress callback (on_progress receives completed, total, result, error)
+    def progress_handler(
+        completed: int,
+        total: int,
+        latest_result: Optional[EvaluationResult],
+        error: Optional[Exception],
     ) -> None:
         """Track progress of batch evaluation."""
         progress_pct = (completed / total) * 100
-        status = "✅" if latest_result else "❌"
-        score_str = f"{latest_result.overall_score:.2f}" if latest_result else "FAILED"
-        print(
-            f"  {status} Progress: {completed}/{total} ({progress_pct:.0f}%) | Latest: {score_str}"
-        )
+        if error:
+            print(f"  Progress: {completed}/{total} ({progress_pct:.0f}%) | Error: {error}")
+        elif latest_result:
+            print(
+                f"  Progress: {completed}/{total} ({progress_pct:.0f}%) | Score: {latest_result.overall_score:.2f}"
+            )
 
     items2 = [
         {
@@ -136,7 +140,7 @@ async def main():
         evaluators=["semantic"],
         model="gpt-4o-mini",
         max_concurrency=2,
-        progress_callback=on_progress,
+        on_progress=progress_handler,
     )
 
     print("\n✅ Batch Complete!")

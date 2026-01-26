@@ -16,11 +16,19 @@ Run with:
 
 import asyncio
 import os
+import sys
 
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
+
+# Check for LangChain dependencies before importing
+try:
+    from langchain_openai import ChatOpenAI
+    from langchain_core.prompts import ChatPromptTemplate
+    from langchain_core.output_parsers import StrOutputParser
+
+    LANGCHAIN_AVAILABLE = True
+except ImportError:
+    LANGCHAIN_AVAILABLE = False
 
 from arbiter_ai import evaluate
 
@@ -63,6 +71,17 @@ async def evaluate_chain_output():
 
 
 async def main():
+    # Check for LangChain dependencies
+    if not LANGCHAIN_AVAILABLE:
+        print("=" * 60)
+        print("LangChain dependencies not installed")
+        print("=" * 60)
+        print("\nThis example requires LangChain. Install with:")
+        print("  pip install langchain langchain-openai")
+        print("\nOr with uv:")
+        print("  uv pip install langchain langchain-openai")
+        sys.exit(0)
+
     # Check for API key
     if not os.getenv("OPENAI_API_KEY"):
         print("Error: OPENAI_API_KEY not set.")
