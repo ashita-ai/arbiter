@@ -1066,3 +1066,262 @@ class TestWeightedScoring:
                 llm_client=mock_llm_client,
                 weights={"semantic": 0.0},
             )
+
+
+class TestEvaluateWithStorage:
+    """Test suite for evaluate() with storage integration."""
+
+    @pytest.mark.asyncio
+    async def test_evaluate_with_storage_saves_result(
+        self, mock_llm_client, mock_agent
+    ):
+        """Test that evaluate() saves result to storage when provided."""
+        from arbiter_ai.api import evaluate
+        from arbiter_ai.storage.base import StorageBackend
+
+        mock_response = SemanticResponse(
+            score=0.9,
+            confidence=0.85,
+            explanation="High similarity",
+            key_similarities=[],
+            key_differences=[],
+        )
+
+        mock_result = MockAgentResult(mock_response)
+        mock_agent.run = AsyncMock(return_value=mock_result)
+        mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
+
+        # Create mock storage
+        mock_storage = MagicMock(spec=StorageBackend)
+        mock_storage.save_result = AsyncMock(return_value="test_result_id")
+
+        result = await evaluate(
+            output="Paris is the capital of France",
+            reference="The capital of France is Paris",
+            evaluators=["semantic"],
+            llm_client=mock_llm_client,
+            storage=mock_storage,
+        )
+
+        # Verify storage was called
+        mock_storage.save_result.assert_called_once()
+        call_args = mock_storage.save_result.call_args
+        assert call_args[0][0] == result  # First positional arg is the result
+
+        # Verify result_id is added to metadata
+        assert result.metadata is not None
+        assert result.metadata["storage_result_id"] == "test_result_id"
+
+    @pytest.mark.asyncio
+    async def test_evaluate_with_storage_metadata(self, mock_llm_client, mock_agent):
+        """Test that storage_metadata is passed to storage backend."""
+        from arbiter_ai.api import evaluate
+        from arbiter_ai.storage.base import StorageBackend
+
+        mock_response = SemanticResponse(
+            score=0.9,
+            confidence=0.85,
+            explanation="High similarity",
+        )
+
+        mock_result = MockAgentResult(mock_response)
+        mock_agent.run = AsyncMock(return_value=mock_result)
+        mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
+
+        mock_storage = MagicMock(spec=StorageBackend)
+        mock_storage.save_result = AsyncMock(return_value="test_id")
+
+        storage_metadata = {"user_id": "user123", "experiment": "v1"}
+
+        await evaluate(
+            output="Test output",
+            reference="Test reference",
+            evaluators=["semantic"],
+            llm_client=mock_llm_client,
+            storage=mock_storage,
+            storage_metadata=storage_metadata,
+        )
+
+        # Verify metadata was passed to save_result
+        call_args = mock_storage.save_result.call_args
+        assert call_args[1]["metadata"] == storage_metadata
+
+    @pytest.mark.asyncio
+    async def test_evaluate_storage_failure_does_not_fail_evaluation(
+        self, mock_llm_client, mock_agent
+    ):
+        """Test that storage failure doesn't prevent returning evaluation result."""
+        from arbiter_ai.api import evaluate
+        from arbiter_ai.storage.base import StorageBackend
+
+        mock_response = SemanticResponse(
+            score=0.9,
+            confidence=0.85,
+            explanation="High similarity",
+        )
+
+        mock_result = MockAgentResult(mock_response)
+        mock_agent.run = AsyncMock(return_value=mock_result)
+        mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
+
+        # Create mock storage that fails
+        mock_storage = MagicMock(spec=StorageBackend)
+        mock_storage.save_result = AsyncMock(side_effect=Exception("Storage error"))
+
+        # Should not raise, just log warning
+        result = await evaluate(
+            output="Test output",
+            reference="Test reference",
+            evaluators=["semantic"],
+            llm_client=mock_llm_client,
+            storage=mock_storage,
+        )
+
+        # Evaluation should still succeed
+        assert result.overall_score == 0.9
+        # No storage_result_id since save failed
+        assert "storage_result_id" not in result.metadata
+
+    @pytest.mark.asyncio
+    async def test_evaluate_without_storage_does_not_save(
+        self, mock_llm_client, mock_agent
+    ):
+        """Test that evaluate() without storage doesn't attempt to save."""
+        from arbiter_ai.api import evaluate
+
+        mock_response = SemanticResponse(
+            score=0.9,
+            confidence=0.85,
+            explanation="High similarity",
+        )
+
+        mock_result = MockAgentResult(mock_response)
+        mock_agent.run = AsyncMock(return_value=mock_result)
+        mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
+
+        result = await evaluate(
+            output="Test output",
+            reference="Test reference",
+            evaluators=["semantic"],
+            llm_client=mock_llm_client,
+        )
+
+        # Result should succeed without storage_result_id
+        assert result.overall_score == 0.9
+        assert "storage_result_id" not in result.metadata
+
+
+class TestBatchEvaluateWithStorage:
+    """Test suite for batch_evaluate() with storage integration."""
+
+    @pytest.mark.asyncio
+    async def test_batch_evaluate_with_storage_saves_result(
+        self, mock_llm_client, mock_agent
+    ):
+        """Test that batch_evaluate() saves result to storage when provided."""
+        from arbiter_ai.api import batch_evaluate
+        from arbiter_ai.storage.base import StorageBackend
+
+        mock_response = SemanticResponse(
+            score=0.9,
+            confidence=0.85,
+            explanation="High similarity",
+        )
+
+        mock_result = MockAgentResult(mock_response)
+        mock_agent.run = AsyncMock(return_value=mock_result)
+        mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
+
+        mock_storage = MagicMock(spec=StorageBackend)
+        mock_storage.save_batch_result = AsyncMock(return_value="test_batch_id")
+
+        items = [
+            {"output": "Paris is capital", "reference": "Paris is the capital"},
+            {"output": "Tokyo is capital", "reference": "Tokyo is the capital"},
+        ]
+
+        result = await batch_evaluate(
+            items=items,
+            evaluators=["semantic"],
+            llm_client=mock_llm_client,
+            storage=mock_storage,
+        )
+
+        # Verify storage was called
+        mock_storage.save_batch_result.assert_called_once()
+
+        # Verify batch_id is added to metadata
+        assert result.metadata is not None
+        assert result.metadata["storage_batch_id"] == "test_batch_id"
+
+    @pytest.mark.asyncio
+    async def test_batch_evaluate_with_storage_metadata(
+        self, mock_llm_client, mock_agent
+    ):
+        """Test that storage_metadata is passed to storage backend."""
+        from arbiter_ai.api import batch_evaluate
+        from arbiter_ai.storage.base import StorageBackend
+
+        mock_response = SemanticResponse(
+            score=0.9,
+            confidence=0.85,
+            explanation="High similarity",
+        )
+
+        mock_result = MockAgentResult(mock_response)
+        mock_agent.run = AsyncMock(return_value=mock_result)
+        mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
+
+        mock_storage = MagicMock(spec=StorageBackend)
+        mock_storage.save_batch_result = AsyncMock(return_value="test_id")
+
+        storage_metadata = {"experiment": "batch_v1", "run": 1}
+
+        await batch_evaluate(
+            items=[{"output": "Test", "reference": "Test"}],
+            evaluators=["semantic"],
+            llm_client=mock_llm_client,
+            storage=mock_storage,
+            storage_metadata=storage_metadata,
+        )
+
+        # Verify metadata was passed
+        call_args = mock_storage.save_batch_result.call_args
+        assert call_args[1]["metadata"] == storage_metadata
+
+    @pytest.mark.asyncio
+    async def test_batch_evaluate_storage_failure_does_not_fail_batch(
+        self, mock_llm_client, mock_agent
+    ):
+        """Test that storage failure doesn't prevent returning batch result."""
+        from arbiter_ai.api import batch_evaluate
+        from arbiter_ai.storage.base import StorageBackend
+
+        mock_response = SemanticResponse(
+            score=0.9,
+            confidence=0.85,
+            explanation="High similarity",
+        )
+
+        mock_result = MockAgentResult(mock_response)
+        mock_agent.run = AsyncMock(return_value=mock_result)
+        mock_llm_client.create_agent = MagicMock(return_value=mock_agent)
+
+        # Create mock storage that fails
+        mock_storage = MagicMock(spec=StorageBackend)
+        mock_storage.save_batch_result = AsyncMock(
+            side_effect=Exception("Storage error")
+        )
+
+        # Should not raise
+        result = await batch_evaluate(
+            items=[{"output": "Test", "reference": "Test"}],
+            evaluators=["semantic"],
+            llm_client=mock_llm_client,
+            storage=mock_storage,
+        )
+
+        # Batch should still succeed
+        assert result.successful_items == 1
+        # No storage_batch_id since save failed
+        assert "storage_batch_id" not in result.metadata

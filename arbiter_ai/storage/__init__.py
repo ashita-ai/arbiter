@@ -6,21 +6,32 @@ Available backends:
 
 Setup:
     1. Set DATABASE_URL and/or REDIS_URL in .env
-    2. Run migrations: alembic upgrade head
-    3. Use storage backends in evaluate() calls
+    2. For PostgreSQL: Run migrations with `alembic upgrade head`
+    3. Use storage backends in evaluate() or batch_evaluate() calls
 
 Example:
-    >>> from arbiter import evaluate
-    >>> from arbiter_ai.storage import PostgresStorage
+    >>> from arbiter_ai import evaluate, batch_evaluate
+    >>> from arbiter_ai.storage import PostgresStorage, RedisStorage
     >>>
-    >>> storage = PostgresStorage()
-    >>> async with storage:
-    >>>     result = await evaluate(
-    >>>         output="...",
-    >>>         reference="...",
-    >>>         evaluators=["semantic"],
-    >>>         storage=storage
-    >>>     )
+    >>> # Single evaluation with PostgreSQL storage
+    >>> async with PostgresStorage() as storage:
+    ...     result = await evaluate(
+    ...         output="Paris is the capital of France",
+    ...         reference="The capital of France is Paris",
+    ...         evaluators=["semantic"],
+    ...         storage=storage,
+    ...         storage_metadata={"user_id": "user123"}
+    ...     )
+    ...     # Result ID available at result.metadata["storage_result_id"]
+    >>>
+    >>> # Batch evaluation with Redis caching
+    >>> async with RedisStorage(ttl=3600) as storage:
+    ...     results = await batch_evaluate(
+    ...         items=[{"output": "...", "reference": "..."}],
+    ...         storage=storage,
+    ...         storage_metadata={"experiment": "v1"}
+    ...     )
+    ...     # Batch ID available at results.metadata["storage_batch_id"]
 """
 
 from arbiter_ai.storage.base import (
