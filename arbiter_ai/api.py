@@ -66,6 +66,7 @@ from .core.models import (
     Score,
 )
 from .evaluators import PairwiseComparisonEvaluator
+from .storage.base import StorageBackend
 
 logger = get_logger("api")
 
@@ -85,6 +86,8 @@ async def evaluate(
     middleware: Optional[MiddlewarePipeline] = None,
     timeout: Optional[float] = None,
     weights: Optional[Dict[str, float]] = None,
+    storage: Optional[StorageBackend] = None,
+    storage_metadata: Optional[Dict[str, Any]] = None,
     *,
     dry_run: Literal[True],
 ) -> DryRunResult: ...
@@ -103,6 +106,8 @@ async def evaluate(
     middleware: Optional[MiddlewarePipeline] = None,
     timeout: Optional[float] = None,
     weights: Optional[Dict[str, float]] = None,
+    storage: Optional[StorageBackend] = None,
+    storage_metadata: Optional[Dict[str, Any]] = None,
     *,
     dry_run: Literal[False] = ...,
 ) -> EvaluationResult: ...
@@ -121,6 +126,8 @@ async def evaluate(
     middleware: Optional[MiddlewarePipeline] = None,
     timeout: Optional[float] = None,
     weights: Optional[Dict[str, float]] = None,
+    storage: Optional[StorageBackend] = None,
+    storage_metadata: Optional[Dict[str, Any]] = None,
     dry_run: bool = False,
 ) -> Union[EvaluationResult, DryRunResult]: ...
 
@@ -137,6 +144,8 @@ async def evaluate(
     middleware: Optional[MiddlewarePipeline] = None,
     timeout: Optional[float] = None,
     weights: Optional[Dict[str, float]] = None,
+    storage: Optional[StorageBackend] = None,
+    storage_metadata: Optional[Dict[str, Any]] = None,
     dry_run: bool = False,
 ) -> Union[EvaluationResult, DryRunResult]:
     """Evaluate an LLM output with automatic interaction tracking.
@@ -165,6 +174,11 @@ async def evaluate(
             overall score calculation. Evaluators not in the dict default to 1.0.
             All weights must be positive. Example: {"semantic": 1.0, "factuality": 2.0}
             would weight factuality twice as heavily in the overall score.
+        storage: Optional storage backend for persisting evaluation results.
+            Must be connected before use (via async context manager or connect()).
+            Supported backends: PostgresStorage, RedisStorage.
+        storage_metadata: Optional metadata to store alongside the result.
+            Useful for tracking user_id, session_id, experiment tags, etc.
         dry_run: If True, return preview of evaluation without making API calls.
             Useful for debugging prompts, validating inputs, and estimating costs.
 
@@ -236,6 +250,17 @@ async def evaluate(
         >>> # Set ARBITER_DEFAULT_MODEL=claude-3-5-sonnet before running
         >>> result = await evaluate(output="...", reference="...")
         >>> # Uses claude-3-5-sonnet from environment
+        >>>
+        >>> # With storage persistence
+        >>> from arbiter_ai.storage import PostgresStorage
+        >>> async with PostgresStorage() as storage:
+        ...     result = await evaluate(
+        ...         output="Paris is the capital of France",
+        ...         reference="The capital of France is Paris",
+        ...         storage=storage,
+        ...         storage_metadata={"user_id": "user123", "experiment": "v1"}
+        ...     )
+        ...     # Result is automatically saved; result_id in result.metadata
     """
     # Apply defaults from environment variables
     model = model if model is not None else get_default_model()
@@ -316,14 +341,27 @@ async def evaluate(
     if timeout is not None:
         try:
             async with asyncio.timeout(timeout):
-                return await _run_evaluation()
+                result = await _run_evaluation()
         except asyncio.TimeoutError:
             raise TimeoutError(
                 f"Evaluation timed out after {timeout}s",
                 details={"timeout_seconds": timeout},
             )
+    else:
+        result = await _run_evaluation()
 
-    return await _run_evaluation()
+    # Save to storage if provided
+    if storage is not None:
+        try:
+            result_id = await storage.save_result(result, metadata=storage_metadata)
+            # Add result_id to metadata for retrieval
+            result.metadata["storage_result_id"] = result_id
+            logger.debug("Saved evaluation result to storage: %s", result_id)
+        except Exception as e:
+            # Log but don't fail the evaluation if storage fails
+            logger.warning("Failed to save result to storage: %s", e)
+
+    return result
 
 
 async def _evaluate_impl(
@@ -714,6 +752,8 @@ async def batch_evaluate(
     ] = None,
     middleware: Optional[MiddlewarePipeline] = None,
     timeout: Optional[float] = None,
+    storage: Optional[StorageBackend] = None,
+    storage_metadata: Optional[Dict[str, Any]] = None,
 ) -> "BatchEvaluationResult":
     """Evaluate multiple LLM outputs in parallel with progress tracking.
 
@@ -745,10 +785,16 @@ async def batch_evaluate(
             Each individual evaluation that exceeds this timeout will be recorded
             as a failed item with a timeout error. The batch continues processing
             other items.
+        storage: Optional storage backend for persisting batch results.
+            Must be connected before use (via async context manager or connect()).
+            Supported backends: PostgresStorage, RedisStorage.
+        storage_metadata: Optional metadata to store alongside the batch result.
+            Useful for tracking user_id, session_id, experiment tags, etc.
 
     Returns:
         BatchEvaluationResult with results list, errors, and aggregate statistics.
         Results list preserves order - None for failed items (including timeouts).
+        If storage is provided, result.metadata["storage_batch_id"] contains the ID.
 
     Raises:
         ValidationError: If input validation fails (empty items, invalid format)
@@ -794,6 +840,16 @@ async def batch_evaluate(
         ...     else:
         ...         error = results.get_error(i)
         ...         print(f"Item {i}: FAILED - {error['error']}")
+        >>>
+        >>> # With storage persistence
+        >>> from arbiter_ai.storage import RedisStorage
+        >>> async with RedisStorage() as storage:
+        ...     results = await batch_evaluate(
+        ...         items=[...],
+        ...         storage=storage,
+        ...         storage_metadata={"experiment": "batch_test_v1"}
+        ...     )
+        ...     # Batch result is automatically saved
     """
     # Apply defaults from environment variables
     model = model if model is not None else get_default_model()
@@ -822,7 +878,7 @@ async def batch_evaluate(
     )
 
     # Delegate to implementation
-    return await _batch_evaluate_impl(
+    result = await _batch_evaluate_impl(
         items=items,
         evaluators=evaluators,
         llm_client=llm_client,
@@ -834,6 +890,21 @@ async def batch_evaluate(
         middleware=middleware,
         timeout=timeout,
     )
+
+    # Save to storage if provided
+    if storage is not None:
+        try:
+            batch_id = await storage.save_batch_result(
+                result, metadata=storage_metadata
+            )
+            # Add batch_id to metadata for retrieval
+            result.metadata["storage_batch_id"] = batch_id
+            logger.debug("Saved batch result to storage: %s", batch_id)
+        except Exception as e:
+            # Log but don't fail the batch if storage fails
+            logger.warning("Failed to save batch result to storage: %s", e)
+
+    return result
 
 
 async def _batch_evaluate_impl(

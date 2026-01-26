@@ -4,6 +4,7 @@ Uses Redis for high-performance caching of evaluation results.
 Reads REDIS_URL from environment for Redis connection.
 """
 
+import hashlib
 import json
 import logging
 import os
@@ -118,12 +119,14 @@ class RedisStorage(StorageBackend):
             raise ConnectionError("Not connected to Redis")
 
         try:
-            # Generate ID from result hash (deterministic)
+            # Generate ID from result hash (deterministic across sessions)
+            # Uses SHA-256 for consistent hashing regardless of PYTHONHASHSEED
             # Exclude computed fields when serializing to avoid validation errors on deserialization
             result_dict = result.model_dump(
                 mode="json", exclude={"interactions": {"__all__": {"total_tokens"}}}
             )
-            result_id = str(hash(json.dumps(result_dict, sort_keys=True)))
+            json_str = json.dumps(result_dict, sort_keys=True)
+            result_id = hashlib.sha256(json_str.encode()).hexdigest()[:16]
 
             # Store result with metadata
             data = {"result": result_dict, "metadata": metadata}
@@ -156,7 +159,8 @@ class RedisStorage(StorageBackend):
             raise ConnectionError("Not connected to Redis")
 
         try:
-            # Generate ID from result hash
+            # Generate ID from result hash (deterministic across sessions)
+            # Uses SHA-256 for consistent hashing regardless of PYTHONHASHSEED
             # Exclude computed fields when serializing to avoid validation errors on deserialization
             result_dict = result.model_dump(
                 mode="json",
@@ -166,7 +170,8 @@ class RedisStorage(StorageBackend):
                     }
                 },
             )
-            batch_id = str(hash(json.dumps(result_dict, sort_keys=True)))
+            json_str = json.dumps(result_dict, sort_keys=True)
+            batch_id = hashlib.sha256(json_str.encode()).hexdigest()[:16]
 
             # Store result with metadata
             data = {"result": result_dict, "metadata": metadata}
