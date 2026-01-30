@@ -41,6 +41,7 @@ interaction tracking, multiple evaluators, and extensible architecture.
 - **FactualityEvaluator**: Hallucination detection and fact verification
 - **GroundednessEvaluator**: RAG system validation and source attribution
 - **RelevanceEvaluator**: Query-output alignment and completeness assessment
+- **InstructionFollowingEvaluator**: Agent/pipeline validation for instruction adherence
 - **PairwiseComparisonEvaluator**: A/B testing and model comparison
 
 ## Main Components:
@@ -128,6 +129,7 @@ from .evaluators import (
     CustomCriteriaEvaluator,
     FactualityEvaluator,
     GroundednessEvaluator,
+    InstructionFollowingEvaluator,
     PairwiseComparisonEvaluator,
     RelevanceEvaluator,
     SemanticEvaluator,
@@ -153,6 +155,7 @@ __all__ = [
     "CustomCriteriaEvaluator",
     "FactualityEvaluator",
     "GroundednessEvaluator",
+    "InstructionFollowingEvaluator",
     "RelevanceEvaluator",
     "PairwiseComparisonEvaluator",
     "BasePydanticEvaluator",
