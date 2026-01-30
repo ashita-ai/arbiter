@@ -4,9 +4,10 @@ This module provides evaluators for different aspects of LLM outputs:
 - Semantic similarity between output and reference (LLM or FAISS backend)
 - Custom criteria evaluation (domain-specific quality checks)
 - Factuality checking and hallucination detection
+- Instruction following validation for agents and pipelines
 - Pairwise comparison for A/B testing
-- Consistency evaluation (planned)
-- Relevance scoring (planned)
+- Groundedness assessment for RAG systems
+- Relevance scoring for query alignment
 
 All evaluators inherit from BasePydanticEvaluator and automatically
 track LLM interactions for full observability.
@@ -24,6 +25,10 @@ from .custom_criteria import (
 )
 from .factuality import FactualityEvaluator, FactualityResponse
 from .groundedness import GroundednessEvaluator, GroundednessResponse
+from .instruction_following import (
+    InstructionFollowingEvaluator,
+    InstructionFollowingResponse,
+)
 from .pairwise import (
     AspectComparison,
     PairwiseComparisonEvaluator,
@@ -50,6 +55,8 @@ __all__ = [
     "FactualityResponse",
     "GroundednessEvaluator",
     "GroundednessResponse",
+    "InstructionFollowingEvaluator",
+    "InstructionFollowingResponse",
     "RelevanceEvaluator",
     "RelevanceResponse",
     "PairwiseComparisonEvaluator",

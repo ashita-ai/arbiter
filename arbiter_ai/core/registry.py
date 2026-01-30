@@ -55,6 +55,7 @@ def _initialize_builtin_evaluators() -> None:
         CustomCriteriaEvaluator,
         FactualityEvaluator,
         GroundednessEvaluator,
+        InstructionFollowingEvaluator,
         RelevanceEvaluator,
         SemanticEvaluator,
     )
@@ -63,6 +64,7 @@ def _initialize_builtin_evaluators() -> None:
     AVAILABLE_EVALUATORS["custom_criteria"] = CustomCriteriaEvaluator
     AVAILABLE_EVALUATORS["factuality"] = FactualityEvaluator
     AVAILABLE_EVALUATORS["groundedness"] = GroundednessEvaluator
+    AVAILABLE_EVALUATORS["instruction_following"] = InstructionFollowingEvaluator
     AVAILABLE_EVALUATORS["relevance"] = RelevanceEvaluator
 
 
